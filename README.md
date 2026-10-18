@@ -8,6 +8,8 @@ palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
 
 - Versio **1.0.0**, tuettu Nodus 0.26.7 testnet -asennus Debian/Ubuntu-palvelimella.
 - Viisi näkymää: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
+- Yläreunan **FIN / ENG** vaihtaa koko käyttöliittymän suomeksi tai englanniksi.
+  Valinta säilyy samassa selaimessa; oletuskieli on suomi.
 - Paikallinen kerääjä tallentaa mittauksia noin minuutin välein ja palvelee
   käyttöliittymää oletuksena vain osoitteessa `127.0.0.1:8890`.
 - Kuvaajat perustuvat kerättyihin havaintoihin. Puuttuva tieto säilyy puuttuvana;
@@ -103,6 +105,29 @@ Ylläpitäjä voi lisätä oman HTTPS-osoitteen Cloudflare Tunnelin ja Accessin 
 Katso [etäkäytön määritys ja kirjautumisen tarkistukset](docs/remote-access.md).
 Pilvipalvelun tili, domain ja kirjautumissäännöt kuuluvat kyseiseen asennukseen.
 Sama käyttöliittymä ja API toimivat sekä localhostissa että suojatulla etäosoitteella.
+
+## Käyttöliittymän kielet / Interface languages
+
+Yläreunan FIN/ENG-painikkeet vaihtavat kaikkien viiden näkymän, kuvaajien,
+työkaluvihjeiden, virhetilojen ja tietoa-ikkunan kielen heti. Sivu, kuvaajan
+aikaväli, tapahtumasuodatin ja palkkiovuosi säilyvät vaihdossa. Valinta tallennetaan
+selaimen paikalliseen tallennustilaan kyseiselle osoitteelle. Jos tallennustila
+on estetty, kielivalinta toimii nykyisen sivun ajan. Ensimmäisen käynnin oletus
+on suomi; FIN/ENG-painikkeet toimivat myös puhelimella ja näppäimistöllä.
+
+The FIN/ENG buttons switch the complete interface between Finnish and English.
+The selected page, chart range, event filter and rewards year are preserved.
+Your preference is saved in this browser for this website; Finnish is the default.
+If browser storage is blocked, switching still works for the current page.
+Number and date formatting follows the selected language. Report dates remain
+in the explicitly labelled Europe/Helsinki timezone. Raw diagnostic messages,
+machine identifiers and the stable accounting CSV field names are preserved.
+
+Käännökset eivät muuta mittausdataa tai rahamäärien tarkkuutta. Näytön luvut ja
+päiväykset muotoillaan kielivalinnan mukaan; raporttien aikavyöhyke säilyy
+Europe/Helsinki-alueena. Alkuperäiset lokiviestit ja tekniset tunnisteet säilyvät
+lähteen mukaisina. CSV:n sarakenimet ja täsmälliset rahamäärät pysyvät samoina
+molemmilla kielillä, jotta kirjanpidon jatkokäsittely on vakaa.
 
 ## Palkkiot: kytke tulevien maksujen historia
 
@@ -205,8 +230,11 @@ Paketin poisto ei poista Nodus-dataa, muuta storage-rekisteröintiä tai vapauta
 python3 -m unittest discover -s backend/tests -v
 python3 -m unittest discover -s rewards -p 'test_*.py' -v
 python3 -m unittest discover -s tests -v
+node --check dist/i18n.js
+node --check dist/app-translations.js
 node --check dist/app.js
 node tests/frontend-smoke.mjs dist
+node tests/frontend-i18n.mjs dist
 bash -n backend/install.sh
 ```
 
@@ -215,7 +243,7 @@ Lähdesopimus on tarkistettu asennetusta Nodus 0.26.7 / commit
 muuttaa CLI-tekstiä tai tietokantaskeemaa; tuntematon kenttä jätetään tyhjäksi.
 
 
-GitHub Actions suorittaa samat Python-testit, käyttöliittymän smoke-testin ja
+GitHub Actions suorittaa samat Python-testit, käyttöliittymän smoke- ja kielitestit sekä
 syntaksitarkistukset. Testit eivät tarvitse Nodus-nodea, juurioikeuksia tai
 ulkopuolisia verkkopalveluita; API-testit käyttävät paikallista testipalvelinta.
 

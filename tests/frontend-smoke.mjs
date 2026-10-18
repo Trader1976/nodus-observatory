@@ -14,6 +14,7 @@ function element() {
   return {
     innerHTML: '', textContent: '', dataset: {}, style: {}, value: '2026',
     classList: { add() {}, remove() {}, toggle() {} },
+    addEventListener() {}, querySelectorAll() { return []; },
     setAttribute() {}, removeAttribute() {}, showModal() {}, close() {},
     appendChild() {}, remove() {}, click() {},
   };
@@ -24,15 +25,20 @@ const document = {
     return elements.get(selector);
   },
   querySelectorAll() { return []; },
-  addEventListener() {}, body: element(), createElement: element,
+  addEventListener() {}, body: element(), documentElement: element(), createElement: element,
 };
 const fallbackFor = request => request.startsWith('/api/') ? {
   '/api/dashboard': 'snapshot.json', '/api/history': 'history.json',
   '/api/network': 'network.json', '/api/rewards': 'rewards.json',
   '/api/events': 'events.json',
 }[request.split('?')[0]] : request;
+const events = new EventTarget();
 const context = {
-  document, window: { addEventListener() {}, scrollTo() {} },
+  document, window: {
+    addEventListener: events.addEventListener.bind(events),
+    dispatchEvent: events.dispatchEvent.bind(events), scrollTo() {},
+    localStorage: { getItem() { return null; }, setItem() {} },
+  }, Event,
   location: { hash: '#overview' }, navigator: { clipboard: { writeText: async () => {} } },
   fetch: async request => ({
     ok: true,
@@ -43,7 +49,9 @@ const context = {
   URL: { createObjectURL(blob) { csvBlob = blob; return 'blob:test'; }, revokeObjectURL() {} },
 };
 vm.createContext(context);
-vm.runInContext(fs.readFileSync(path.join(dist, 'app.js'), 'utf8'), context);
+for (const script of ['i18n.js', 'app-translations.js', 'app.js']) {
+  vm.runInContext(fs.readFileSync(path.join(dist, script), 'utf8'), context, { filename: script });
+}
 await new Promise(resolve => setImmediate(resolve));
 
 for (const page of ['overview', 'storage', 'network', 'rewards', 'events']) {
