@@ -88,6 +88,12 @@ pin. An unknown or mismatched chain is rejected before import. The URL uses the
 observed public recipient identity, never a wallet key or configured arbitrary
 remote server.
 
+Scan's `stats.indexed_height` describes the explorer's own index, while the
+reward response's `at_height` describes the node database used for that query.
+The explorer index may legitimately lag behind the reward source. Regression
+checks compare the explorer index before and after collection, not these two
+different heights. The chain ID is checked before and after the import.
+
 A request discloses the **public owner fingerprint** to Scan. This is a
 third-party explorer observation, not independent cryptographic verification of
 each payment. An unavailable, malformed or inconsistent response is reported as

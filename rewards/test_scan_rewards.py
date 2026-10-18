@@ -89,6 +89,8 @@ class ScanRewardTests(unittest.TestCase):
         result = self.collect(pages)
         self.assertEqual(result['status'], 'ok')
         self.assertEqual(result['rows'], 4)
+        self.assertIn('before=950:0&release_before=700:1', self.calls[2])
+        self.assertNotIn('%3A', self.calls[2])
         query = parse_qs(urlsplit(self.calls[2]).query)
         self.assertEqual(query['before'], ['950:0'])
         self.assertEqual(query['release_before'], ['700:1'])
@@ -175,6 +177,26 @@ class ScanRewardTests(unittest.TestCase):
                     result = r.collect_scan_rewards(self.ledger, CHAIN, OWNER, NODE, cache_seconds=0)
                 self.assertEqual(result['status'], 'error')
                 self.assertEqual(self.count(), 0)
+
+    def test_explorer_index_can_lag_reward_database_without_regressing(self):
+        fetch = self.fetcher([page([event(900, '7')], paid='7')],
+                             stats=lambda: dict(chain_id=CHAIN, indexed_height=998))
+        with patch.object(r, '_scan_json', side_effect=fetch):
+            result = r.collect_scan_rewards(self.ledger, CHAIN, OWNER, NODE)
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['at_height'], 1000)
+        self.assertEqual(r.report(self.ledger, 2026)['summary']['paid_raw'], '7')
+
+    def test_explorer_index_regression_against_its_own_snapshot_is_refused(self):
+        indices = iter((1000, 999))
+        fetch = self.fetcher([page([event(900, '7')], paid='7')],
+                             stats=lambda: dict(chain_id=CHAIN, indexed_height=next(indices)))
+        with patch.object(r, '_scan_json', side_effect=fetch):
+            result = r.collect_scan_rewards(self.ledger, CHAIN, OWNER, NODE)
+        self.assertEqual(result['status'], 'error')
+        self.assertIn('indexed height regressed', result['reason'])
+        self.assertEqual(self.count(), 0)
+        self.assertIsNone(r.report(self.ledger, 2026)['summary']['paid_raw'])
 
     def test_unavailable_and_cached_failure_preserve_success_metadata_and_events(self):
         self.collect([page([event(900, '7')], paid='7')])
