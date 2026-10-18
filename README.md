@@ -6,7 +6,7 @@ palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
 
 ## Nykytila
 
-- Versio **1.0.0**, tarkoitettu Nexus-palvelimen Nodus 0.26.7 -asennukselle.
+- Versio **1.0.0**, tuettu Nodus 0.26.7 testnet -asennus Debian/Ubuntu-palvelimella.
 - Viisi näkymää: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
 - Paikallinen kerääjä tallentaa mittauksia noin minuutin välein ja palvelee
   käyttöliittymää oletuksena vain osoitteessa `127.0.0.1:8890`.
@@ -24,28 +24,50 @@ fontteja tai kuvia CDN:stä. Kehitystarkistukset käyttävät lisäksi Node.js 2
 
 Tämä on erillinen monitorointisovellus. Se ei ole Nodus-noden lähdekoodirepo.
 Repon mukana ei ole yksityisiä identiteettiavaimia tai lompakon tunnuksia.
-Asetusesimerkki ja staattiset tilannekuvat sisältävät tämän asennuksen julkisia
-noden tunnisteita ja osoitteita.
+Asetusesimerkki on yleinen. Vain staattiset esikatselun tilannekuvat sisältävät
+alkuperäisen Nexus-asennuksen julkisia noden tunnisteita ja osoitteita.
 
 ## Asennus lähdekoodista
 
-Kun repo on kloonattu palvelimelle, aja sen juuressa:
+Kloonaa repo node-palvelimelle ja aja sen juuressa:
 
 ```bash
+git clone https://github.com/Trader1976/nodus-observatory.git
+cd nodus-observatory
 sudo bash backend/install.sh
 ```
 
-Tarkista ennen asennusta `backend/config.example.json`: levyliitos, verkkoliitäntä
-ja julkinen fingerprint on valmisteltu Nexus-palvelinta varten. Asennin säilyttää
-olemassa olevan `/etc/nodus-monitor/config.json`-tiedoston päivityksessä.
+Uusi asennus tunnistaa julkisen fingerprintin ja datahakemiston paikallisesta
+`nodus-cli status` -tulosteesta sekä tiedostojärjestelmän ja tavallisen levyn
+`findmnt`/`lsblk`-tiedoista. Myös käyttöjärjestelmän juurilevyllä oleva data on
+tuettu; erillistä 8 TB:n osiota ei vaadita. Verkkoliitäntä seuraa oletusreittiä.
+Nodus-palvelun pitää olla käynnissä, jotta tunnistus onnistuu. Yksityisiä avaimia
+tai Nodus-asetustiedostoa ei lueta. Tunnistuksen virhe pysäyttää asennuksen ennen
+palvelumuutoksia. LVM/RAID-laitteen SMART jää tuntemattomaksi automaattitilassa.
+
+Tarvittaessa kopioi `backend/config.example.json` repon ulkopuolelle, aseta oman
+koneesi `data_path`, `mount_path`, `cli_path` ja halutessasi `disk_device` sekä
+`rewards_source_db`, ja käytä `sudo bash backend/install.sh --config /polku/config.json`.
+`fingerprint: null` käyttää paikallisen noden status-tunnistetta. `mount_path` on
+datan todellinen liitoskohta (esimerkiksi `/`, jos erillistä dataosiota ei ole).
+Monitorin omat `state_dir`- ja `frontend_dir`-polut ovat asennuksessa kiinteät.
+Asenna node-data järjestelmähakemistoon: systemd-palvelun `ProtectHome=yes` rajaa
+kotihakemistot pois. SMART tarvitsee `smartctl`-ohjelman (paketti `smartmontools`);
+puuttuvat levymittaukset jäävät tuntemattomiksi.
+
+Päivityksessä asennin säilyttää olemassa olevan
+`/etc/nodus-monitor/config.json`-tiedoston ja sen konekohtaiset arvot.
+`--config` on tarkoitettu vain ensimmäiseen asennukseen.
 
 ## Asennus julkaisupaketista
 
-Lataa paketti työpöytäkoneelle. Aja sen lataushakemistossa:
+Aiemmin toimitettu 1.0.0-paketti sisältää alkuperäiset Nexus-asetukset. Uuteen
+asennukseen suositellaan yllä olevaa ajantasaista lähdekoodia. Vanhan paketin
+asennuskomennot (korvaa `USER@NODE_SERVER` omalla SSH-osoitteellasi):
 
 ```bash
-scp nodus-observatory-1.0.0.tar.gz timo@192.168.1.107:~/
-ssh timo@192.168.1.107
+scp nodus-observatory-1.0.0.tar.gz USER@NODE_SERVER:~/
+ssh USER@NODE_SERVER
 tar -xzf ~/nodus-observatory-1.0.0.tar.gz -C ~/
 cd ~/nodus-observatory-1.0.0
 sudo bash backend/install.sh
@@ -67,12 +89,20 @@ Asennuspolut:
 Aja **työpöytäkoneella** ja pidä tämä yhteys auki:
 
 ```bash
-ssh -N -L 8890:127.0.0.1:8890 timo@192.168.1.107
+ssh -N -L 8890:127.0.0.1:8890 USER@NODE_SERVER
 ```
 
 Avaa selaimessa <http://127.0.0.1:8890>. Yhteys on SSH-tunnelissa.
 Uutta reitittimen porttiohjausta ei tarvita. Palvelu ei tarjoa internetiin
 avointa hallintapaneelia eikä ota vastaan noden hallintakomentoja.
+
+## Valinnainen etäkäyttö puhelimella
+
+Paikallinen oletusasennus toimii ilman Cloudflarea tai verkkotunnusta.
+Ylläpitäjä voi lisätä oman HTTPS-osoitteen Cloudflare Tunnelin ja Accessin kautta.
+Katso [etäkäytön määritys ja kirjautumisen tarkistukset](docs/remote-access.md).
+Pilvipalvelun tili, domain ja kirjautumissäännöt kuuluvat kyseiseen asennukseen.
+Sama käyttöliittymä ja API toimivat sekä localhostissa että suojatulla etäosoitteella.
 
 ## Palkkiot: kytke tulevien maksujen historia
 
