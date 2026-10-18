@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a1019">
+  <title>Nodus Observatory — Nexus</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Siirry sisältöön</a>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Päävalikko">
+      <a href="#overview" class="brand" aria-label="Nodus Observatory, yleiskuva">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28.1 9v14L16 30 3.9 23V9Z"/><path d="m10 21 6-10 6 10M12.2 17.3h7.6"/></svg>
+        <span>NODUS<span class="brand-sub">OBSERVATORY</span></span>
+      </a>
+      <div class="sidebar-label">OMA PALVELIN</div>
+      <div class="server-selector"><span class="server-avatar">N</span><div><strong>Nexus</strong><span>PowerEdge R230</span></div><span class="tiny-dot"></span></div>
+      <nav id="navigation">
+        <a href="#overview" data-page="overview"><span class="nav-icon" data-icon="grid"></span>Yleiskuva</a>
+        <a href="#storage" data-page="storage"><span class="nav-icon" data-icon="database"></span>Tallennustila</a>
+        <a href="#network" data-page="network"><span class="nav-icon" data-icon="network"></span>Verkko</a>
+        <a href="#rewards" data-page="rewards"><span class="nav-icon" data-icon="wallet"></span>Palkkiot<span class="nav-tag">CSV</span></a>
+        <a href="#events" data-page="events"><span class="nav-icon" data-icon="activity"></span>Tapahtumat</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="network-label"><span class="tiny-dot amber"></span>NODUS TESTNET</div>
+        <div class="sidebar-note">Yksi näkymä.<br>Koko noden tilanne.</div>
+        <button class="text-button about-trigger"><span data-icon="info"></span>Tietoa seurannasta</button>
+        <div class="sidebar-version">Observatory <span>01 / NEXUS</span></div>
+      </div>
+    </aside>
+    <div class="content-shell">
+      <header class="topbar">
+        <div class="breadcrumb"><button class="icon-button mobile-menu" id="menu" aria-label="Avaa valikko" aria-expanded="false"><span data-icon="menu"></span></button><span class="breadcrumb-home">Nexus</span><span class="slash">/</span><span id="breadcrumb-page">Yleiskuva</span></div>
+        <div class="topbar-actions"><span class="readonly"><span data-icon="lock"></span>Vain luku</span><button class="icon-button" id="refresh" aria-label="Päivitä tiedot"><span data-icon="refresh"></span></button><span class="avatar">TE</span></div>
+      </header>
+      <main id="main" tabindex="-1">
+        <div id="source-banner" class="source-banner"><span class="source-indicator"></span><span id="source-label">Haetaan seurannan tietoja…</span><span class="source-detail" id="source-detail"></span></div>
+        <div id="page-content" aria-live="polite"></div>
+      </main>
+      <footer><span>NODUS OBSERVATORY <i>·</i> NEXUS</span><span>Mittaukset ja ketjutiedot lähteineen. <button class="footer-link about-trigger">Miten tiedot kerätään?</button></span></footer>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <dialog id="about-dialog"><button class="icon-button dialog-close" aria-label="Sulje"><span data-icon="close"></span></button><span class="eyebrow">LÄHTEET & LUOTETTAVUUS</span><h2>Tieto ensin. Tulkinta sen jälkeen.</h2><p>Paikallinen kerääjä lukee Nodus CLI:n tilan, palveluiden tiedot ja palvelimen mittarit. Selain näyttää kerätyt tulokset. Sivulta ei hallita nodea eikä käsitellä lompakon yksityisiä avaimia.</p><p>Esikatselussa näkyvät tallennetut tilannekuvat. Historiakuvaajat yhdistävät vain olemassa olevat havaintopisteet; mittausten välistä toimintaa ei tunneta. Puuttuva mittaus näkyy puuttuvana tietona.</p><p>Palkkioiden euroarvot perustuvat erikseen kirjattuihin arvostuksiin. Puuttuvaa hintaa ei korvata nollalla. CSV on yhteenveto omaa kirjanpitoa varten.</p><button class="button primary dialog-close">Selvä</button></dialog>
+</body>
+</html>
