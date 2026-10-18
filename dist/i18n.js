@@ -67,7 +67,7 @@ window.NodusI18n = (() => {
     'LÄHTEET & LUOTETTAVUUS': 'SOURCES & RELIABILITY',
     'Tieto ensin. Tulkinta sen jälkeen.': 'Data first. Interpretation follows.',
     'Paikallinen kerääjä lukee Nodus CLI:n tilan, palveluiden tiedot ja palvelimen mittarit. Selain näyttää kerätyt tulokset. Sivulta ei hallita nodea eikä käsitellä lompakon yksityisiä avaimia.': 'A local collector reads the Nodus CLI status, service information and server metrics. Your browser displays the collected results. This page does not control the node or handle private wallet keys.',
-    'Esikatselussa näkyvät tallennetut tilannekuvat. Historiakuvaajat yhdistävät vain olemassa olevat havaintopisteet; mittausten välistä toimintaa ei tunneta. Puuttuva mittaus näkyy puuttuvana tietona.': 'The preview shows saved snapshots. History charts connect only recorded observations; activity between measurements is unknown. Missing measurements remain missing.',
+    'Demossa näkyvät synteettiset esimerkit, eivät oikean palvelimen mittaukset. Tuotantokäytön historiakuvaajat yhdistävät vain tallennetut havaintopisteet. Puuttuva mittaus näkyy puuttuvana tietona.': 'The demo shows synthetic examples, not measurements from a real server. In live monitoring, history charts connect only recorded observations. Missing measurements remain missing.',
     'Palkkioiden euroarvot perustuvat erikseen kirjattuihin arvostuksiin. Puuttuvaa hintaa ei korvata nollalla. CSV on yhteenveto omaa kirjanpitoa varten.': 'Reward values in euros are based on separately recorded valuations. A missing price is never replaced with zero. The CSV provides a summary for your own accounting.',
     'Selvä': 'Got it',
   });

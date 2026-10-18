@@ -1,35 +1,40 @@
 {
   "events": [
     {
-      "timestamp": "2026-10-18T05:00:50+00:00",
+      "timestamp": "2026-01-15T12:00:00+00:00",
       "severity": "info",
-      "source": "status",
-      "message": "Storage ACTIVE, storage-joukon jäsen. Grace-jakso päättyy lohkorajalla 257040."
+      "source": "demo",
+      "message": "Demo: storage-rooli on aktiivinen ja grace-jakso jatkuu lohkorajalle 126000."
     },
     {
-      "timestamp": "2026-10-18T03:22:18+00:00",
+      "timestamp": "2026-01-15T11:45:00+00:00",
       "severity": "info",
-      "source": "status",
-      "message": "Node saavutti verkon: korkeus 250088, lohkoero 0."
+      "source": "demo",
+      "message": "Demo: node saavutti verkon lohkokorkeuden."
     },
     {
-      "timestamp": "2026-10-17T14:04:59.712410+00:00",
+      "timestamp": "2026-01-15T11:00:00+00:00",
       "severity": "info",
-      "source": "systemd",
-      "message": "Witness-palvelu käynnistettiin uudelleen. Lohkolataus nopeutui tämän jälkeen."
+      "source": "demo",
+      "message": "Demo: arkistosegmentin lataus valmistui."
     },
     {
-      "timestamp": "2026-10-17T13:34:11.457370+00:00",
+      "timestamp": "2026-01-15T05:00:00+00:00",
       "severity": "warning",
-      "source": "nodus-witness",
-      "message": "Alkusynkronointi päättyi korkeudessa 3582; verkko oli huomattavasti edellä."
+      "source": "demo",
+      "message": "Demo: vertaisyhteys aikakatkaistiin; yhteysyritys uusitaan."
     },
     {
-      "timestamp": "2026-10-17T13:34:09.695303+00:00",
-      "severity": "warning",
-      "source": "nodus-witness",
-      "message": "Kahden vertaisen lohkolataus aikakatkaistiin (15 s)."
+      "timestamp": "2026-01-15T00:00:00+00:00",
+      "severity": "info",
+      "source": "demo",
+      "message": "Demo: noden taustapalvelut käynnistyivät."
     }
   ],
-  "preview": true
+  "preview": true,
+  "demo": true,
+  "provenance": {
+    "kind": "synthetic",
+    "description": "Illustrative demo data; not collected from a server or blockchain account."
+  }
 }

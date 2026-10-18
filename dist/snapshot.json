@@ -1,60 +1,72 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-18T05:00:50+00:00",
+  "generated_at": "2026-01-15T12:00:00+00:00",
   "stale_after_seconds": 180,
   "preview": true,
-  "source_label": "Käyttäjän vahvistama tilanne · 18.10.2026 klo 08.00",
+  "demo": true,
+  "provenance": {
+    "kind": "synthetic",
+    "description": "Illustrative demo data; not collected from a server or blockchain account."
+  },
+  "source_label": "Synteettinen demo · ei palvelinmittauksia",
   "node": {
-    "fingerprint": "e213f777f2a95d4f83a23e599cfe2a3d834b24fe38f7ff6e5701d65a22cd43e04864b361d1b9dc39caf030dbb271efd02cf47043979525491bdaccf8bd2ba8a6",
-    "p2p_id": "e213f777f2a95d4f83a23e599cfe2a3d834b24fe38f7ff6e5701d65a22cd43e0",
-    "version": "0.26.7",
-    "commit": "24f93e6b709119a3013efacf3a374930c97871b7",
-    "owner": "08ee14726d5791299490afa560164c3df74c7684da95ae2eb3a42835ca533266445344253f91178d4e81717fd0f0b0fee3ecdc5f4fb7f92c6add0973755983e0",
-    "external_ip": "83.146.239.12",
-    "hostname": "nexus"
+    "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "p2p_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": "0.0.0-demo",
+    "commit": "dddddddddddddddddddddddddddddddddddddddd",
+    "owner": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "external_ip": "203.0.113.10",
+    "hostname": "demo-node"
   },
   "chain": {
-    "height": 250688,
-    "network_height": 250688,
+    "height": 120000,
+    "network_height": 120000,
     "behind": 0,
     "generation": 4,
-    "chain_id": "a48d1a785500a1cdecd739ecd53ef0e95b1dc4a7a300f49176a7fa25ae176114",
+    "chain_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "sync_ok": true
   },
   "storage": {
     "registered": true,
     "status": "ACTIVE",
     "bond_raw": "100000000000000",
-    "registered_height": 250174,
+    "registered_height": 119100,
     "fail_streak": 0,
-    "grace_until": 257040,
+    "grace_until": 126000,
     "in_grace": true,
     "grace_epochs_left": 9,
-    "epoch_start": 250560,
-    "epoch_end": 251280,
-    "members": 4,
+    "epoch_start": 119520,
+    "epoch_end": 120240,
+    "members": 5,
     "is_member": true,
     "eligible_segments": 0,
     "eligible_blocks": 0,
-    "complete_segments": 0,
-    "segment_bytes": 175112192
+    "complete_segments": 1,
+    "segment_bytes": 1073741824
   },
   "resources": {
-    "disk_total_bytes": 7935703698637,
-    "disk_free_bytes": 7913369868698,
-    "disk_used_bytes": 22333829939,
-    "chain_db_bytes": 21152713933,
-    "cpu_percent": null,
-    "load1": 0.01,
-    "memory_total_bytes": 20830591386,
-    "memory_available_bytes": 19864223744,
-    "network_rx_bps": null,
-    "network_tx_bps": null,
-    "disk_read_bps": null,
-    "disk_write_bps": null,
-    "disk_util_percent": null,
-    "temperature_c": null,
-    "smart_passed": null
+    "hostname": "demo-node",
+    "hardware_model": "Generic demo server",
+    "cpu_count": 4,
+    "disk_total_bytes": 2199023255552,
+    "disk_free_bytes": 2186138353664,
+    "disk_used_bytes": 12884901888,
+    "chain_db_bytes": 8589934592,
+    "cpu_percent": 12.5,
+    "load1": 0.5,
+    "memory_total_bytes": 17179869184,
+    "memory_available_bytes": 15032385536,
+    "network_rx_bps": 131072,
+    "network_tx_bps": 32768,
+    "disk_read_bps": 65536,
+    "disk_write_bps": 262144,
+    "disk_util_percent": 7.5,
+    "temperature_c": 29,
+    "smart_passed": true
+  },
+  "monitor": {
+    "data_path": "/var/lib/nodus/data",
+    "mount_path": "/var/lib/nodus"
   },
   "services": [
     {
@@ -79,6 +91,6 @@
   "quality": {
     "partial": true,
     "errors": [],
-    "note": "Tallennettu tilanne. Resurssimäärät ovat status-tulosteen pyöristettyjä arvoja, eivät live-mittauksia."
+    "note": "Synteettiset esimerkkiarvot. Tämä esikatselu ei sisällä palvelimelta kerättyjä mittauksia."
   }
 }

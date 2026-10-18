@@ -2,17 +2,17 @@
   "schema_version": 1,
   "network": "testnet",
   "scope": "owner_aggregate",
-  "owner_fp": "08ee14726d5791299490afa560164c3df74c7684da95ae2eb3a42835ca533266445344253f91178d4e81717fd0f0b0fee3ecdc5f4fb7f92c6add0973755983e0",
-  "node_fp": "e213f777f2a95d4f83a23e599cfe2a3d834b24fe38f7ff6e5701d65a22cd43e04864b361d1b9dc39caf030dbb271efd02cf47043979525491bdaccf8bd2ba8a6",
-  "chain_id": "a48d1a785500a1cdecd739ecd53ef0e95b1dc4a7a300f49176a7fa25ae176114",
+  "owner_fp": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "node_fp": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "chain_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "year": 2026,
   "timezone": "Europe/Helsinki",
   "source": {
     "status": "unavailable",
-    "reason": "Tallennettu esikatselu: palkkioindeksiä ei ole vielä kytketty. Node on grace-jaksossa; maksuja ei päätellä tilatulosteesta.",
+    "reason": "Synteettinen demo: palkkiolähdettä ei ole liitetty. Esimerkkimaksuja tai tuottoja ei luoda.",
     "from_height": null,
     "at_height": null,
-    "collected_at": "2026-10-18T05:00:50+00:00",
+    "collected_at": "2026-01-15T12:00:00+00:00",
     "complete_year": false,
     "runs": [],
     "truncated": false
@@ -41,5 +41,10 @@
     "Puuttuva euromääräinen arvostus ei tarkoita nolla-arvoa. Raportti ei ratkaise veroluokkaa.",
     "Kattavuus koskee vain kerättyjä lohkojaksoja, ei koko lompakkohistoriaa."
   ],
-  "preview": true
+  "preview": true,
+  "demo": true,
+  "provenance": {
+    "kind": "synthetic",
+    "description": "Illustrative demo data; not collected from a server or blockchain account."
+  }
 }
