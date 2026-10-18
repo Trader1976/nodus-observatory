@@ -15,8 +15,9 @@ with annual summaries and CSV exports.
   server bound to **127.0.0.1:8890** by default.
 - Charts based on recorded observations. Missing measurements remain missing;
   stale data and collection failures are shown explicitly.
-- Exact reward accounting, separate stake returns, optional documented EUR
-  valuations and source coverage. Missing prices remain unknown.
+- Owner-wallet reward accounting for staking, storage and witness payouts,
+  automatic historical imports from public Scan, separate stake returns, optional
+  documented EUR valuations and source coverage. Missing prices remain unknown.
 - A static demo in `dist/` with **synthetic sample data**. Its identifiers,
   measurements and events describe no real server or wallet. Demo JSON files
   are excluded from live installations.
@@ -149,10 +150,42 @@ the labelled **Europe/Helsinki** timezone, with UTC also included in exports.
 Machine identifiers, unrecognised original diagnostics and CSV columns remain
 stable. Token amounts retain their exact integer/decimal precision.
 
-## Enable history for future rewards
+## Owner-wallet rewards and earlier payments
 
-Nodus address-history indexing is off by default. The separate administrative
-helper shows a plan first and changes settings only with `--apply`:
+The Rewards page covers payments to the **owner wallet**, including staking,
+storage and witness rewards paid to that owner. The available payout evidence
+combines these roles; the app does not invent a role breakdown or attribute the
+whole wallet's income to this storage node. A storage grace period stops storage
+rewards only; it does not stop the wallet's other rewards.
+
+After updating the monitor, it automatically checks the public Scan reward
+history about every five minutes and imports earlier payments into the same
+ledger as local observations. This needs no wallet keys, Nodus configuration
+change or Nodus restart. The request sends the observed **public owner
+fingerprint** to `scan.nodusnetwork.io`. Scan is a third-party observation, not
+independent cryptographic verification of each payment. Its reported chain ID
+must match the observed local node and the supported public testnet.
+
+The page shows the source and its observed coverage. Scan can only supply its
+own indexed range; an import does not prove that the entire wallet history or a
+whole tax year is complete. Duplicate local/Scan observations count once.
+Conflicting evidence is rejected without replacing existing payments or EUR
+valuations. A failed import preserves the last good ledger. Pending accrual
+still comes only from the current local Nodus database and is separate from
+received payments and returned principal.
+
+`rewards_scan_enabled` defaults to `true`, including when the key is absent from
+an existing configuration. To disable Scan imports only, set it to `false` in
+`/etc/nodus-monitor/config.json`; local reward collection continues.
+`network_enabled: false` disables all external network queries, including Scan
+reward imports. `rewards_enabled: false` disables both reward sources.
+
+### Enable local history for future payments
+
+Nodus address-history indexing is off by default. It records **future local**
+payments and does not rebuild older local history. Scan imports can supply older
+payments within Scan's coverage even when local indexing began later. The
+separate administrative helper shows a plan first:
 
 ```bash
 sudo python3 /opt/nodus-monitor/enable-reward-history.py
@@ -168,16 +201,8 @@ sudo nodus-cli status
 The helper backs up `/etc/nodus.conf`, enables `"addr_history_index": true` and
 restarts **only nodus-witness, once**. Check that the node catches up and its
 `fail_streak` is healthy afterwards. If already enabled, the helper makes no
-changes and does not restart the service. Normal monitoring never enables the
-index or restarts Nodus.
-
-There is **no historical backfill**. Enable indexing before the first reward you
-want to preserve. Grace-period status and pending accrual are not received
-payouts; missing historical evidence remains missing.
-
-Rewards are payments received by the **owner wallet**. They may include other
-roles paid to the same owner; the source does not identify this storage node's
-share. Stake returns are separate from rewards.
+changes and does not restart the service. Normal monitoring and Scan imports
+never enable the index or restart Nodus.
 
 The Rewards page exports the selected year as CSV: exact raw/token amounts,
 block/event identifiers, UTC and Helsinki timestamps, network label, source
@@ -195,7 +220,8 @@ manual valuation imports and audit history.
 - CPU, memory, filesystem usage, network and disk rates; SMART about every 15 minutes.
 - Up to 300 categorised journal observations per collection, not a full log archive.
 - Public Scan statistics about every five minutes and the local committee query.
-- Optional observed reward payouts, read from the existing Nodus database in read-only mode.
+- Optional owner-wallet rewards from the existing Nodus database in read-only
+  mode and historical public Scan observations, with source coverage.
 
 The collector also checks optional PQ-NAS and cloudflared services when present;
 those applications are not required. Host, hardware and filesystem details come
