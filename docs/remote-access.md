@@ -1,80 +1,87 @@
-# Valinnainen etäkäyttö puhelimella ja muilla laitteilla
+# Optional remote access from phones and other devices
 
-Oletusasennus palvelee osoitteessa `http://127.0.0.1:8890`. Seuranta käynnistyy
-systemd:n mukana ja kerää tietoja itsenäisesti. Cloudflare tai oma verkkotunnus
-ei kuulu perusasennuksen vaatimuksiin. Jos selain on eri koneella kuin node,
-paikalliseen käyttöön tarvitaan SSH-tunneli:
+[English](remote-access.md) | [Suomi](remote-access_fin.md)
+
+The default installation listens at `http://127.0.0.1:8890`. The monitor starts
+with systemd and collects measurements independently. Cloudflare and a domain
+name are optional. If your browser runs on a different computer from the node,
+use an SSH tunnel for local access:
 
 ```bash
 ssh -N -L 8890:127.0.0.1:8890 USER@NODE_SERVER
 ```
 
-Korvaa käyttäjä ja palvelimen osoite omillasi. Avaa selaimessa
-`http://127.0.0.1:8890/#overview`. Jos työpöytäkoneen portti 8890 on varattu,
-käytä esimerkiksi `-L 8891:127.0.0.1:8890` ja selaimessa porttia 8891.
+Replace `USER` and `NODE_SERVER` with your SSH username and node server address.
+Open `http://127.0.0.1:8890/#overview` in your browser. If port 8890 is already
+in use on your desktop, use `-L 8891:127.0.0.1:8890` and browse to port 8891.
 
 ## Cloudflare Tunnel + Access
 
-Ylläpitäjä voi liittää saman paikallisen sovelluksen omaan HTTPS-osoitteeseen.
-Puhelimen selaimessa avataan tällöin esimerkiksi `https://nodus.example.com`.
-Esimerkkiosoite ei ole tämän projektin tarjoama palvelu: jokainen ylläpitäjä
-käyttää omaa verkkotunnustaan, tunneliaan ja kirjautumissääntöjään.
+An administrator can expose the same local application at their own protected
+HTTPS address, such as `https://node.example.com`, for access from a phone.
+This example address is not a service provided by the project. Each operator
+provides their own domain, tunnel and access policy.
 
-Edellytykset: oma Cloudflaressa hallittu verkkotunnus, Cloudflare Access ja
-node-palvelimella palveluna käynnistyvä `cloudflared`. Varaa osoitteelle oma
-alidomain. Sama tunneli voi palvella useita sovelluksia eri alidomaineilla.
+You need a domain managed in Cloudflare, Cloudflare Access, and `cloudflared`
+running as a service on the node server. Use a dedicated subdomain. A tunnel
+can serve multiple applications on different subdomains.
 
-1. Luo **ensin** Accessiin *Self-hosted application* koko hostnamea varten
-   (esimerkiksi `nodus.example.com`, ilman polkurajausta). Lisää Allow-sääntöön
-   vain halutut sähköpostiosoitteet ja määritä kirjautumistapa. Älä käytä
-   Everyone-, Bypass- tai koko internetin sallivaa sääntöä.
-2. Lisää tunneliin uusi *Published application route*. Säilytä muiden
-   sovellusten nykyiset reitit.
-3. Aseta palveluksi **HTTP**, osoitteeksi **127.0.0.1:8890**. cloudflaredin
-   täytyy toimia samalla koneella; erillisen kontin localhost on eri osoite.
-4. Aseta *Additional application settings → HTTP settings → HTTP Host Header*
-   arvoon **localhost** (`httpHostHeader: localhost`). Sovellus tarkistaa
-   Host-otsakkeen; näin nykyinen localhost-rajaus säilyy. Julkisen hostnamen
-   lisääminen `allowed_hosts`-listaan ei itsessään ole kirjautumissuojaus.
-5. Ota tunnelireitillä käyttöön **Protect with Access**. Valitse oikea Access-
-   sovellus / team ja Audience (AUD), jotta cloudflared validoi tämän
-   sovelluksen Access-tokenin ennen paikalliseen palveluun välittämistä.
-   Tee molemmat Access-asetukset ennen reitin käyttöönottoa.
-6. Ohita Cloudflaren välimuisti koko tällä hostnamella. API lähettää jo
-   `Cache-Control: no-store`; myös palkkioiden CSV-viennit kuuluvat Accessin
-   suojauksen ja välimuistin ohituksen piiriin.
-7. Varmista `cloudflared`-palvelun automaattinen käynnistys. Monitori pysyy
-   osoitteessa `127.0.0.1:8890`; tämän sivun vuoksi ei avata reitittimen porttia.
+1. **First**, create an Access *Self-hosted application* for the entire hostname
+   (`node.example.com`, with no path restriction). Set an Allow policy for only
+   the intended email addresses, such as `user@example.com`, and configure a
+   login method. Do not use Everyone, Bypass, or a policy allowing the internet.
+2. Add a *Published application route* to the tunnel. Preserve existing routes
+   for any other applications.
+3. Set the origin service to **HTTP** at **127.0.0.1:8890**. If the dashboard has
+   a single Service URL field, enter **http://127.0.0.1:8890**. `cloudflared`
+   must reach this address on the node server; localhost inside a separate
+   container refers to that container instead.
+4. Under *Additional application settings → HTTP settings → HTTP Host Header*,
+   enter **localhost** (`httpHostHeader: localhost`). The monitor checks the
+   Host header, so this preserves its localhost restriction. Adding a public
+   hostname to `allowed_hosts` does not provide authentication.
+5. Enable **Protect with Access** on the tunnel route. Use your actual Access
+   team name in place of `<your-team-name>` and this application's Audience
+   (AUD) tag in place of `<your-application-aud>`. This makes `cloudflared`
+   validate the application's Access token before forwarding to the origin.
+   The application AUD is not a policy ID or tunnel ID. Configure both the
+   Access policy and token validation before enabling the route.
+6. Bypass Cloudflare caching for this entire hostname. The API already sends
+   `Cache-Control: no-store`; reward CSV exports must also be covered by Access
+   and the cache bypass.
+7. Ensure that the `cloudflared` service starts automatically. The monitor
+   stays on `127.0.0.1:8890`. No router port forwarding is needed for this page.
 
-## Käyttöönoton tarkistus
+## Verify the setup
 
-- Avaa puhelimella mobiilidatan kautta osoite yksityisessä selainikkunassa.
-  Ennen kirjautumista näkyy Accessin kirjautuminen tai kielto, ei dashboard.
-- Tarkista myös `/api/dashboard` ja `/api/rewards/export.csv?year=2026` samassa
-  kirjautumattomassa istunnossa: mittauksia tai CSV-tiedostoa ei saa näkyä.
-- Sallitulla käyttäjällä näkyvät dashboard, API ja CSV-vienti. Tarkista
-  mittauksen aika ja odota uutta keräystä; vanha esikatselu ei ole live-dataa.
-- Kirjautumattomat muut käyttäjät eivät pääse sisään. Koko hostname kuuluu
-  samaan Access-sovellukseen, myös kaikki `/api/`-reitit.
-- Poista työpöytäkoneen SSH-tunneli kokeen ajaksi: julkinen HTTPS-osoite toimii
-  siitä riippumatta. Palvelimen uudelleenkäynnistyksen jälkeen monitori ja
-  cloudflared käynnistyvät palveluina.
+- Open the address in a private browser window on your phone using mobile data.
+  Before login, Access must show a login page or denial, not the dashboard.
+- Test `/api/dashboard` and `/api/rewards/export.csv?year=2026` in the same
+  unauthenticated session. Neither measurements nor a CSV file may be exposed.
+- An allowed user can view the dashboard and API and download the CSV. Check
+  the measurement timestamp and wait for a new collection to confirm live data.
+- Other users without access must remain blocked. The same Access application
+  must cover the entire hostname, including all `/api/` paths.
+- Close the desktop SSH tunnel during the test. The public HTTPS address must
+  work independently. After a server reboot, the monitor and `cloudflared`
+  should start as services.
 
-Sovellus luottaa tässä mallissa kirjautumisen osalta Cloudflare Accessiin ja
-cloudflaredin token-validointiin. Sillä ei ole omaa käyttäjätietokantaa.
-Palkkioaineisto ja palvelimen mittaukset kuuluvat vain sallittujen käyttäjien
-näkymään. GitHub-repon julkisuus koskee lähdekoodia.
+In this setup, the application relies on Cloudflare Access and `cloudflared`
+token validation for authentication. It has no user database of its own.
+Reward records and server measurements are for authorized users only. The
+public GitHub repository contains source code, not your monitoring data.
 
-## Ylläpito
+## Maintenance
 
-Paikallista oletusta tai sovelluskoodia ei tarvitse muuttaa etäkäyttöä varten.
-Säilytä tunnelitunnukset, avaimet, Accessin asetukset ja oikeat sähköpostit
-palvelimen/Cloudflaren omissa asetuksissa. Niitä ei tallenneta GitHubiin.
-Jos etäkäyttö poistetaan, poista vain tämän hostnamen reitti/DNS ja Access-
-sovellus hallitusti; muut saman tunnelin sovellukset jatkavat toimintaansa.
+Remote access does not require changing the loopback default or application
+code. Keep tunnel credentials, keys, Access settings and actual email addresses
+in your server or Cloudflare configuration, outside the repository. To remove
+remote access, remove this hostname's route, DNS record and Access application
+in a controlled order. Preserve other applications using the same tunnel.
 
-Cloudflaren ajantasaiset ensisijaiset ohjeet:
+See the official Cloudflare documentation for current dashboard terminology
+and configuration details:
 
-- https://developers.cloudflare.com/tunnel/concepts/routing/
-- https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/
-- https://developers.cloudflare.com/tunnel/reference/origin-parameters/
+- [Tunnel routing](https://developers.cloudflare.com/tunnel/concepts/routing/)
+- [Self-hosted public applications](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/)
+- [Origin parameters](https://developers.cloudflare.com/tunnel/reference/origin-parameters/)
