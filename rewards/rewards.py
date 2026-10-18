@@ -385,6 +385,7 @@ def collect_scan_rewards(reporting_db, chain_id, owner_fp, node_fp,
             before = fetch("stats")
             if _hex(before.get("chain_id"), 64) != chain:
                 raise ValueError("Scan chain ID differs from the locally observed chain")
+            index_before = _uint(before["indexed_height"]) if "indexed_height" in before else None
             cursors = {"payout": None, "release": None}
             finished = {"payout": False, "release": False}
             seen = set()
@@ -397,7 +398,10 @@ def collect_scan_rewards(reporting_db, chain_id, owner_fp, node_fp,
                     query["before"] = "%d:%d" % cursors["payout"]
                 if cursors["release"] is not None:
                     query["release_before"] = "%d:%d" % cursors["release"]
-                page = fetch("rewards/" + owner + "?" + urlencode(query))
+                # The upstream parser expects a literal H:Q cursor and does
+                # not URL-decode query values. Cursor components are already
+                # validated integers; preserve their colon on the wire.
+                page = fetch("rewards/" + owner + "?" + urlencode(query, safe=":"))
                 if page.get("address") != owner:
                     raise ValueError("Scan reward address differs from the requested owner")
                 low, high = _uint(page.get("from_height")), _uint(page.get("at_height"))
@@ -465,7 +469,11 @@ def collect_scan_rewards(reporting_db, chain_id, owner_fp, node_fp,
             after = fetch("stats")
             if _hex(after.get("chain_id"), 64) != chain:
                 raise ValueError("Scan chain changed during collection")
-            if "indexed_height" in after and _uint(after["indexed_height"]) < coverage[1]:
+            index_after = _uint(after["indexed_height"]) if "indexed_height" in after else None
+            # Stats describes the explorer index, while rewards is served
+            # from the node's witness database and may legitimately be ahead.
+            # Only compare the explorer index with its own earlier snapshot.
+            if index_before is not None and index_after is not None and index_after < index_before:
                 raise ValueError("Scan indexed height regressed during collection")
             # All data is validated before the first event is written. A
             # conflicting duplicate also rolls the entire new batch back.

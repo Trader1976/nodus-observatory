@@ -97,6 +97,12 @@ testnetin kiinnitettyä tunnistetta. Tuntematon tai poikkeava ketju hylätään 
 tuontia. URL käyttää havaittua julkista vastaanottajan tunnistetta, ei lompakon
 avainta tai vapaasti määritettyä etäpalvelinta.
 
+Scanin `stats.indexed_height` kuvaa lohkoselaimen omaa indeksiä, kun taas
+palkkiovastauksen `at_height` kuvaa kyselyssä käytettyä noden tietokantaa.
+Lohkoselaimen indeksi saa olla palkkiolähdettä jäljessä. Taaksepäin siirtymisen
+tarkistus vertaa lohkoselaimen indeksiä ennen keruuta ja sen jälkeen, ei näitä
+kahta eri korkeutta. Ketjutunniste tarkistetaan ennen tuontia ja sen jälkeen.
+
 Pyyntö luovuttaa **julkisen omistajan sormenjäljen** Scanille. Kyseessä on
 ulkopuolisen lohkoselaimen havainto, ei jokaisen maksun itsenäinen kryptografinen
 varmennus. Saavuttamaton, virheellinen tai ristiriitainen vastaus ilmoitetaan
