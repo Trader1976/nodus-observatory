@@ -10,13 +10,43 @@ import stat
 import subprocess
 import tempfile
 
+from collector import load_config
+
 CONFIG = Path('/etc/nodus.conf')
+MONITOR_CONFIG = Path('/etc/nodus-monitor/config.json')
 
 
-def main():
+def validate_data_filesystem(current):
+    """Check the installed monitor and node agree before changing node settings."""
+    if MONITOR_CONFIG.is_symlink() or not MONITOR_CONFIG.is_file():
+        raise SystemExit('Expected a regular installed monitor configuration; nothing changed.')
+    try:
+        monitor = load_config(MONITOR_CONFIG)
+        paths = {}
+        for field in ('data_path', 'mount_path'):
+            value = monitor[field]
+            if not isinstance(value, str) or not Path(value).is_absolute() or '\n' in value or '\r' in value:
+                raise ValueError('Monitor ' + field + ' must be an absolute directory path')
+            paths[field] = Path(value).resolve(strict=True)
+            if not paths[field].is_dir():
+                raise ValueError('Monitor ' + field + ' directory is missing')
+        node_data = current.get('data_path', '/var/lib/nodus/data')
+        if not isinstance(node_data, str) or not Path(node_data).is_absolute() or '\n' in node_data or '\r' in node_data:
+            raise ValueError('Node data_path must be an absolute directory path')
+        if Path(node_data).resolve(strict=True) != paths['data_path']:
+            raise ValueError('Node and monitor data_path do not match')
+        if not os.path.ismount(paths['mount_path']):
+            raise ValueError('Expected Nodus data filesystem mount is absent')
+        if paths['data_path'].stat().st_dev != paths['mount_path'].stat().st_dev:
+            raise ValueError('Nodus data is on a different filesystem than the configured mount')
+    except (OSError, TypeError, ValueError) as error:
+        raise SystemExit(str(error) + '; nothing changed.') from error
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true', help='Enable index, back up config, restart witness once')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if os.geteuid() != 0:
         raise SystemExit('Run with sudo. No node identity keys are read.')
     if CONFIG.is_symlink() or not CONFIG.is_file():
@@ -33,8 +63,8 @@ def main():
     if not args.apply:
         print('Dry run. Add --apply to execute this plan.')
         return
-    # Check mount before restarting any node process.
-    subprocess.run(['mountpoint', '-q', '/var/lib/nodus'], check=True)
+    # The data may live on / or a custom mounted filesystem.
+    validate_data_filesystem(current)
     subprocess.run(['systemctl', 'is-active', '--quiet', 'nodus-witness.service'], check=True)
     metadata = CONFIG.stat()
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
