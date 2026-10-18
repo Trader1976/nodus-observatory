@@ -35,6 +35,7 @@ DEFAULTS = {
     "frontend_dir": "/opt/nodus-monitor/frontend",
     "network_enabled": True,
     "rewards_enabled": True,
+    "rewards_scan_enabled": True,
     "rewards_source_db": "/var/lib/nodus/data/witness_a48d1a785500a1cdecd739ecd53ef0e9.db",
 }
 SERVICES = ("nodus-core", "nodus-storage", "nodus-witness", "pqnas", "cloudflared")
@@ -50,6 +51,9 @@ def load_config(path):
     if not isinstance(supplied, dict):
         raise ValueError("configuration must be an object")
     config.update(supplied)
+    for key in ("network_enabled", "rewards_enabled", "rewards_scan_enabled"):
+        if type(config[key]) is not bool:
+            raise ValueError(f"{key} must be a boolean")
     if config["fingerprint"] is not None and not re.fullmatch(r"[a-fA-F0-9]{128}", config["fingerprint"]):
         raise ValueError("fingerprint must contain 128 hexadecimal characters")
     if config["disk_device"] is not None and not re.fullmatch(r"[a-zA-Z0-9_.-]+", config["disk_device"]):
@@ -517,6 +521,18 @@ def collect(config):
             snapshot["reward_collection"] = rewards.collect_rewards(
                 config["rewards_source_db"], str(reporting_db), snapshot["chain"]["chain_id"],
                 snapshot["node"]["owner"], snapshot["node"]["fingerprint"], network="testnet", max_rows=5000)
+            # Backfill from Scan only in the root collector, never in an HTTP
+            # request. The importer caches attempts and shares the exact event
+            # identity with the local index, so overlap cannot duplicate income.
+            try:
+                snapshot["reward_collection"]["scan"] = rewards.collect_scan_rewards(
+                    str(reporting_db), snapshot["chain"]["chain_id"],
+                    snapshot["node"]["owner"], snapshot["node"]["fingerprint"],
+                    network="testnet", enabled=(config.get("network_enabled", True)
+                        and config.get("rewards_scan_enabled", True)))
+            except (OSError, ValueError, sqlite3.Error) as exc:
+                snapshot["reward_collection"]["scan"] = {
+                    "status": "error", "reason": type(exc).__name__}
             if reporting_db.exists():
                 share_file(reporting_db)
         except (ImportError, OSError, ValueError, sqlite3.Error) as exc:

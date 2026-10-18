@@ -12,6 +12,7 @@ import csv
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, localcontext
 import hashlib
+from http.client import HTTPException
 import io
 import json
 import os
@@ -19,7 +20,9 @@ from pathlib import Path
 import re
 import sqlite3
 import time
-from urllib.parse import quote
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlencode, urlsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 from zoneinfo import ZoneInfo
 
 SCALE = 100_000_000
@@ -40,6 +43,11 @@ CREATE TABLE IF NOT EXISTS reward_events (
 CREATE INDEX IF NOT EXISTS reward_events_time ON reward_events(block_ts);
 CREATE TABLE IF NOT EXISTS reward_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reward_coverage (
+  chain_id TEXT NOT NULL, owner_fp TEXT NOT NULL, from_height INTEGER NOT NULL,
+  at_height INTEGER NOT NULL, observed_at TEXT NOT NULL,
+  PRIMARY KEY(chain_id, owner_fp, from_height)
+);
+CREATE TABLE IF NOT EXISTS reward_scan_coverage (
   chain_id TEXT NOT NULL, owner_fp TEXT NOT NULL, from_height INTEGER NOT NULL,
   at_height INTEGER NOT NULL, observed_at TEXT NOT NULL,
   PRIMARY KEY(chain_id, owner_fp, from_height)
@@ -228,6 +236,264 @@ def collect_rewards(source_db, reporting_db, chain_id, owner_fp, node_fp,
             "from_height": snapshot["from_height"], "at_height": snapshot["at_height"]}
 
 
+# This public explorer is the upstream testnet source, never a configurable URL.
+SCAN_ROOT = "https://scan.nodusnetwork.io/api/"
+SCAN_CHAIN_ID = "a48d1a785500a1cdecd739ecd53ef0e95b1dc4a7a300f49176a7fa25ae176114"
+SCAN_SOURCE = "nodus_scan_addr_history"
+LOCAL_SOURCE = "local_nodus_addr_history"
+SCAN_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _scan_url_allowed(url):
+    parts = urlsplit(url)
+    return (parts.scheme == "https" and parts.hostname == "scan.nodusnetwork.io"
+            and parts.port in (None, 443) and parts.username is None
+            and parts.password is None and parts.path.startswith("/api/"))
+
+
+class _ScanRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _scan_url_allowed(newurl):
+            raise ValueError("Scan redirected outside its official HTTPS API")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _json_unique(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Scan returned a duplicate JSON key")
+        result[key] = value
+    return result
+
+
+def _scan_json(path, timeout):
+    url = SCAN_ROOT + path
+    if not _scan_url_allowed(url):
+        raise ValueError("Invalid official Scan API URL")
+    request = Request(url, headers={"User-Agent": "Nodus-Observatory/1.0",
+                                   "Accept": "application/json"})
+    deadline = time.monotonic() + timeout
+    with build_opener(_ScanRedirect()).open(request, timeout=timeout) as response:
+        if not _scan_url_allowed(response.geturl()):
+            raise ValueError("Scan response is outside its official HTTPS API")
+        chunks, size = [], 0
+        # read1 performs at most one buffered socket read. Check wall time
+        # between chunks so a trickling response cannot extend the import
+        # indefinitely by repeatedly resetting the socket inactivity timeout.
+        while True:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Scan response exceeded its request time budget")
+            part = response.read1(min(65536, SCAN_MAX_BYTES + 1 - size))
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Scan response exceeded its request time budget")
+            if not part:
+                break
+            chunks.append(part)
+            size += len(part)
+            if size > SCAN_MAX_BYTES:
+                raise ValueError("Scan JSON exceeds the response byte budget")
+        raw = b"".join(chunks)
+    data = json.loads(raw.decode("utf-8"), object_pairs_hook=_json_unique,
+                      parse_constant=lambda x: (_ for _ in ()).throw(ValueError("Invalid Scan JSON number")))
+    if not isinstance(data, dict):
+        raise ValueError("Scan response must be a JSON object")
+    return data
+
+
+def _raw_amount(value):
+    if not isinstance(value, str) or not re.fullmatch(r"0|[1-9][0-9]{0,18}", value):
+        raise ValueError("Scan amount must be a canonical integer string")
+    if int(value) > MAX_INT:
+        raise ValueError("Scan amount exceeds int64")
+    return value
+
+
+def _scan_cursor(value):
+    if value is None:
+        return None
+    if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]{0,18}:(?:0|[1-9][0-9]{0,9})", value):
+        raise ValueError("Invalid Scan pagination cursor")
+    height, seq = (int(n) for n in value.split(":"))
+    return (_uint(height), _uint(seq, BOUNDARY))
+
+
+def _ledger_binding(db, chain, owner, node, network):
+    meta = {r["key"]: json.loads(r["value"]) for r in db.execute("SELECT key,value FROM reward_meta")}
+    if meta.get("chain_id", chain) != chain or meta.get("owner_fp", owner) != owner:
+        raise ValueError("A different chain or owner requires a separate reporting ledger")
+    _put_meta(db, {k: v for k, v in dict(chain_id=chain, owner_fp=owner,
+              node_fp=node, network=network).items() if k not in meta})
+    return meta
+
+
+def collect_scan_rewards(reporting_db, chain_id, owner_fp, node_fp,
+                         network="testnet", timeout=6, max_pages=20,
+                         max_rows=5000, cache_seconds=300, deadline_seconds=25, enabled=True):
+    """Collector-only public history backfill; validate a complete batch first.
+
+    Scan evidence has its own coverage and freshness. It cannot replace local
+    pending accrual, index coverage, existing events, or administrator valuations.
+    Requests disclose only the owner's public fingerprint to the fixed API.
+    """
+    chain, owner, node = _hex(chain_id, 64), _hex(owner_fp, 128), _hex(node_fp, 128)
+    if network not in ("testnet", "mainnet", "unknown"):
+        raise ValueError("Unknown network label")
+    if (type(enabled) is not bool or type(max_pages) is not int or type(max_rows) is not int
+            or type(cache_seconds) is not int or type(timeout) not in (int, float)
+            or type(deadline_seconds) not in (int, float)):
+        raise ValueError("Invalid Scan request budget")
+    if not (1 <= max_pages <= 100 and 1 <= max_rows <= MAX_REPORT_ROWS
+            and 0 < timeout <= 10 and 0 < deadline_seconds <= 60
+            and 0 <= cache_seconds <= 86400):
+        raise ValueError("Invalid Scan request budget")
+    out = _writer(reporting_db)
+    attempted = utcnow()
+    now = time.time()
+    try:
+        with out:
+            meta = _ledger_binding(out, chain, owner, node, network)
+        previous = meta.get("scan", {})
+        if not isinstance(previous, dict):
+            previous = {}
+        if not enabled:
+            scan = dict(previous, status="disabled", reason="Public Scan history collection is disabled.", rows=0)
+            with out:
+                _put_meta(out, {"scan": scan})
+            return {k: scan.get(k) for k in ("status", "reason", "rows", "from_height", "at_height")} | {"cached": False}
+        # Failed attempts are cached too, to avoid retry storms on every tick.
+        last_attempt = previous.get("last_attempt_unix")
+        if previous.get("status") != "disabled" and type(last_attempt) in (int, float) and 0 <= now - last_attempt < cache_seconds:
+            return {k: previous.get(k) for k in ("status", "reason", "rows", "from_height", "at_height")} | {"cached": True}
+        scan = dict(previous, status="error", reason="Scan collection has not completed.",
+                    last_attempt_at=attempted, last_attempt_unix=now, rows=0)
+        events = []
+        try:
+            if network != "testnet" or chain != SCAN_CHAIN_ID:
+                raise ValueError("The official Scan source supports only its pinned testnet chain")
+            deadline = time.monotonic() + deadline_seconds
+
+            def fetch(path):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ValueError("Scan collection exceeded the total request time budget")
+                result = _scan_json(path, min(timeout, remaining))
+                if time.monotonic() >= deadline:
+                    raise ValueError("Scan collection exceeded the total request time budget")
+                return result
+
+            before = fetch("stats")
+            if _hex(before.get("chain_id"), 64) != chain:
+                raise ValueError("Scan chain ID differs from the locally observed chain")
+            cursors = {"payout": None, "release": None}
+            finished = {"payout": False, "release": False}
+            seen = set()
+            coverage = None
+            sums = {"payout": 0, "release": 0}
+            first = None
+            for _ in range(max_pages):
+                query = {"limit": 50}
+                if cursors["payout"] is not None:
+                    query["before"] = "%d:%d" % cursors["payout"]
+                if cursors["release"] is not None:
+                    query["release_before"] = "%d:%d" % cursors["release"]
+                page = fetch("rewards/" + owner + "?" + urlencode(query))
+                if page.get("address") != owner:
+                    raise ValueError("Scan reward address differs from the requested owner")
+                low, high = _uint(page.get("from_height")), _uint(page.get("at_height"))
+                if low < 1 or low > high:
+                    raise ValueError("Scan history coverage is unavailable or invalid")
+                totals = {"payout": _raw_amount(page.get("paid_total")),
+                          "release": _raw_amount(page.get("released_total"))}
+                pending = _raw_amount(page.get("pending"))
+                if first is None:
+                    first = dict(from_height=low, at_height=high, paid_total_raw=totals["payout"],
+                                 released_total_raw=totals["release"], pending_raw=pending)
+                    coverage = (low, high)
+                elif low != coverage[0] or high < coverage[1] or totals != {
+                        "payout": first["paid_total_raw"], "release": first["released_total_raw"]}:
+                    raise ValueError("Scan history changed while paging; retry a complete snapshot")
+                for kind, key, next_key in (("payout", "items", "next_before"),
+                                             ("release", "releases", "next_release_before")):
+                    items = page.get(key)
+                    if not isinstance(items, list) or len(items) > 50 or next_key not in page:
+                        raise ValueError("Scan returned an invalid or truncated reward page")
+                    # The API repeats the initial list for a stream without a
+                    # cursor. Once exhausted, that list must not be recounted.
+                    if finished[kind]:
+                        continue
+                    previous_pos = cursors[kind]
+                    last_pos = None
+                    for item in items:
+                        if not isinstance(item, dict):
+                            raise ValueError("Invalid Scan reward item")
+                        height = _uint(item.get("height"))
+                        seq = _uint(item.get("sequence"), BOUNDARY)
+                        pos = (height, seq)
+                        if not low <= height <= coverage[1] or (previous_pos is not None and pos >= previous_pos):
+                            raise ValueError("Scan reward ordering or coverage is inconsistent")
+                        previous_pos = last_pos = pos
+                        millis = _uint(item.get("time"))
+                        if millis % 1000:
+                            raise ValueError("Scan history timestamp is not a whole number of seconds")
+                        ts = millis // 1000
+                        datetime.fromtimestamp(ts, timezone.utc)
+                        amount = _raw_amount(item.get("amount"))
+                        eid = _event_id(chain, owner, height, BOUNDARY, seq)
+                        if eid in seen:
+                            raise ValueError("Scan returned a duplicate reward event")
+                        seen.add(eid)
+                        events.append(dict(event_id=eid, chain_id=chain, owner_fp=owner,
+                            node_fp=node, network=network, kind=kind, height=height,
+                            item_pos=BOUNDARY, sequence=seq, block_ts=ts, amount_raw=amount,
+                            source=SCAN_SOURCE, observed_at=attempted))
+                        sums[kind] += int(amount)
+                        if len(events) > max_rows:
+                            raise ValueError("Scan reward row budget exceeded; nothing imported")
+                    next_cursor = _scan_cursor(page[next_key])
+                    if next_cursor is not None and (last_pos is None or next_cursor != last_pos):
+                        raise ValueError("Scan pagination cursor made no verifiable progress")
+                    cursors[kind] = next_cursor
+                    finished[kind] = next_cursor is None
+                if all(finished.values()):
+                    break
+            else:
+                raise ValueError("Scan page budget exceeded; nothing imported")
+            if any(sums[kind] != int(first[key]) for kind, key in
+                   (("payout", "paid_total_raw"), ("release", "released_total_raw"))):
+                raise ValueError("Scan complete history does not match its declared totals")
+            after = fetch("stats")
+            if _hex(after.get("chain_id"), 64) != chain:
+                raise ValueError("Scan chain changed during collection")
+            if "indexed_height" in after and _uint(after["indexed_height"]) < coverage[1]:
+                raise ValueError("Scan indexed height regressed during collection")
+            # All data is validated before the first event is written. A
+            # conflicting duplicate also rolls the entire new batch back.
+            with out:
+                for event in events:
+                    old = out.execute("SELECT amount_raw,kind,block_ts FROM reward_events WHERE event_id=?",
+                                      (event["event_id"],)).fetchone()
+                    if old is not None and tuple(old) != (event["amount_raw"], event["kind"], event["block_ts"]):
+                        raise ValueError("An existing payout changed; refusing to overwrite accounting history")
+                    keys = tuple(event)
+                    out.execute("INSERT OR IGNORE INTO reward_events(" + ",".join(keys) + ") VALUES (" +
+                                ",".join("?" for _ in keys) + ")", tuple(event.values()))
+                out.execute("INSERT INTO reward_scan_coverage VALUES (?,?,?,?,?) "
+                            "ON CONFLICT(chain_id,owner_fp,from_height) DO UPDATE SET "
+                            "at_height=max(at_height,excluded.at_height),observed_at=excluded.observed_at",
+                            (chain, owner, first["from_height"], first["at_height"], attempted))
+                scan.update(first, status="ok", reason="Official Scan history imported; source coverage is shown separately.",
+                            rows=len(events), collected_at=attempted, last_success_at=attempted)
+                _put_meta(out, {"scan": scan})
+        except (HTTPError, URLError, HTTPException, TimeoutError, sqlite3.Error, OSError, ValueError, OverflowError) as exc:
+            scan.update(status="error", reason=str(exc), rows=0)
+            with out:
+                _put_meta(out, {"scan": scan})
+        return {k: scan.get(k) for k in ("status", "reason", "rows", "from_height", "at_height")} | {"cached": False}
+    finally:
+        out.close()
+
+
 def _base_report(year):
     year = datetime.now(HELSINKI).year if year is None else int(year)
     if not 1970 <= year <= 9998:
@@ -237,7 +503,10 @@ def _base_report(year):
             "timezone": "Europe/Helsinki", "source": {"status": "unavailable",
                 "reason": "Palkkiolähdettä ei ole vielä kerätty.", "from_height": None,
                 "at_height": None, "collected_at": None, "complete_year": False,
-                "runs": [], "truncated": False},
+                "runs": [], "truncated": False,
+                "local": {"status": "unavailable", "from_height": None, "at_height": None},
+                "scan": {"status": "unavailable", "reason": "Scan history has not been collected.",
+                         "from_height": None, "at_height": None, "last_success_at": None}},
             "summary": {"payout_count": 0, "paid_raw": None, "paid_nodus": None,
                 "pending_raw": None, "pending_nodus": None, "released_raw": None,
                 "released_nodus": None, "eur_total": None, "valued_count": 0,
@@ -276,8 +545,31 @@ def report(reporting_db, year=None):
         for k in ("network", "owner_fp", "node_fp", "chain_id"):
             result[k] = meta.get(k, result[k])
         result["source"].update({k: meta[k] for k in ("status", "reason", "from_height", "at_height", "collected_at", "truncated") if k in meta})
-        runs = [dict(row) for row in db.execute("SELECT from_height,at_height,observed_at FROM reward_coverage ORDER BY from_height")]
+        local = {k: meta.get(k) for k in ("status", "reason", "from_height", "at_height", "collected_at", "truncated")}
+        local["status"] = local["status"] or "unavailable"
+        result["source"]["local"] = local
+        scan = meta.get("scan")
+        if isinstance(scan, dict):
+            result["source"]["scan"].update({k: v for k, v in scan.items() if k != "last_attempt_unix"})
+        runs = [dict(row, source=LOCAL_SOURCE) for row in db.execute(
+            "SELECT from_height,at_height,observed_at FROM reward_coverage ORDER BY from_height")]
+        # Read old ledgers without requiring schema migrations in the web process.
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reward_scan_coverage'").fetchone():
+            runs += [dict(row, source=SCAN_SOURCE) for row in db.execute(
+                "SELECT from_height,at_height,observed_at FROM reward_scan_coverage ORDER BY from_height")]
+        runs.sort(key=lambda row: (row["from_height"], row["at_height"], row["source"]))
         result["source"]["runs"] = runs
+        if runs:
+            result["source"]["from_height"] = min(r["from_height"] for r in runs)
+            result["source"]["at_height"] = max(r["at_height"] for r in runs)
+            if local["status"] != "ok":
+                result["source"]["status"] = "partial"
+                result["source"]["reason"] = "Stored rewards are available; local history is unavailable or incomplete."
+            elif isinstance(scan, dict) and scan.get("status") == "error":
+                result["source"]["status"] = "partial"
+                result["source"]["reason"] = "Local history is available; the last Scan history refresh failed."
+            if not result["source"].get("collected_at"):
+                result["source"]["collected_at"] = result["source"]["scan"].get("collected_at")
         rows = db.execute("SELECT e.*,v.eur_value,v.price_eur,v.source AS valuation_source,"
                           "v.valuation_at,v.note AS valuation_note FROM reward_events e "
                           "LEFT JOIN reward_valuations v ON v.event_id=e.event_id "
@@ -361,7 +653,8 @@ def export_csv(reporting_db, year=None):
         # run. Bind its evidence to the run in which it was observed.
         matches = [r for r in data["source"]["runs"]
                    if event.get("height") is not None and
-                   r["from_height"] <= event["height"] <= r["at_height"]]
+                   r["from_height"] <= event["height"] <= r["at_height"]
+                   and r.get("source", LOCAL_SOURCE) == event.get("source", LOCAL_SOURCE)]
         coverage = max(matches, key=lambda r: (r["at_height"], r["from_height"])) if matches else data["source"]
         row = dict(event, report_year=data["year"], report_timezone=data["timezone"],
             source_from_height=coverage["from_height"], source_at_height=coverage["at_height"],

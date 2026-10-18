@@ -173,7 +173,7 @@ const untranslated = {
   overview: ['Kaikki olennainen.', 'Ketjun korkeus', 'Epäonnistumisputki', 'Palvelimen voimavarat', 'Viimeisimmät tapahtumat'],
   storage: ['Tilaa verkon muistille.', 'Arkiston tämänhetkinen tilanne', 'Valmiit segmentit', 'Levyn toimintakunto', 'Peräkkäiset epäonnistumiset'],
   network: ['Verkon rytmi.', 'Verkon korkeus', 'Transaktioita sekunnissa', 'Ketjun eheys', 'Validaattorikomitea'],
-  rewards: ['Palkkiot talteen.', 'Lataa CSV', 'Maksettu palkkio', 'Euroarvostukset', 'Vahvistetut maksut'],
+  rewards: ['Lompakon kaikki palkkiot.', 'Lataa CSV', 'Maksettu kerätyllä ajalla', 'Euroarvostukset', 'Kerätyt maksut', 'Maksuhistorian lähteet'],
   events: ['Jäljet kertovat', 'Kaikki tapahtumat', 'Huomiot &amp; virheet', 'Mitä seuranta kertoo?', 'Lohkoero tarvitsee myös kontekstin.'],
 };
 const fiMarkup = new Map();
@@ -240,6 +240,53 @@ assert.equal(run("decimalFi('12345678901234567.89012345')").replace(/\s/g, ''), 
 language.setLanguage('en');
 assert.equal(run("decimalFi('12345678901234567.89012345')").replace(/[\s,]/g, ''), '12345678901234567.89012345');
 assert.equal(run("rawNodus('1234567890123456789012345')").replace(/[\s,]/g, ''), '12345678901234567.89012345');
+
+// Earlier imported payments belong to the whole wallet and remain visible,
+// including their monthly bars, while the storage role is still in grace.
+run(`state.year=2026; state.dashboard.storage.in_grace=true;
+  state.rewards={year:2026,network:'testnet',timezone:'Europe/Helsinki',
+    source:{status:'ok',complete_year:false,from_height:0,at_height:1100,
+      local:{status:'ok',from_height:800,at_height:1100,collected_at:'2026-01-15T12:00:00Z'},
+      scan:{status:'ok',from_height:0,at_height:1000,last_attempt_at:'2026-01-15T11:00:00Z',
+        last_success_at:'2026-01-15T11:00:00Z'},
+      runs:[{source:'nodus_scan_addr_history',from_height:0,at_height:1000},
+        {source:'local_nodus_addr_history',from_height:800,at_height:1100}]},
+    summary:{payout_count:2,paid_nodus:'7.75000000',pending_nodus:'11.25000000',
+      released_nodus:'100.00000000',eur_total:null,valued_count:0,unvalued_count:2},
+    items:[{event_id:'historical',kind:'payout',height:300,source:'nodus_scan_addr_history',
+      block_time_utc:'2026-01-10T00:00:00Z',amount_raw:'250000000',amount_nodus:'2.50000000',eur_value:null},
+      {event_id:'local',kind:'payout',height:900,source:'local_nodus_addr_history',
+      block_time_utc:'2026-01-15T00:00:00Z',amount_raw:'525000000',amount_nodus:'5.25000000',eur_value:null}],
+    monthly:[{month:'2026-01',payout_count:2,paid_nodus:'7.75000000'}]};`);
+for (const lang of ['fi', 'en']) {
+  language.setLanguage(lang);
+  const markup = run('rewards()');
+  assert.match(markup, lang === 'fi' ? /Lompakon kaikki palkkiot/ : /All wallet rewards/);
+  assert.match(markup, lang === 'fi' ? /staking-palkkiot voivat silti jatkua/i : /staking rewards can still continue/i);
+  assert.match(markup, lang === 'fi' ? /Nodus Scan · tuotu historia/ : /Nodus Scan · imported history/);
+  assert.match(markup, lang === 'fi' ? /Paikallinen indeksi/ : /Local index/);
+  assert.match(markup, lang === 'fi' ? /Lohkot 800–1[\s,]?100/ : /Blocks 800–1,100/);
+  assert.match(markup, lang === 'fi' ? /kryptografisesti varmennettu/ : /cryptographically verified/);
+  assert.match(markup, lang === 'fi' ? /Viimeisin onnistunut haku/ : /Last successful fetch/);
+  assert.match(markup, /reward-month-chart/, 'imported historical payouts form a graph during storage grace');
+  assert.match(markup, lang === 'fi' ? /7,75/ : /7\.75/);
+  assert.match(markup, lang === 'fi' ? /11,25/ : /11\.25/, 'pending remains separate from paid');
+  assert.match(markup, lang === 'fi' ? /Puuttuu/ : /Missing/, 'unvalued EUR amounts remain unknown');
+  assert(!/NO REWARD ACCRUAL|EI PALKKIOKERTYMÄÄ|Grace-jakso · ei kertymää/.test(markup));
+}
+run("state.rewards.source.status='unavailable'; state.rewards.source.local.status='error'; state.rewards.source.scan.status='error'");
+language.setLanguage('en');
+const outage = run('rewards()');
+assert.match(outage, /Fetch failed/);
+assert.match(outage, /Nodus Scan · imported history/);
+assert.match(outage, /reward-month-chart/);
+assert.match(outage, /7\.75/, 'an outage preserves stored amounts, rather than hiding them');
+assert.match(outage, /Stored payments remain visible/);
+for (const lang of ['fi', 'en']) {
+  language.setLanguage(lang);
+  assert.match(run('graceCard()'), lang === 'fi' ? /storage-palkkioita kerry/ : /no storage rewards/);
+  assert.match(run('storage()'), lang === 'fi' ? /staking-palkkiot voivat jatkua/ : /continue earning staking rewards/);
+}
 
 // CSV is a stable accounting interchange format in either display language.
 run(`state.mode='snapshot'; state.rewards={year:2027,network:'testnet',timezone:'Europe/Helsinki',

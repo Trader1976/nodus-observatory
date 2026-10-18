@@ -2,7 +2,20 @@
 
 [English](README.md) | [Suomi](README_fin.md)
 
+Palkkiot-sivu kattaa **omistajalompakon** saamat staking-, storage- ja
+witness-palkkiot. Maksut yhdistyvät alkuperäisessä lähteessä; raportti ei keksi
+erittelyä roolien välille eikä kohdista koko lompakon tuottoa seurattavalle
+storage-nodelle. Storagen grace-jakso koskee vain storage-palkkioita, ei lompakon
+muita palkkioita.
+
 Verkkopalvelin lukee vain monitorin erillistä `reporting.sqlite3`-tietokantaa.
+Kerääjä tuo havaintoja kahdesta valinnaisesta lähteestä: paikallisesta
+Nodus-tietokannasta ja Scanin julkisesta palkkiorajapinnasta. Maksetut palkkiot,
+odottava kertymä ja palautettu stake-pääoma säilyvät erillisinä. Lompakon
+tunnuksia tai noden yksityisiä identiteettiavaimia ei tarvita.
+
+## Paikallinen Nodus-lähde
+
 Root-käyttäjänä ajettava kerääjä avaa olemassa olevan Noduksen ketjutietokannan
 SQLite-asetuksilla `mode=ro` ja `query_only=ON`. Käytössä on lukutransaktio,
 200 ms:n lukitusodotus ja kahden sekunnin kyselyaikaraja. Kerääjä ei käytä
@@ -11,15 +24,17 @@ WAL-checkpointia eikä muuta ketjutietokantaa. Omistajan haku käyttää Nodukse
 omistajaindeksiä, ja yhden keräyksen enimmäismäärä on 5 000 riviä. Ylitys
 ilmoitetaan virheenä.
 
-Lähde on valinnainen. Puuttuva lähde tarkoittaa *tuntematonta*, ei keksittyjä
-nollapalkkioita. Lähteeksi asetetaan absoluuttinen polku
+Paikallinen lähde on valinnainen. Puuttuva tosite tarkoittaa *tuntematonta*, ei
+keksittyjä nollapalkkioita. Scan voi täydentää vanhoja maksuja oman kattavuutensa
+rajoissa, vaikka paikallinen indeksi olisi alkanut myöhemmin. Paikalliseksi
+lähteeksi asetetaan absoluuttinen polku
 `/var/lib/nodus/data/witness_<ketjutunnisteen 32 ensimmäistä heksamerkkiä>.db`.
 Kerääjä saa koko ketjutunnisteen ja omistajan identiteetin havaitsemastaan
 noden tilasta. Tietokannan tiedostonimen on vastattava ketjutunnisteen
 alkuosaa. Tämä sitoo paikallisen lähteen nodeen; se ei ole jokaisen maksun
 erillinen kryptografinen varmennus.
 
-## Varmennettu lähdesopimus
+### Varmennettu paikallinen lähdesopimus
 
 Toteutus on tarkistettu Noduksen lähdekoodin committia
 `24f93e6b709119a3013efacf3a374930c97871b7` vasten:
@@ -46,10 +61,12 @@ ja CSV sisältää kaikki sen tunnetut jaksot.
 **Indeksi on oletuksena pois käytöstä viitatussa Nodus-versiossa.** Tiedoston
 `/etc/nodus.conf` ylimmälle tasolle asetettu `"addr_history_index": true`
 ottaa tulevan historian keruun käyttöön, kun witness seuraavan kerran
-käynnistyy tällä asetuksella. Vanhaa historiaa ei täydennetä jälkikäteen.
-Monitori ei ota indeksiä käyttöön eikä käynnistä Nodusta uudelleen.
-Ylläpitäjän on tehtävä tämä erillinen päätös ennen palkkioiden alkamista,
-jos hän haluaa paikallisen maksuarkiston siitä eteenpäin.
+käynnistyy tällä asetuksella. Nodus ei rakenna vanhaa **paikallista** indeksiä
+uudelleen. Alla kuvattu Scan-tuonti on erillinen vanhojen havaintojen lähde.
+Tavallinen seuranta ei ota indeksiä käyttöön eikä käynnistä Nodusta uudelleen.
+Ylläpitäjän on tehtävä tämä erillinen päätös, jos hän haluaa paikallisen
+maksuarkiston siitä eteenpäin. Valinnainen `enable-reward-history.py --apply`
+-työkalu varmuuskopioi asetukset ja käynnistää vain nodus-witnessin kerran.
 
 Odottava palkkiokertymä luetaan keräyshetken taulusta
 `v2_reward_accrual(owner_fp BLOB,amount INTEGER)`. Puuttuva omistajarivi
@@ -65,9 +82,61 @@ tapahtuman aika, summa tai laji muuttuu, päivitys hylätään. Vanhoja
 kirjanpitotositteita ei koskaan korvata hiljaisesti.
 
 Lähde yksilöi *maksun vastaanottavan omistajan*, ei tiettyä storage-nodea.
-Mukana voi olla samalle omistajalle maksettuja storage-, validaattori- ja
-delegaatiopalkkioita. Noden sormenjälki yksilöi seurattavan asennuksen;
+Mukana voi olla samalle omistajalle maksettuja staking-, storage- ja
+witness-palkkioita. Noden sormenjälki yksilöi seurattavan asennuksen;
 se ei todista, että kaikki omistajan palkkiot kuuluvat tälle storage-nodelle.
+
+## Vanhojen maksujen tuonti julkisesta Scanista
+
+Monitorin päivitys ottaa historiatuonnin automaattisesti käyttöön oletuksena.
+Kerääjä kysyy kiinteää HTTPS-osoitetta
+`https://scan.nodusnetwork.io/api/rewards/<havaitun-omistajan-sormenjälki>` noin
+viiden minuutin välein. Ensin Scanin ilmoittaman `stats.chain_id`-tunnisteen on
+vastattava sekä paikallisesta nodesta havaittua ketjua että tuetun julkisen
+testnetin kiinnitettyä tunnistetta. Tuntematon tai poikkeava ketju hylätään ennen
+tuontia. URL käyttää havaittua julkista vastaanottajan tunnistetta, ei lompakon
+avainta tai vapaasti määritettyä etäpalvelinta.
+
+Pyyntö luovuttaa **julkisen omistajan sormenjäljen** Scanille. Kyseessä on
+ulkopuolisen lohkoselaimen havainto, ei jokaisen maksun itsenäinen kryptografinen
+varmennus. Saavuttamaton, virheellinen tai ristiriitainen vastaus ilmoitetaan
+lähdevirheenä; sitä ei tulkita nollatuotoksi eikä aiempaa kirjanpitoa korvata.
+
+Kerääjä tarkistaa koko sivutetun tuloksen ennen rajakohtien palkkiomaksujen ja
+stake-palautusten tuontia yhdessä transaktiossa. Yhden yrityksen enimmäismäärä
+on 20 sivua ja 5 000 tapahtumaa. Pyynnön aikakatkaisu on kuusi sekuntia ja koko
+yrityksen aikaraja 25 sekuntia. Keskeneräinen tulos, rajojen ylitys tai yhdenkin
+sivun virhe estää **koko kyseisen tuonnin**. Näin ulkoinen työ pysyy rajattuna eikä
+osittaista historiaa esitetä onnistuneena kokonaisena tuontina.
+
+Scanin ja paikallisen lähteen tapahtumat yksilöidään samalla tavalla: ketju,
+omistaja, lohkokorkeus, rajakohdan alkion sijainti ja järjestysnumero. Päällekkäiset
+havainnot lasketaan kerran. Ristiriitainen summa, aikaleima tai tapahtumalaji
+hylkää tuontierän; aiemmat tarkat summat ja EUR-arvostukset säilyvät. Tapahtuman
+lähde ja lähdekohtainen kattavuus näkyvät raportissa ja CSV:ssä. CSV:n sarakkeet
+pysyvät samoina lähteestä riippumatta.
+
+Scanin ilmoittama `fromHeight` rajaa sieltä saatavan historiallisen aineiston.
+Ensimmäinen näytetty maksu ei todista lompakon ensimmäistä maksua, eikä kumpikaan
+lähde takaa verovuoden täydellistä kattavuutta. Kattavuus näytetään erikseen, eikä
+sitä päätellä lompakon nykyisestä saldosta. Odottava kertymä saadaan edelleen
+vain paikallisen Nodus-tietokannan nykytilasta, ei lohkoselaimen arviosta.
+
+### Asetukset
+
+Asetukset ovat tiedostossa `/etc/nodus-monitor/config.json`; monitorin päivitys
+säilyttää tiedoston. Oletusarvot koskevat myös vanhasta tiedostosta puuttuvia avaimia.
+
+| Asetus | Oletus | Vaikutus arvolla `false` |
+| --- | --- | --- |
+| `rewards_scan_enabled` | `true` | Estää Scan-tuonnin; paikallinen palkkiokeruu jatkuu. |
+| `network_enabled` | `true` | Estää kaikki ulkoiset verkkokyselyt, myös Scanin palkkiotuonnin. |
+| `rewards_enabled` | `true` | Estää molemmat palkkiolähteet. |
+
+Scanin historiatuonti ei tarvitse Nodus-asetusten muutosta tai uudelleenkäynnistystä.
+Tulevien paikallisten maksujen keruu tarvitsee edelleen yllä kuvatun Noduksen
+osoiteindeksin. Aiemmin tuodut tapahtumat ja arvostusten tositteet säilyvät, vaikka
+lähde poistetaan käytöstä tai myöhempi keräys epäonnistuu.
 
 ## HTTP-rajapinta
 
@@ -85,9 +154,8 @@ ei osoita, että tokenilla olisi markkina-arvoa.
 
 Vuosi- ja kuukausirajat määräytyvät `Europe/Helsinki`-aikavyöhykkeen mukaan,
 historialliset UTC-siirtymät ja kesäaika mukaan lukien. CSV sisältää myös
-UTC-ajan. Mikään näkymä ei väitä koko vuotta kattavaksi pelkän noden nykyisen
-yhtenäisen indeksijakson perusteella. Tilapäinen lähdevirhe ei poista
-aikaisemmin havaittuja tapahtumia.
+UTC-ajan. Kummankaan lähteen havaittu aikaväli ei takaa koko vuoden kattavuutta.
+Tilapäinen lähdevirhe ei poista aikaisemmin havaittuja tapahtumia.
 
 ## Manuaalinen EUR-arvostus tositteineen
 
@@ -151,5 +219,7 @@ omistajasuodatuksen, palkkioiden ja palautusten erottelun, puuttuvan
 kattavuuden ja sen katkokset, paikalliset vuosi- ja kesäaikarajat,
 lähteen lukutilan, rajatun kyselyn epäonnistumisen, tarkat arvostukset,
 versiohistorian, virheellisten tuontien hylkäyksen ja CSV-kaavasuojauksen.
-Niissä käytetään tilapäisiä keinotekoisia testitietokantoja, joiden tietoja
-ei koskaan näytetä oikean noden ansioina.
+Historiatuonnin testit kattavat myös sivutuksen, ketjun ja omistajan sitomisen,
+lähteiden päällekkäisyyden, ristiriitaiset tositteet, lähdevirheet ja ulkoisten
+verkkokyselyjen asetukset. Niissä käytetään tilapäisiä keinotekoisia
+testitietokantoja, joiden tietoja ei koskaan näytetä oikean noden ansioina.

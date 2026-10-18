@@ -83,16 +83,30 @@ assert(!csv.includes('"0.00000000"'), 'empty-source export has no invented zero 
 
 // Token amounts remain exact strings above JavaScript's safe integer range.
 vm.runInContext(`state.rewards = {year:2026, network:'testnet', timezone:'Europe/Helsinki',
-  source:{status:'partial',runs:[{from_height:1,at_height:12}]},
+  source:{status:'partial',from_height:1,at_height:15,runs:[
+    {source:'local_nodus_addr_history',from_height:9,at_height:15},
+    {source:'nodus_scan_addr_history',from_height:1,at_height:12}]},
   items:[{event_id:'a',kind:'payout',height:10,amount_raw:'1234567890123456789012345',
-    amount_nodus:'12345678901234567.89012345',eur_value:null,valuation_source:'=FORMULA'}],
-  releases:[{event_id:'b',kind:'release',height:11,amount_raw:'987654321',amount_nodus:'9.87654321'}]};`, context);
+    amount_nodus:'12345678901234567.89012345',eur_value:null,valuation_source:'=FORMULA',source:'nodus_scan_addr_history'}],
+  releases:[{event_id:'b',kind:'release',height:11,amount_raw:'987654321',
+    amount_nodus:'9.87654321',source:'local_nodus_addr_history'}]};`, context);
 await vm.runInContext('exportRewards()', context);
 csv = await csvBlob.text();
 assert(csv.includes('1234567890123456789012345'), 'raw amount is exact');
 assert(csv.includes('12345678901234567.89012345'), 'token decimal is exact');
 assert(csv.includes('"release"'), 'stake releases remain separate rows');
 assert(csv.includes("'=FORMULA"), 'untrusted CSV formula strings are escaped');
+const csvRows = csv.trim().split('\r\n').map(line =>
+  [...line.matchAll(/"((?:""|[^"])*)"(?:,|$)/g)].map(match => match[1].replace(/""/g, '"')));
+const csvRecords = csvRows.slice(1).map(row => Object.fromEntries(csvRows[0].map((key, i) => [key, row[i]])));
+const imported = csvRecords.find(row => row.event_id === 'a');
+assert.equal(imported.source_from_height, '1');
+assert.equal(imported.source_at_height, '12', 'imported event evidence uses the Scan run, not a higher overlapping local run');
+const returned = csvRecords.find(row => row.event_id === 'b');
+assert.equal(returned.source_from_height, '9');
+assert.equal(returned.source_at_height, '15');
+assert.equal(JSON.parse(imported.source_coverage_runs)[0].source, 'local_nodus_addr_history');
+assert.equal(JSON.parse(imported.source_coverage_runs)[1].source, 'nodus_scan_addr_history');
 
 // Null samples must create real gaps, rather than fabricated continuous lines.
 vm.runInContext(`state.history={points:[

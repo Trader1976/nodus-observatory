@@ -2,21 +2,36 @@
 
 [English](README.md) | [Suomi](README_fin.md)
 
+The Rewards page accounts for the **owner wallet**, including staking, storage
+and witness rewards paid to the same recipient. These payouts are aggregated by
+the upstream source; the report does not invent an allocation between roles or
+attribute the wallet's total income to the monitored storage node. Storage grace
+affects storage rewards only, not the wallet's other rewards.
+
 The web server reads only the monitor's independent `reporting.sqlite3` database.
+The collector imports observations from two optional sources: the existing local
+Nodus database and the public Scan reward API. Paid rewards, pending accrual and
+returned stake principal remain separate. No wallet credentials or private node
+identity keys are needed.
+
+## Local Nodus source
+
 The root collector opens the existing Nodus chain DB using SQLite `mode=ro`,
 `query_only=ON`, a read transaction, 200 ms busy timeout and 2 s query deadline.
 It never uses `immutable=1`, copies a live database file, checkpoints WAL or
 modifies the live database. The owner query uses Nodus' owner index, is limited
 to 5,000 rows per collection and fails honestly if that budget is exceeded.
 
-This source is optional. No source means *unknown*, never invented zero earnings.
+The local source is optional. Missing evidence means *unknown*, never invented
+zero earnings. Scan can supply older payments even if the local index began
+later, within its own reported coverage.
 The source should be the absolute path
 `/var/lib/nodus/data/witness_<first 32 hex characters of chain ID>.db`.
 The full chain and owner identity come from the collector's observed node status;
 the database filename must agree with that chain prefix. This is a local source
 binding, not independent cryptographic verification of every payout.
 
-## Verified source contract
+### Verified local source contract
 
 The implementation was checked against upstream commit
 `24f93e6b709119a3013efacf3a374930c97871b7`:
@@ -40,9 +55,12 @@ in the monitor ledger, and the CSV includes all its known runs.
 **The index is off by default in the referenced Nodus version.** Top-level
 `"addr_history_index": true` in
 `/etc/nodus.conf` enables future history when the witness next starts with this
-configuration. There is no historical backfill. This monitor never enables the
-index or restarts Nodus itself. An administrator must make that separate choice
-before rewards begin if they want a local payout archive from that point onward.
+configuration. Nodus does not rebuild older **local** index entries. Public Scan
+imports described below are a separate source of earlier observations. Normal
+monitoring never enables this index or restarts Nodus. An administrator must
+make that separate choice if they want a local payout archive from that point
+onward; the optional `enable-reward-history.py --apply` helper backs up the
+configuration and restarts only nodus-witness once.
 
 Pending reward is `v2_reward_accrual(owner_fp BLOB,amount INTEGER)` at collection
 time. A missing owner row means zero only after a valid successful query. Pending
@@ -55,9 +73,62 @@ boundary sequence. An existing event with a different time, amount or kind is
 rejected; old accounting evidence is never silently overwritten.
 
 The source identifies a *recipient owner*, not a particular storage node. It can
-include storage, validator and delegation rewards paid to the same owner. A node
+include staking, storage and witness rewards paid to the same owner. A node
 fingerprint identifies the monitored installation; it does not prove attribution
 of all the owner's payouts to that storage node.
+
+## Public Scan historical imports
+
+Updating the monitor enables automatic historical imports by default. The
+collector queries the fixed HTTPS endpoint
+`https://scan.nodusnetwork.io/api/rewards/<observed-owner-fingerprint>` about
+every five minutes. It first checks Scan's reported `stats.chain_id` against
+both the chain observed from the local node and the supported public testnet
+pin. An unknown or mismatched chain is rejected before import. The URL uses the
+observed public recipient identity, never a wallet key or configured arbitrary
+remote server.
+
+A request discloses the **public owner fingerprint** to Scan. This is a
+third-party explorer observation, not independent cryptographic verification of
+each payment. An unavailable, malformed or inconsistent response is reported as
+a source failure; it does not become zero income or replace the last good ledger.
+
+The collector validates the full paged result before importing boundary payouts
+and stake releases in one transaction. An attempt permits at most 20 pages and
+5,000 events, with a six-second request timeout and a 25-second overall deadline.
+An incomplete result, exceeded budget or failed page imports **nothing from
+that attempt**. This bounds external work and prevents a partial history from
+being presented as a completed import.
+
+Scan and local events use the same identity: chain, owner, block height, boundary
+item position and sequence number. Overlapping observations count once.
+Conflicting amounts, timestamps or event kinds abort the batch; existing exact
+amounts and EUR valuations are preserved. Event source and source-specific
+coverage remain available in the report and CSV. The CSV keeps the same columns
+for either source.
+
+Scan's reported `fromHeight` limits the historical evidence available from that
+source. The earliest displayed payment is not proof of the wallet's first
+payment, and neither source proves a full tax year complete. Coverage is shown
+explicitly rather than inferred from the wallet's current balance. Pending
+accrual continues to use only the current local Nodus database, not an explorer
+estimate.
+
+### Controls
+
+All settings live in `/etc/nodus-monitor/config.json`; the monitor update
+preserves this file. Defaults also apply to keys missing from an older config.
+
+| Setting | Default | Effect when `false` |
+| --- | --- | --- |
+| `rewards_scan_enabled` | `true` | Disable Scan imports; keep local reward collection. |
+| `network_enabled` | `true` | Disable all external network queries, including Scan reward imports. |
+| `rewards_enabled` | `true` | Disable both reward sources. |
+
+Historical Scan imports need no Nodus configuration change or restart. Future
+local payout capture still needs Nodus address-history indexing as described
+above. Previously imported events and valuation evidence are retained if a
+source is disabled or a later collection fails.
 
 ## HTTP contract
 
@@ -72,9 +143,9 @@ The collector currently labels its source as **testnet**. A label in a report
 does not establish that a token has market value.
 
 Year/month boundaries use `Europe/Helsinki`, including historical UTC offsets
-and DST. CSV includes UTC as well. No view claims an entire year complete based
-only on the node's current contiguous index coverage. A temporary source error
-does not delete earlier observed events.
+and DST. CSV includes UTC as well. Neither source's observed range guarantees
+that an entire year is complete. A temporary source error does not delete
+earlier observed events.
 
 ## Manual EUR valuation with evidence
 
@@ -133,5 +204,7 @@ python3 -m unittest discover -s rewards -p 'test_*.py' -v
 Tests cover large exact amounts, deduplication, owner filtering, payout/release
 separation, missing coverage, coverage gaps, local year/DST boundaries, source
 read-only behavior, bounded query failure, exact valuations, audit revisions,
-atomic invalid inputs and CSV formula protection. They use temporary synthetic
+atomic invalid inputs and CSV formula protection. Historical-import tests also
+cover paged results, chain/owner binding, source overlap, conflicting evidence,
+source failures and the external-network controls. They use temporary synthetic
 databases, which are test fixtures and are never shown as real node earnings.

@@ -16,8 +16,9 @@ palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
   käyttöliittymää oletuksena vain osoitteessa `127.0.0.1:8890`.
 - Kuvaajat perustuvat kerättyihin havaintoihin. Puuttuva tieto säilyy puuttuvana;
   vanhentuneet tiedot tai virheet eivät muutu terveeksi tilaksi.
-- Palkkiot erotetaan bondien palautuksista. Euromääräinen arvostus ja sen lähde
-  voidaan kirjata erikseen; ilman arvostusta euroarvoa ei keksitä.
+- Omistajalompakon staking-, storage- ja witness-palkkiot sekä vanhojen maksujen
+  automaattinen tuonti julkisesta Scanista. Bondien palautukset esitetään erikseen.
+  Euromääräinen arvostus ja sen lähde voidaan kirjata; puuttuvaa hintaa ei keksitä.
 - `dist/` sisältää myös **synteettisen demon**. Sen keksityt tunnisteet,
   mittaukset ja tapahtumat eivät kuvaa oikeaa palvelinta tai lompakkoa.
   Demotiedostoja ei asenneta paikallisen seurannan mittausdataksi.
@@ -140,13 +141,50 @@ Europe/Helsinki-alueena. Alkuperäiset lokiviestit ja tekniset tunnisteet säily
 lähteen mukaisina. CSV:n sarakenimet ja täsmälliset rahamäärät pysyvät samoina
 molemmilla kielillä, jotta kirjanpidon jatkokäsittely on vakaa.
 
-## Palkkiot: kytke tulevien maksujen historia
+## Omistajalompakon palkkiot ja aiemmat maksut
 
-Noduksen osoitehistoria on oletuksena pois päältä. Erillinen työkalu näyttää
-suunnitelman ja tekee muutoksen vain `--apply`-valitsimella:
+Palkkiot-sivu kattaa **omistajalompakolle** maksetut staking-, storage- ja
+witness-palkkiot. Maksutositteessa eri roolien palkkiot yhdistyvät, joten sovellus
+ei keksi roolikohtaista erittelyä eikä kohdista koko lompakon tuottoa tälle
+storage-nodelle. Storagen grace-jakso estää vain storage-palkkiot, ei lompakon
+muista rooleista saamia palkkioita.
+
+Päivitetty monitori tarkistaa julkisen Scanin palkkiohistorian automaattisesti
+noin viiden minuutin välein ja tuo aiemmat maksut samaan kirjanpitoon paikallisten
+havaintojen kanssa. Tuonti ei tarvitse lompakon avaimia, Nodus-asetusten muutoksia
+tai Noduksen uudelleenkäynnistystä. Pyyntö lähettää havaitun **julkisen omistajan
+sormenjäljen** osoitteeseen `scan.nodusnetwork.io`. Scan on ulkopuolinen havaintolähde,
+ei jokaisen maksun itsenäinen kryptografinen varmennus. Sen ilmoittaman
+ketjutunnisteen on vastattava paikallista nodea ja tuettua julkista testnetiä.
+
+Sivu näyttää lähteen ja sen havaitun kattavuuden. Scan voi toimittaa vain omaan
+indeksiinsä kuuluvat maksut; tuonti ei osoita koko lompakkohistoriaa tai verovuotta
+täydelliseksi. Sama tapahtuma lasketaan vain kerran, vaikka se löytyisi sekä
+paikallisesti että Scanista. Ristiriitainen aineisto hylätään korvaamatta aiempia
+maksuja tai EUR-arvostuksia. Epäonnistunut tuonti säilyttää aiemman kirjanpidon.
+Odottava kertymä saadaan edelleen vain paikallisen Nodus-tietokannan nykytilasta
+ja pidetään erillään maksetuista palkkioista ja palautetusta pääomasta.
+
+`rewards_scan_enabled` on oletuksena `true`, myös jos avain puuttuu vanhasta
+asetustiedostosta. Pelkän Scan-tuonnin saa pois asettamalla arvoksi `false`
+tiedostossa `/etc/nodus-monitor/config.json`; paikallinen palkkiokeruu jatkuu.
+`network_enabled: false` estää kaikki ulkoiset verkkokyselyt, myös Scanin
+palkkiotuonnin. `rewards_enabled: false` estää molemmat palkkiolähteet.
+
+### Kytke tulevien maksujen paikallinen historia
+
+Noduksen osoitehistoria on oletuksena pois päältä. Se kerää **tulevia paikallisia**
+maksuja eikä rakenna vanhaa paikallista historiaa uudelleen. Scan-tuonti voi
+lisätä aiempia maksuja oman kattavuutensa rajoissa, vaikka paikallinen indeksi
+olisi aloitettu myöhemmin. Erillinen ylläpitotyökalu näyttää ensin suunnitelman:
 
 ```bash
 sudo python3 /opt/nodus-monitor/enable-reward-history.py
+```
+
+Tarkistettuasi suunnitelman voit kytkeä tulevan paikallisen maksuarkiston:
+
+```bash
 sudo python3 /opt/nodus-monitor/enable-reward-history.py --apply
 sudo nodus-cli status
 ```
@@ -155,15 +193,8 @@ Työkalu varmuuskopioi `/etc/nodus.conf`-tiedoston, lisää
 `"addr_history_index": true` ja käynnistää **vain nodus-witness-palvelun kerran**
 uudelleen. Ketjudata ja identiteetti säilyvät. Tarkista käynnistyksen jälkeen,
 että node palaa synkroniin ja `fail_streak` on kunnossa. Jos asetus on jo päällä,
-työkalu ei muuta mitään eikä käynnistä palvelua uudelleen.
-
-Historiassa ei ole takautuvaa täydennystä. Aktivointi kannattaa tehdä ennen
-ensimmäisiä palkkiomaksuja. Grace-jakso ja odottava kertymä eivät ole maksettuja
-palkkioita. Historialliset puuttuvat tiedot näkyvät puuttuvina.
-
-Palkkiot koskevat **omistajalompakon** vastaanottamia maksuja. Ne voivat sisältää
-myös saman omistajan muita rooleja; tämän storage-noden osuutta ei päätellä
-kokonaissummasta. Bondien palautukset pidetään erillään palkkioista.
+työkalu ei muuta mitään eikä käynnistä palvelua uudelleen. Tavallinen seuranta
+ja Scan-tuonti eivät kytke indeksiä tai käynnistä Nodusta uudelleen.
 
 Palkkiot-sivulta ladataan valitun vuoden CSV. Alkuperäiset raw/tokenimäärät,
 lohko, tapahtumatunniste, UTC- ja Suomen aika, verkko sekä aineiston kattavuus
@@ -182,7 +213,8 @@ se ei laske verovelkaa tai luokittele tuloa automaattisesti.
 - Palvelimen CPU, muisti, levytila, verkko- ja levyliikenne; SMART noin 15 min välein.
 - Enintään 300 luokiteltua journal-havaintoa keräyskerralla. Tämä ei ole täydellinen lokiarkisto.
 - Verkon julkiset Scan-tilastot noin 5 min välein ja paikallinen komiteakysely.
-- Valinnaiset todelliset palkkiomaksut paikallisesta Nodus-tietokannasta vain lukemalla.
+- Valinnaiset omistajalompakon palkkiot paikallisesta Nodus-tietokannasta vain
+  lukemalla ja julkisesta Scanista historiatietoineen sekä lähteen kattavuuksineen.
 
 Mittauksia kerätään noin minuutin välein. Pitkä tai aikakatkaistu kysely voi
 siirtää seuraavaa keräystä; tuoreus näkyy sivulla. Ensimmäisellä keräyksellä ei
