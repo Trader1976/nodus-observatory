@@ -1,37 +1,49 @@
 # Nodus Observatory
 
-Näyttävä paikallinen seurantasivu Nodus storage nodelle: ketjun synkronointi,
-arkistosegmentit, verkon tilanne, palvelimen resurssit, tapahtumat ja erillinen
-palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
+**English** · [Suomi](README_fin.md)
 
-## Nykytila
+A local dashboard for a Nodus storage node: chain synchronisation, archive
+segments, network status, server resources, events and a separate reward ledger
+with annual summaries and CSV exports.
 
-- Versio **1.0.0**, tuettu Nodus 0.26.7 testnet -asennus Debian/Ubuntu-palvelimella.
-- Viisi näkymää: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
-- Yläreunan **FIN / ENG** vaihtaa koko käyttöliittymän suomeksi tai englanniksi.
-  Valinta säilyy samassa selaimessa; oletuskieli on suomi.
-- Paikallinen kerääjä tallentaa mittauksia noin minuutin välein ja palvelee
-  käyttöliittymää oletuksena vain osoitteessa `127.0.0.1:8890`.
-- Kuvaajat perustuvat kerättyihin havaintoihin. Puuttuva tieto säilyy puuttuvana;
-  vanhentuneet tiedot tai virheet eivät muutu terveeksi tilaksi.
-- Palkkiot erotetaan bondien palautuksista. Euromääräinen arvostus ja sen lähde
-  voidaan kirjata erikseen; ilman arvostusta euroarvoa ei keksitä.
-- `dist/` sisältää myös **staattisen esikatselun** käyttäjän toimittamista
-  tilannekuvista. Se ei ole yhteydessä Nexus-palvelimeen. Asennettu paikallinen
-  käyttöliittymä käyttää kerääjän rajapintaa; esikatselun JSON-tiedostoja ei
-  asenneta sen mittausdataksi.
+## Features and compatibility
 
-Python 3:n vakiokirjasto riittää palvelimella. Käyttöliittymä ei lataa kirjastoja,
-fontteja tai kuvia CDN:stä. Kehitystarkistukset käyttävät lisäksi Node.js 22:ta.
+- Five pages: **Overview, Storage, Network, Rewards and Events**.
+- **FIN / ENG** controls for the complete interface, including charts, tooltips,
+  dialogs, accessibility labels and errors. The browser remembers your choice.
+- A systemd collector that normally samples once a minute, with a read-only web
+  server bound to **127.0.0.1:8890** by default.
+- Charts based on recorded observations. Missing measurements remain missing;
+  stale data and collection failures are shown explicitly.
+- Exact reward accounting, separate stake returns, optional documented EUR
+  valuations and source coverage. Missing prices remain unknown.
+- A static demo in `dist/` with **synthetic sample data**. Its identifiers,
+  measurements and events describe no real server or wallet. Demo JSON files
+  are excluded from live installations.
 
-Tämä on erillinen monitorointisovellus. Se ei ole Nodus-noden lähdekoodirepo.
-Repon mukana ei ole yksityisiä identiteettiavaimia tai lompakon tunnuksia.
-Asetusesimerkki on yleinen. Vain staattiset esikatselun tilannekuvat sisältävät
-alkuperäisen Nexus-asennuksen julkisia noden tunnisteita ja osoitteita.
+The initial release is **1.0.0**. The CLI and accounting source contracts were
+tested against **Nodus 0.26.7 testnet**, upstream commit
+`24f93e6b709119a3013efacf3a374930c97871b7`. Other Nodus versions may change CLI
+output or database schemas; unknown fields are left unknown.
 
-## Asennus lähdekoodista
+This is the monitoring application, not the Nodus node source repository. It
+contains no private identity keys or wallet credentials. Each installation
+discovers its own public node identity and uses its own local configuration.
 
-Kloonaa repo node-palvelimelle ja aja sen juuressa:
+## Requirements
+
+- Debian/Ubuntu with systemd and an existing, running Nodus node.
+- Python 3.10 or newer, standard library only. Ubuntu 24.04 is a tested platform.
+- Git and administrative access for installation and updates.
+- `nodus-cli`, `findmnt` and `lsblk` for automatic node/filesystem discovery.
+- Optional `smartctl` (`smartmontools`) for supported physical-disk health data.
+
+The frontend has no build step, external fonts or CDN dependencies. Node.js 22
+is needed only for development checks, not on the monitoring server.
+
+## Install
+
+Run on the node server:
 
 ```bash
 git clone https://github.com/Trader1976/nodus-observatory.git
@@ -39,163 +51,176 @@ cd nodus-observatory
 sudo bash backend/install.sh
 ```
 
-Uusi asennus tunnistaa julkisen fingerprintin ja datahakemiston paikallisesta
-`nodus-cli status` -tulosteesta sekä tiedostojärjestelmän ja tavallisen levyn
-`findmnt`/`lsblk`-tiedoista. Myös käyttöjärjestelmän juurilevyllä oleva data on
-tuettu; erillistä 8 TB:n osiota ei vaadita. Verkkoliitäntä seuraa oletusreittiä.
-Nodus-palvelun pitää olla käynnissä, jotta tunnistus onnistuu. Yksityisiä avaimia
-tai Nodus-asetustiedostoa ei lueta. Tunnistuksen virhe pysäyttää asennuksen ennen
-palvelumuutoksia. LVM/RAID-laitteen SMART jää tuntemattomaksi automaattitilassa.
+A fresh install reads public information from `nodus-cli status` and filesystem
+information from `findmnt` / `lsblk`. It discovers the local fingerprint, data
+directory, mount and a directly identifiable physical disk. Data on the root
+filesystem is supported; a dedicated partition or particular disk capacity is
+optional. Network measurements follow the default route unless configured
+otherwise. Automatic SMART discovery for LVM/RAID or ambiguous devices remains
+unknown.
 
-Tarvittaessa kopioi `backend/config.example.json` repon ulkopuolelle, aseta oman
-koneesi `data_path`, `mount_path`, `cli_path` ja halutessasi `disk_device` sekä
-`rewards_source_db`, ja käytä `sudo bash backend/install.sh --config /polku/config.json`.
-`fingerprint: null` käyttää paikallisen noden status-tunnistetta. `mount_path` on
-datan todellinen liitoskohta (esimerkiksi `/`, jos erillistä dataosiota ei ole).
-Monitorin omat `state_dir`- ja `frontend_dir`-polut ovat asennuksessa kiinteät.
-Asenna node-data järjestelmähakemistoon: systemd-palvelun `ProtectHome=yes` rajaa
-kotihakemistot pois. SMART tarvitsee `smartctl`-ohjelman (paketti `smartmontools`);
-puuttuvat levymittaukset jäävät tuntemattomiksi.
+The installer validates settings before changing services. Put node data under a
+system directory: the service's `ProtectHome=yes` setting excludes home
+directories. The collector does not read private node identity files.
 
-Päivityksessä asennin säilyttää olemassa olevan
-`/etc/nodus-monitor/config.json`-tiedoston ja sen konekohtaiset arvot.
-`--config` on tarkoitettu vain ensimmäiseen asennukseen.
+| Purpose | Path |
+| --- | --- |
+| Application and frontend | `/opt/nodus-monitor` |
+| Local configuration | `/etc/nodus-monitor/config.json` |
+| Measurements, events and reward ledger | `/var/lib/nodus-monitor` |
+| Default HTTP listener | `127.0.0.1:8890` |
 
-## Asennus julkaisupaketista
+### Explicit first-install settings
 
-Aiemmin toimitettu 1.0.0-paketti sisältää alkuperäiset Nexus-asetukset. Uuteen
-asennukseen suositellaan yllä olevaa ajantasaista lähdekoodia. Vanhan paketin
-asennuskomennot (korvaa `USER@NODE_SERVER` omalla SSH-osoitteellasi):
+Copy `backend/config.example.json` outside the checkout. Set your `data_path`,
+`mount_path`, `cli_path` and, if needed, `disk_device` and `rewards_source_db`:
 
 ```bash
-scp nodus-observatory-1.0.0.tar.gz USER@NODE_SERVER:~/
-ssh USER@NODE_SERVER
-tar -xzf ~/nodus-observatory-1.0.0.tar.gz -C ~/
-cd ~/nodus-observatory-1.0.0
+sudo bash backend/install.sh --config /absolute/path/to/config.json
+```
+
+`fingerprint: null` uses the fingerprint observed from the local node.
+`mount_path` is the actual mount containing the data (for example `/`). The
+installer requires the standard monitor `state_dir` and `frontend_dir` paths.
+Keep machine-specific settings outside Git.
+
+## Update an installed monitor
+
+Run from a clean checkout on the node server, replacing the example path with
+your checkout directory:
+
+```bash
+cd /path/to/nodus-observatory
+git switch main
+git pull --ff-only origin main
 sudo bash backend/install.sh
 ```
 
-Asennin tarkistaa Noduksen dataosion, asentaa omat tiedostonsa ja käynnistää
-vain `nodus-monitor`-palvelut. Se säilyttää aiemman seurannan asetustiedoston
-päivityksessä. Nodus- ja PQ-NAS-palveluita ei käynnistetä uudelleen asennuksessa.
+The installer preserves `/etc/nodus-monitor/config.json` and collected history.
+It restarts only its own monitor services; the node and other server applications
+keep running. `--config` is for the first install. Edit an existing installation's
+configuration explicitly when needed.
 
-Asennuspolut:
+If an earlier installation came from an archive, clone this repository into a
+new directory and run the installer. It uses the existing monitor settings.
+These instructions use the current GitHub source and require no separate release
+archive.
 
-- Ohjelma: `/opt/nodus-monitor`
-- Asetukset: `/etc/nodus-monitor/config.json`
-- Mittaukset, tapahtumat ja palkkiokirjanpito: `/var/lib/nodus-monitor`
-- HTTP: `127.0.0.1:8890`
+The HTTP process may need a moment to start. Verify it with:
 
-## Avaa sivu
+```bash
+systemctl is-active nodus-monitor.service nodus-monitor-collect.timer
+curl -fsS --retry 5 --retry-connrefused --retry-delay 1 --max-time 10 \
+  http://127.0.0.1:8890/api/health
+```
 
-Aja **työpöytäkoneella** ja pidä tämä yhteys auki:
+After interface updates, reload the browser without using cached files
+(typically Ctrl+Shift+R on a desktop browser).
+
+## Open the dashboard
+
+When the browser is on another computer, run this **on that computer** and keep
+the SSH connection open:
 
 ```bash
 ssh -N -L 8890:127.0.0.1:8890 USER@NODE_SERVER
 ```
 
-Avaa selaimessa <http://127.0.0.1:8890>. Yhteys on SSH-tunnelissa.
-Uutta reitittimen porttiohjausta ei tarvita. Palvelu ei tarjoa internetiin
-avointa hallintapaneelia eikä ota vastaan noden hallintakomentoja.
+Replace `USER@NODE_SERVER` with your SSH account and server address. Open
+[http://127.0.0.1:8890](http://127.0.0.1:8890) in that computer's browser.
+If local port 8890 is occupied, use another local port, for example
+`-L 8891:127.0.0.1:8890`, and browse to port 8891.
 
-## Valinnainen etäkäyttö puhelimella
+This default needs no router port forwarding for the dashboard. For an optional
+HTTPS address usable from a phone or another network, follow the
+[Cloudflare Tunnel + Access guide](docs/remote-access.md). Each operator supplies
+their own domain, tunnel and access policy. The app has no built-in user login;
+remote access must use an authenticated proxy.
 
-Paikallinen oletusasennus toimii ilman Cloudflarea tai verkkotunnusta.
-Ylläpitäjä voi lisätä oman HTTPS-osoitteen Cloudflare Tunnelin ja Accessin kautta.
-Katso [etäkäytön määritys ja kirjautumisen tarkistukset](docs/remote-access.md).
-Pilvipalvelun tili, domain ja kirjautumissäännöt kuuluvat kyseiseen asennukseen.
-Sama käyttöliittymä ja API toimivat sekä localhostissa että suojatulla etäosoitteella.
+## Interface languages
 
-## Käyttöliittymän kielet / Interface languages
+The header's **FIN / ENG** controls switch all five pages immediately. The
+current page, chart range, event filter and reward year are retained. Finnish is
+the default. The preference is stored per browser and website; if storage is
+blocked, switching still works for the current page.
 
-Yläreunan FIN/ENG-painikkeet vaihtavat kaikkien viiden näkymän, kuvaajien,
-työkaluvihjeiden, virhetilojen ja tietoa-ikkunan kielen heti. Sivu, kuvaajan
-aikaväli, tapahtumasuodatin ja palkkiovuosi säilyvät vaihdossa. Valinta tallennetaan
-selaimen paikalliseen tallennustilaan kyseiselle osoitteelle. Jos tallennustila
-on estetty, kielivalinta toimii nykyisen sivun ajan. Ensimmäisen käynnin oletus
-on suomi; FIN/ENG-painikkeet toimivat myös puhelimella ja näppäimistöllä.
+Display numbers and dates follow the selected language. Report dates remain in
+the labelled **Europe/Helsinki** timezone, with UTC also included in exports.
+Machine identifiers, unrecognised original diagnostics and CSV columns remain
+stable. Token amounts retain their exact integer/decimal precision.
 
-The FIN/ENG buttons switch the complete interface between Finnish and English.
-The selected page, chart range, event filter and rewards year are preserved.
-Your preference is saved in this browser for this website; Finnish is the default.
-If browser storage is blocked, switching still works for the current page.
-Number and date formatting follows the selected language. Report dates remain
-in the explicitly labelled Europe/Helsinki timezone. Raw diagnostic messages,
-machine identifiers and the stable accounting CSV field names are preserved.
+## Enable history for future rewards
 
-Käännökset eivät muuta mittausdataa tai rahamäärien tarkkuutta. Näytön luvut ja
-päiväykset muotoillaan kielivalinnan mukaan; raporttien aikavyöhyke säilyy
-Europe/Helsinki-alueena. Alkuperäiset lokiviestit ja tekniset tunnisteet säilyvät
-lähteen mukaisina. CSV:n sarakenimet ja täsmälliset rahamäärät pysyvät samoina
-molemmilla kielillä, jotta kirjanpidon jatkokäsittely on vakaa.
-
-## Palkkiot: kytke tulevien maksujen historia
-
-Noduksen osoitehistoria on oletuksena pois päältä. Erillinen työkalu näyttää
-suunnitelman ja tekee muutoksen vain `--apply`-valitsimella:
+Nodus address-history indexing is off by default. The separate administrative
+helper shows a plan first and changes settings only with `--apply`:
 
 ```bash
 sudo python3 /opt/nodus-monitor/enable-reward-history.py
+```
+
+After reviewing the plan, apply it if you want future local payout history:
+
+```bash
 sudo python3 /opt/nodus-monitor/enable-reward-history.py --apply
 sudo nodus-cli status
 ```
 
-Työkalu varmuuskopioi `/etc/nodus.conf`-tiedoston, lisää
-`"addr_history_index": true` ja käynnistää **vain nodus-witness-palvelun kerran**
-uudelleen. Ketjudata ja identiteetti säilyvät. Tarkista käynnistyksen jälkeen,
-että node palaa synkroniin ja `fail_streak` on kunnossa. Jos asetus on jo päällä,
-työkalu ei muuta mitään eikä käynnistä palvelua uudelleen.
+The helper backs up `/etc/nodus.conf`, enables `"addr_history_index": true` and
+restarts **only nodus-witness, once**. Check that the node catches up and its
+`fail_streak` is healthy afterwards. If already enabled, the helper makes no
+changes and does not restart the service. Normal monitoring never enables the
+index or restarts Nodus.
 
-Historiassa ei ole takautuvaa täydennystä. Aktivointi kannattaa tehdä ennen
-ensimmäisiä palkkiomaksuja. Grace-jakso ja odottava kertymä eivät ole maksettuja
-palkkioita. Historialliset puuttuvat tiedot näkyvät puuttuvina.
+There is **no historical backfill**. Enable indexing before the first reward you
+want to preserve. Grace-period status and pending accrual are not received
+payouts; missing historical evidence remains missing.
 
-Palkkiot koskevat **omistajalompakon** vastaanottamia maksuja. Ne voivat sisältää
-myös saman omistajan muita rooleja; tämän storage-noden osuutta ei päätellä
-kokonaissummasta. Bondien palautukset pidetään erillään palkkioista.
+Rewards are payments received by the **owner wallet**. They may include other
+roles paid to the same owner; the source does not identify this storage node's
+share. Stake returns are separate from rewards.
 
-Palkkiot-sivulta ladataan valitun vuoden CSV. Alkuperäiset raw/tokenimäärät,
-lohko, tapahtumatunniste, UTC- ja Suomen aika, verkko sekä aineiston kattavuus
-säilyvät. Rahamäärät käsitellään täsmällisinä kokonais-/desimaalilukuina.
-Puuttuva euromääräinen arvostus näkyy puuttuvana, ei nollana. Nykyinen verkko on
-testnet; sovellus ei anna testnet-tokenille markkina-arvoa.
+The Rewards page exports the selected year as CSV: exact raw/token amounts,
+block/event identifiers, UTC and Helsinki timestamps, network label, source
+coverage and valuation evidence. Missing EUR valuations remain blank. The tool
+assigns no market value to testnet tokens and does not calculate tax liability
+or choose an income category.
 
-Euromääräisten arvostusten erillinen tuonti, lähteet ja muutoshistoria on kuvattu
-tiedostossa `rewards/README.md`. Raportti tuottaa aineistoa omaan kirjanpitoon;
-se ei laske verovelkaa tai luokittele tuloa automaattisesti.
+See [reward evidence and bookkeeping](rewards/README.md) for the source contract,
+manual valuation imports and audit history.
 
-## Mitä kerätään
+## Collected data and retention
 
-- Nodus CLI:n tilanne ja julkinen storage-tilakysely ilman identiteetin salaisia avaimia.
-- Oma ja verkon lohkokorkeus, lohkoero, grace, fail_streak, segmentit ja palvelut.
-- Palvelimen CPU, muisti, levytila, verkko- ja levyliikenne; SMART noin 15 min välein.
-- Enintään 300 luokiteltua journal-havaintoa keräyskerralla. Tämä ei ole täydellinen lokiarkisto.
-- Verkon julkiset Scan-tilastot noin 5 min välein ja paikallinen komiteakysely.
-- Valinnaiset todelliset palkkiomaksut paikallisesta Nodus-tietokannasta vain lukemalla.
+- Public CLI status and local storage-status queries, without private identity keys.
+- Local/network block heights, lag, grace, `fail_streak`, segments and services.
+- CPU, memory, filesystem usage, network and disk rates; SMART about every 15 minutes.
+- Up to 300 categorised journal observations per collection, not a full log archive.
+- Public Scan statistics about every five minutes and the local committee query.
+- Optional observed reward payouts, read from the existing Nodus database in read-only mode.
 
-Mittauksia kerätään noin minuutin välein. Pitkä tai aikakatkaistu kysely voi
-siirtää seuraavaa keräystä; tuoreus näkyy sivulla. Ensimmäisellä keräyksellä ei
-vielä ole kahden näytteen erotusta CPU-/siirtonopeuksille. Mittaushistoriaa
-säilytetään oletuksena 30 päivää. Palkkiokirjanpitoa ei poisteta tämän rajan mukana.
+The collector also checks optional PQ-NAS and cloudflared services when present;
+those applications are not required. Host, hardware and filesystem details come
+from local measurements, not a fixed server model or storage capacity.
 
-Sivun julkaistu esikatselu käyttää käyttäjän aiemmin toimittamia tilannekuvia.
-Esikatselun JSON-tiedostoja ei asenneta paikalliseen käyttöliittymään, eikä niiden
-avulla korvata epäonnistunutta reaaliaikaista keräystä. Julkaistu esikatselu ei
-ole yhteydessä kotiverkon palvelimeen.
+Collection normally runs once a minute. Slow or timed-out probes can delay the
+next sample. Rate measurements need two samples and are initially unknown.
+Measurement history defaults to 30 days; the reward ledger is retained separately.
+Unavailable network statistics do not prevent local node monitoring.
 
-## Tarkistukset ja lokit
+The static demo uses synthetic JSON fixtures, excluded from live installs. They
+cannot substitute for failed live collection. A preview banner identifies demo
+mode explicitly. Actual measurements come from the installed collector.
+
+## Health, logs and backups
 
 ```bash
 systemctl status nodus-monitor nodus-monitor-collect.timer --no-pager
 sudo journalctl -u nodus-monitor-collect -n 30 --no-pager
+sudo journalctl -u nodus-monitor -n 30 --no-pager
 curl -fsS http://127.0.0.1:8890/api/health
 ```
 
-Kerääjän tilatiedostoissa virhe on virhe, ei nolla tai terve tila. Puuttuvat
-ulkopuoliset verkkotilastot eivät estä oman noden seurantaa.
-
-Varmuuskopioi `/var/lib/nodus-monitor` ja mahdolliset arvostusten lähdeasiakirjat
-säännöllisesti. Erillisen SQLite-kirjanpidon johdonmukaisen varmuuskopion voi tehdä:
+Back up `/var/lib/nodus-monitor`, local settings and valuation evidence regularly.
+Use SQLite's backup API for a consistent copy of a live reward ledger:
 
 ```bash
 sudo python3 - <<'PY'
@@ -205,7 +230,7 @@ from datetime import datetime, timezone
 src = Path('/var/lib/nodus-monitor/reporting.sqlite3')
 dst = Path('/root/nodus-rewards-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '.sqlite3')
 if not src.is_file():
-    raise SystemExit('Palkkiokirjanpitoa ei vielä ole.')
+    raise SystemExit('The reward ledger does not exist yet.')
 with sqlite3.connect(src.as_uri() + '?mode=ro', uri=True) as source:
     with sqlite3.connect(dst) as target:
         source.backup(target)
@@ -214,17 +239,17 @@ print(dst)
 PY
 ```
 
-## Poistaminen
+## Stop monitoring
 
 ```bash
 sudo systemctl disable --now nodus-monitor.service nodus-monitor-collect.timer
 sudo systemctl stop nodus-monitor-collect.service
 ```
 
-Tämä pysäyttää vain seurannan. Säilytä kirjanpitotietokanta ja asetukset.
-Paketin poisto ei poista Nodus-dataa, muuta storage-rekisteröintiä tai vapauta bondia.
+Keep the accounting database and local configuration if you need them later.
+Stopping the monitor does not leave the Nodus storage role or release its bond.
 
-## Kehityksen tarkistukset
+## Development checks
 
 ```bash
 python3 -m unittest discover -s backend/tests -v
@@ -238,26 +263,27 @@ node tests/frontend-i18n.mjs dist
 bash -n backend/install.sh
 ```
 
-Lähdesopimus on tarkistettu asennetusta Nodus 0.26.7 / commit
-`24f93e6b709119a3013efacf3a374930c97871b7` -versiosta. Ohjelmiston päivitys voi
-muuttaa CLI-tekstiä tai tietokantaskeemaa; tuntematon kenttä jätetään tyhjäksi.
+GitHub Actions runs these checks. Tests use synthetic fixtures and temporary
+databases. They need no running Nodus node, root access or external network
+services. Frontend suites check rendering and interactions without a real
+browser; check visual changes in a browser as well during UI development.
 
+Documentation is maintained in pairs: update the English page and its `_fin.md`
+counterpart in the same change. `README-fi.md` remains a compatibility link.
+Keep command examples consistent and use documentation addresses, placeholders
+and synthetic identities in all committed examples.
 
-GitHub Actions suorittaa samat Python-testit, käyttöliittymän smoke- ja kielitestit sekä
-syntaksitarkistukset. Testit eivät tarvitse Nodus-nodea, juurioikeuksia tai
-ulkopuolisia verkkopalveluita; API-testit käyttävät paikallista testipalvelinta.
+## Repository layout
 
-## Repon rakenne
+| Directory | Contents |
+| --- | --- |
+| `backend/` | Collector, HTTP API, configuration discovery and systemd installer |
+| `dist/` | Frontend and explicitly synthetic demo JSON fixtures |
+| `docs/` | Deployment documentation in English and Finnish |
+| `rewards/` | Reward ledger, valuations, CSV export and source coverage |
+| `tests/` | Network, public-example and frontend regression checks |
+| `.github/workflows/` | Automated checks |
 
-| Hakemisto | Sisältö |
-|---|---|
-| `backend/` | Kerääjä, paikallinen HTTP-API, asetusesimerkki ja systemd-asennus |
-| `dist/` | Valmis käyttöliittymä ja staattisen esikatselun JSON-tilannekuvat |
-| `rewards/` | Palkkiot, arvostukset, CSV-vienti ja aineiston kattavuus |
-| `tests/` | Verkkoadapterin testit ja käyttöliittymän smoke-testi |
-| `.github/workflows/` | Automaattiset tarkistukset |
-
-Älä lisää repon tiedostoihin palvelimen mittaustietokantoja, lokiarkistoja,
-veroraportteja, `.env`-tiedostoja tai identiteettiavaimia. Niiden oletuspolut ja
-yleiset tiedostomuodot on rajattu pois `.gitignore`-tiedostossa. Palkkiokirjanpidon
-varmuuskopiot säilytetään erillään lähdekoodista.
+Keep server databases, logs, accounting exports, backups, `.env` files, private
+identity material, real operator addresses and per-machine settings outside this
+repository. `.gitignore` covers common local data and credential paths.

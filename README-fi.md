@@ -1,7 +1,7 @@
-# Nodus Observatory
+# Nodus Observatory documentation
 
-Ajantasaiset suomenkieliset asennus-, päivitys- ja palkkiokirjanpidon ohjeet ovat
-[README.md](README.md)-tiedostossa.
+[English documentation](README.md) · [Suomenkieliset ohjeet](README_fin.md)
 
-Paikallinen oletus on `http://127.0.0.1:8890`. Valinnainen suojattu käyttö
-puhelimella ja muilla laitteilla on kuvattu [etäkäyttöohjeessa](docs/remote-access.md).
+The complete Finnish guide is maintained at `README_fin.md`.
+Täydet suomenkieliset ohjeet ovat tiedostossa `README_fin.md`.
+This path is retained for existing links.
