@@ -1,0 +1,48 @@
+# Generated code and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+.DS_Store
+
+# Hosting configuration belongs to its own deployment environment
+.openai/
+
+# Local measurements, reports, exports and backups
+/runtime/
+/state/
+/data/
+/reports/
+/exports/
+/backups/
+*.sqlite*
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.log.*
+*.tar.gz
+
+# Credentials and identity material must never enter version control
+.env
+.env.*
+!.env.example
+.ssh/
+identity/
+credentials/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.seed
+*.sk
+*credentials*.json
+*secrets*.json
+
+# Installed per-machine configuration; keep config.example.json tracked
+/backend/config.json
+/config.json
