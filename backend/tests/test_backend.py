@@ -44,7 +44,7 @@ Resources
 Clock
   NTP synchronized:      yes   [OK]
 Config
-  external_ip:           83.146.239.12
+  external_ip:           203.0.113.10
 """.format(fp="ab" * 64, p2p="ab" * 32, owner="08" * 64)
 
 
