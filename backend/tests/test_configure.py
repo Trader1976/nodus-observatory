@@ -23,7 +23,7 @@ class ConfigureTests(unittest.TestCase):
         with patch("configure.command", side_effect=command), patch("configure.shutil.which", return_value="/usr/local/bin/nodus-cli"):
             return discover(DEFAULTS)
 
-    def test_uses_this_node_and_root_filesystem_not_nexus_defaults(self):
+    def test_discovers_local_identity_and_root_filesystem(self):
         with tempfile.TemporaryDirectory() as directory:
             config = self.discovery(directory)
             self.assertEqual(config["fingerprint"], "cd" * 64)

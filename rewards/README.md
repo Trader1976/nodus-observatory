@@ -1,5 +1,7 @@
 # Reward evidence and bookkeeping
 
+[English](README.md) | [Suomi](README_fin.md)
+
 The web server reads only the monitor's independent `reporting.sqlite3` database.
 The root collector opens the existing Nodus chain DB using SQLite `mode=ro`,
 `query_only=ON`, a read transaction, 200 ms busy timeout and 2 s query deadline.
@@ -35,7 +37,8 @@ contiguous run. Its last height must agree with `v2_blocks`' current tip in the
 same read snapshot. Index gaps start a new run. Every observed run is retained
 in the monitor ledger, and the CSV includes all its known runs.
 
-**The index is off by default.** Top-level `"addr_history_index": true` in
+**The index is off by default in the referenced Nodus version.** Top-level
+`"addr_history_index": true` in
 `/etc/nodus.conf` enables future history when the witness next starts with this
 configuration. There is no historical backfill. This monitor never enables the
 index or restarts Nodus itself. An administrator must make that separate choice
@@ -64,6 +67,9 @@ of all the owner's payouts to that storage node.
   raw/NODUS amounts, UTC and Europe/Helsinki timestamps, identifiers, valuation
   evidence, collection times, source coverage and testnet/mainnet label. An empty
   source has a `coverage_metadata` row with no fabricated amount.
+
+The collector currently labels its source as **testnet**. A label in a report
+does not establish that a token has market value.
 
 Year/month boundaries use `Europe/Helsinki`, including historical UTC offsets
 and DST. CSV includes UTC as well. No view claims an entire year complete based
@@ -108,10 +114,11 @@ batch is atomic. Annual EUR totals include only valued payouts and expose
 with zero. Summaries do not calculate tax liability, tax rates, income categories,
 FIFO gains or allowable expense deductions.
 
-[Verohallinto's current crypto guidance](https://www.vero.fi/syventavat-vero-ohjeet/ohje-hakusivu/48411/kryptovarojen-verotus/)
-was checked on 2026-10-18 (guidance issued 2025-12-18). That is background for
-preserving receipt times and valuation evidence; this tool does not assume that
-Nodus storage-service remuneration is legally the same as passive staking.
+This is an evidence and reporting tool, not tax advice. Consult the applicable
+rules for your jurisdiction; Finnish users can refer to
+[Verohallinto's crypto guidance](https://www.vero.fi/syventavat-vero-ohjeet/ohje-hakusivu/48411/kryptovarojen-verotus/).
+The tool does not classify storage-service remuneration as passive staking or
+determine its legal or tax treatment.
 
 The SQLite ledger and any valuation evidence must be included in normal backups
 if they are to be retained for bookkeeping. They are independent of the Nodus

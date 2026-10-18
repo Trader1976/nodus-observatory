@@ -203,7 +203,9 @@ for (const lang of ['fi', 'en']) {
       for (const label of untranslated[page]) assert(!markup.includes(label), `${page}: fixed UI label is translated: ${label}`);
     }
   }
-  assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /Tallennettu tilanne/ : /Saved snapshot/);
+  assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /Synteettinen demo/ : /Synthetic demo/);
+  assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /ei palvelinmittauksia/ : /no server measurements/);
+  assert.match(elements.get('#source-detail').textContent, lang === 'fi' ? /EI LIVE-DATAA/ : /NO LIVE DATA/);
   const shellText = nodes.filter(node => node.dataset.i18n).map(node => node.textContent).join('\n');
   assert.match(shellText, lang === 'fi' ? /Vain luku/ : /Read.only/);
   assert.match(shellText, lang === 'fi' ? /Tieto ensin/ : /Data first/);

@@ -61,8 +61,9 @@ for (const page of ['overview', 'storage', 'network', 'rewards', 'events']) {
   assert(markup.length > 500, `${page} rendered content`);
   assert(!/undefined|NaN|Infinity/.test(markup), `${page} has no invalid numeric values`);
 }
-assert.match(elements.get('#source-label').textContent, /Tallennettu tilanne/);
-assert.match(elements.get('#source-label').textContent, /live-yhteys odottaa/);
+assert.match(elements.get('#source-label').textContent, /Synteettinen demo/);
+assert.match(elements.get('#source-label').textContent, /ei palvelinmittauksia/);
+assert.match(elements.get('#source-detail').textContent, /DEMO/);
 
 // Selecting another year must not destroy the retained 2026 snapshot.
 context.location.hash = '#rewards';
@@ -121,7 +122,7 @@ assert.match(resources, /Other server/);
 assert.match(resources, /16 loogista prosessoria/);
 assert.match(resources, /box &lt;test&gt;/);
 assert.match(resources, /width:50%/);
-assert(!/Nexus|PowerEdge R230/.test(resources));
+assert(!resources.includes('demo-node'), 'live resources do not fall back to preview hardware');
 const disk = vm.runInContext('diskPanel()', context);
 assert.match(disk, /\/srv\/other-node\/data/);
 assert(!/8 TB|ext4/.test(disk));
