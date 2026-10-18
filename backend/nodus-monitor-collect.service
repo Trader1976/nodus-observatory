@@ -3,7 +3,6 @@ Description=Collect bounded read-only Nodus and server metrics
 After=network-online.target
 Wants=network-online.target
 RequiresMountsFor=/var/lib/nodus
-ConditionPathIsMountPoint=/var/lib/nodus
 
 [Service]
 Type=oneshot
@@ -24,5 +23,5 @@ ProtectKernelModules=yes
 ProtectControlGroups=yes
 RestrictSUIDSGID=yes
 ReadWritePaths=/var/lib/nodus-monitor
-ReadOnlyPaths=/var/lib/nodus
+ReadOnlyPaths=-/var/lib/nodus
 
