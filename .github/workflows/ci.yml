@@ -28,7 +28,10 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Frontend syntax and smoke test
         run: |
+          node --check dist/i18n.js
+          node --check dist/app-translations.js
           node --check dist/app.js
           node tests/frontend-smoke.mjs dist
+          node tests/frontend-i18n.mjs dist
       - name: Installer syntax
         run: bash -n backend/install.sh
