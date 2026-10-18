@@ -105,6 +105,19 @@ vm.runInContext("state.dashboard.services=[{name:'nodus-core',active:'active',en
 assert.match(vm.runInContext('servicesPanel()', context), /Käynnissä/);
 
 // A server CSV error must stop export; never silently replace it with a partial view.
+vm.runInContext(`state.dashboard.resources={hostname:'box <test>',hardware_model:'Other server',cpu_count:16,
+  load1:8,disk_total_bytes:2199023255552,disk_free_bytes:1099511627776};
+  state.dashboard.monitor={data_path:'/srv/other-node/data'};`, context);
+const resources = vm.runInContext('resourcesPanel()', context);
+assert.match(resources, /Other server/);
+assert.match(resources, /16 loogista prosessoria/);
+assert.match(resources, /box &lt;test&gt;/);
+assert.match(resources, /width:50%/);
+assert(!/Nexus|PowerEdge R230/.test(resources));
+const disk = vm.runInContext('diskPanel()', context);
+assert.match(disk, /\/srv\/other-node\/data/);
+assert(!/8 TB|ext4/.test(disk));
+
 const oldBlob = csvBlob;
 context.fetch = async () => ({ok:false});
 vm.runInContext("state.mode='live'", context);
