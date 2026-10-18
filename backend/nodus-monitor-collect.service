@@ -1,0 +1,28 @@
+[Unit]
+Description=Collect bounded read-only Nodus and server metrics
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/var/lib/nodus
+ConditionPathIsMountPoint=/var/lib/nodus
+
+[Service]
+Type=oneshot
+User=root
+Group=nodus-monitor
+WorkingDirectory=/opt/nodus-monitor
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /opt/nodus-monitor/collector.py --config /etc/nodus-monitor/config.json
+TimeoutStartSec=150
+UMask=0027
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+ReadWritePaths=/var/lib/nodus-monitor
+ReadOnlyPaths=/var/lib/nodus
+

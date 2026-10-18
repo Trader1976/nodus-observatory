@@ -1,0 +1,31 @@
+[Unit]
+Description=Nodus monitoring dashboard (read-only, loopback)
+After=network.target nodus-monitor-collect.service
+
+[Service]
+Type=simple
+User=nodus-monitor
+Group=nodus-monitor
+WorkingDirectory=/opt/nodus-monitor
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /opt/nodus-monitor/server.py --config /etc/nodus-monitor/config.json
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadOnlyPaths=/var/lib/nodus-monitor
+InaccessiblePaths=-/var/lib/nodus -/etc/nodus.conf -/etc/pqnas -/srv/pqnas
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+{
+  "state_dir": "/var/lib/nodus-monitor",
+  "data_path": "/var/lib/nodus/data",
+  "mount_path": "/var/lib/nodus",
+  "fingerprint": "e213f777f2a95d4f83a23e599cfe2a3d834b24fe38f7ff6e5701d65a22cd43e04864b361d1b9dc39caf030dbb271efd02cf47043979525491bdaccf8bd2ba8a6",
+  "cli_path": "/usr/local/bin/nodus-cli",
+  "disk_device": "sda",
+  "network_interface": "eno1",
+  "history_days": 30,
+  "bind_host": "127.0.0.1",
+  "bind_port": 8890,
+  "allowed_hosts": ["127.0.0.1", "localhost", "::1"],
+  "frontend_dir": "/opt/nodus-monitor/frontend",
+  "network_enabled": true,
+  "rewards_enabled": true,
+  "rewards_source_db": "/var/lib/nodus/data/witness_a48d1a785500a1cdecd739ecd53ef0e9.db"
+}
