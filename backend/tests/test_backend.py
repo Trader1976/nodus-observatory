@@ -45,7 +45,7 @@ Clock
   NTP synchronized:      yes   [OK]
 Config
   external_ip:           83.146.239.12
-""".format(fp=DEFAULTS["fingerprint"], p2p=DEFAULTS["fingerprint"][:64], owner="08" * 64)
+""".format(fp="ab" * 64, p2p="ab" * 32, owner="08" * 64)
 
 
 class ParserTests(unittest.TestCase):
@@ -133,6 +133,23 @@ class ParserTests(unittest.TestCase):
             self.assertIsNone(result["resources"]["disk_free_bytes"])
             self.assertFalse(result["resources"]["disk_mount_ok"])
             self.assertEqual(json.loads((Path(directory) / "snapshot.json").read_text())["chain"]["behind"], None)
+
+    def test_storage_query_uses_local_identity_and_rejects_mismatched_override(self):
+        for override in (None, "fe" * 64):
+            with self.subTest(override=override), tempfile.TemporaryDirectory() as directory:
+                config = dict(DEFAULTS, state_dir=directory, fingerprint=override, network_enabled=False, rewards_enabled=False)
+                calls = []
+                def command(args, *unused):
+                    calls.append(args)
+                    return {"output": STATUS if args == [config["cli_path"], "status"] else "", "returncode": 0, "error": None}
+                with patch("collector.run_command", side_effect=command), patch("collector.os.path.ismount", return_value=False), patch("collector.read_counters", return_value=({}, {})):
+                    result = collect(config)
+                storage_calls = [args for args in calls if "--fp" in args]
+                if override is None:
+                    self.assertEqual(storage_calls[0][-1], "ab" * 64)
+                else:
+                    self.assertEqual(storage_calls, [])
+                    self.assertTrue(any("differs" in error["message"] for error in result["quality"]["errors"]))
 
 
 class ApiTests(unittest.TestCase):

@@ -21,14 +21,13 @@ import sqlite3
 import subprocess
 import time
 
-DEFAULT_FP = "e213f777f2a95d4f83a23e599cfe2a3d834b24fe38f7ff6e5701d65a22cd43e04864b361d1b9dc39caf030dbb271efd02cf47043979525491bdaccf8bd2ba8a6"
 DEFAULTS = {
     "state_dir": "/var/lib/nodus-monitor",
     "data_path": "/var/lib/nodus/data",
     "mount_path": "/var/lib/nodus",
-    "fingerprint": DEFAULT_FP,
+    "fingerprint": None,
     "cli_path": "/usr/local/bin/nodus-cli",
-    "disk_device": "sda",
+    "disk_device": None,
     "network_interface": None,
     "history_days": 30,
     "bind_host": "127.0.0.1",
@@ -51,9 +50,9 @@ def load_config(path):
     if not isinstance(supplied, dict):
         raise ValueError("configuration must be an object")
     config.update(supplied)
-    if not re.fullmatch(r"[a-fA-F0-9]{128}", config["fingerprint"]):
+    if config["fingerprint"] is not None and not re.fullmatch(r"[a-fA-F0-9]{128}", config["fingerprint"]):
         raise ValueError("fingerprint must contain 128 hexadecimal characters")
-    if not re.fullmatch(r"[a-zA-Z0-9_.-]+", config["disk_device"]):
+    if config["disk_device"] is not None and not re.fullmatch(r"[a-zA-Z0-9_.-]+", config["disk_device"]):
         raise ValueError("invalid disk_device")
     if config["network_interface"] and not re.fullmatch(r"[a-zA-Z0-9_.:-]+", config["network_interface"]):
         raise ValueError("invalid network_interface")
@@ -250,7 +249,12 @@ def read_counters(config):
         key, value = line.split(":", 1)
         mem[key] = int(value.strip().split()[0]) * 1024
     resources = {"memory_total_bytes": mem.get("MemTotal"), "memory_available_bytes": mem.get("MemAvailable"),
-                 "load1": os.getloadavg()[0], "cpu_count": os.cpu_count()}
+                 "load1": os.getloadavg()[0], "cpu_count": os.cpu_count(), "hostname": os.uname().nodename,
+                 "hardware_model": None}
+    try:
+        resources["hardware_model"] = Path("/sys/class/dmi/id/product_name").read_text().strip() or None
+    except OSError:
+        pass
     total, available = resources["memory_total_bytes"], resources["memory_available_bytes"]
     resources["memory_used_percent"] = round(100 * (total - available) / total, 2) if total and available is not None else None
     interface = config.get("network_interface")
@@ -269,6 +273,8 @@ def read_counters(config):
             counters["network_rx"] = resources["network_rx_bytes"] = int(values[0])
             counters["network_tx"] = resources["network_tx_bytes"] = int(values[8])
     try:
+        if not config.get("disk_device"):
+            return resources, counters
         stat = [int(value) for value in (Path("/sys/class/block") / config["disk_device"] / "stat").read_text().split()]
         counters.update(disk_read=stat[2] * 512, disk_write=stat[6] * 512, disk_io_ms=stat[9])
     except (FileNotFoundError, IndexError, ValueError):
@@ -424,7 +430,16 @@ def collect(config):
         snapshot["node"]["fingerprint"] = config["fingerprint"]
     if status is not None and snapshot["chain"]["height"] is None:
         errors.append({"source": "nodus-status", "message": "status output did not contain a parseable height"})
-    extra = probe("storage-status", [config["cli_path"], "-s", "127.0.0.1", "storage", "status", "--fp", config["fingerprint"]], 15)
+    local_fp = snapshot["node"]["fingerprint"]
+    configured_fp = config.get("fingerprint")
+    identity_matches = not configured_fp or not local_fp or configured_fp.lower() == local_fp.lower()
+    extra = None
+    if not identity_matches:
+        errors.append({"source": "storage-status", "message": "configured fingerprint differs from the local node"})
+    elif isinstance(local_fp, str) and re.fullmatch(r"[a-fA-F0-9]{128}", local_fp):
+        extra = probe("storage-status", [config["cli_path"], "-s", "127.0.0.1", "storage", "status", "--fp", local_fp], 15)
+    else:
+        errors.append({"source": "storage-status", "message": "local node fingerprint unavailable"})
     if extra:
         parse_storage(extra, snapshot)
     services = probe("services", ["/usr/bin/systemctl", "show", *[name + ".service" for name in SERVICES], "--property=Id,ActiveState,UnitFileState", "--no-pager"])
@@ -454,7 +469,7 @@ def collect(config):
         errors.append({"source": "data-disk", "message": "expected Nodus data mount is absent"})
     smart = previous.get("smart", {})
     now = time.time()
-    if now - smart.get("sample_epoch", 0) >= 900:
+    if config.get("disk_device") and now - smart.get("sample_epoch", 0) >= 900:
         output = probe("smart", ["/usr/sbin/smartctl", "-j", "-H", "-A", "/dev/" + config["disk_device"]], 10, accept_smart=True)
         if output:
             try:
@@ -482,7 +497,8 @@ def collect(config):
         errors.append({"source": "journal", "message": "invalid previous journal timestamp"})
     snapshot["quality"] = {"partial": bool(errors), "errors": errors}
     snapshot["monitor"] = {"history_days": config["history_days"], "collection_interval_seconds": 60,
-                           "event_sampling_limit": 300, "event_window_seconds": 600}
+                           "event_sampling_limit": 300, "event_window_seconds": 600,
+                           "data_path": config["data_path"], "mount_path": config["mount_path"]}
     if config.get("network_enabled", True):
         try:
             network = importlib.import_module("network")
