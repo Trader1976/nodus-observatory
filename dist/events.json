@@ -1,0 +1,35 @@
+{
+  "events": [
+    {
+      "timestamp": "2026-10-18T05:00:50+00:00",
+      "severity": "info",
+      "source": "status",
+      "message": "Storage ACTIVE, storage-joukon jäsen. Grace-jakso päättyy lohkorajalla 257040."
+    },
+    {
+      "timestamp": "2026-10-18T03:22:18+00:00",
+      "severity": "info",
+      "source": "status",
+      "message": "Node saavutti verkon: korkeus 250088, lohkoero 0."
+    },
+    {
+      "timestamp": "2026-10-17T14:04:59.712410+00:00",
+      "severity": "info",
+      "source": "systemd",
+      "message": "Witness-palvelu käynnistettiin uudelleen. Lohkolataus nopeutui tämän jälkeen."
+    },
+    {
+      "timestamp": "2026-10-17T13:34:11.457370+00:00",
+      "severity": "warning",
+      "source": "nodus-witness",
+      "message": "Alkusynkronointi päättyi korkeudessa 3582; verkko oli huomattavasti edellä."
+    },
+    {
+      "timestamp": "2026-10-17T13:34:09.695303+00:00",
+      "severity": "warning",
+      "source": "nodus-witness",
+      "message": "Kahden vertaisen lohkolataus aikakatkaistiin (15 s)."
+    }
+  ],
+  "preview": true
+}

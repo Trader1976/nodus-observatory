@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-18T05:00:50+00:00",
+  "stale_after_seconds": 180,
+  "preview": true,
+  "source_label": "Käyttäjän vahvistama tilanne · 18.10.2026 klo 08.00",
+  "node": {
+    "fingerprint": "e213f777f2a95d4f83a23e599cfe2a3d834b24fe38f7ff6e5701d65a22cd43e04864b361d1b9dc39caf030dbb271efd02cf47043979525491bdaccf8bd2ba8a6",
+    "p2p_id": "e213f777f2a95d4f83a23e599cfe2a3d834b24fe38f7ff6e5701d65a22cd43e0",
+    "version": "0.26.7",
+    "commit": "24f93e6b709119a3013efacf3a374930c97871b7",
+    "owner": "08ee14726d5791299490afa560164c3df74c7684da95ae2eb3a42835ca533266445344253f91178d4e81717fd0f0b0fee3ecdc5f4fb7f92c6add0973755983e0",
+    "external_ip": "83.146.239.12",
+    "hostname": "nexus"
+  },
+  "chain": {
+    "height": 250688,
+    "network_height": 250688,
+    "behind": 0,
+    "generation": 4,
+    "chain_id": "a48d1a785500a1cdecd739ecd53ef0e95b1dc4a7a300f49176a7fa25ae176114",
+    "sync_ok": true
+  },
+  "storage": {
+    "registered": true,
+    "status": "ACTIVE",
+    "bond_raw": "100000000000000",
+    "registered_height": 250174,
+    "fail_streak": 0,
+    "grace_until": 257040,
+    "in_grace": true,
+    "grace_epochs_left": 9,
+    "epoch_start": 250560,
+    "epoch_end": 251280,
+    "members": 4,
+    "is_member": true,
+    "eligible_segments": 0,
+    "eligible_blocks": 0,
+    "complete_segments": 0,
+    "segment_bytes": 175112192
+  },
+  "resources": {
+    "disk_total_bytes": 7935703698637,
+    "disk_free_bytes": 7913369868698,
+    "disk_used_bytes": 22333829939,
+    "chain_db_bytes": 21152713933,
+    "cpu_percent": null,
+    "load1": 0.01,
+    "memory_total_bytes": 20830591386,
+    "memory_available_bytes": 19864223744,
+    "network_rx_bps": null,
+    "network_tx_bps": null,
+    "disk_read_bps": null,
+    "disk_write_bps": null,
+    "disk_util_percent": null,
+    "temperature_c": null,
+    "smart_passed": null
+  },
+  "services": [
+    {
+      "name": "nodus-core",
+      "active": "active",
+      "enabled": "enabled"
+    },
+    {
+      "name": "nodus-storage",
+      "active": "active",
+      "enabled": "enabled"
+    },
+    {
+      "name": "nodus-witness",
+      "active": "active",
+      "enabled": "enabled"
+    }
+  ],
+  "clock": {
+    "ntp_synchronized": true
+  },
+  "quality": {
+    "partial": true,
+    "errors": [],
+    "note": "Tallennettu tilanne. Resurssimäärät ovat status-tulosteen pyöristettyjä arvoja, eivät live-mittauksia."
+  }
+}

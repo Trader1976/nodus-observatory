@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-10-18T05:00:50+00:00",
+  "available": false,
+  "stale": false,
+  "source": "Julkisen rajapinnan vastausta ei ole vielä tarkistettu nexus-palvelimelta",
+  "stats": null,
+  "tps": null,
+  "committee": {
+    "height": 250689,
+    "count": 8,
+    "seats": []
+  },
+  "errors": [],
+  "preview": true
+}
