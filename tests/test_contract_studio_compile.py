@@ -26,9 +26,10 @@ class CompileBundleTests(unittest.TestCase):
         self.source.write_text("// SPDX-License-Identifier: MIT\npragma solidity =0.8.30;\ncontract ObservatoryEscrow {}\n")
         self.output = self.root / "result"
 
-    def compiler(self, *, version=COMPILER.COMPILER_VERSION + ".Linux.g++", result=None, body=None):
+    def compiler(self, *, version=COMPILER.COMPILER_VERSION + ".Linux.g++", result=None, body=None,
+                 contract_name=COMPILER.CONTRACT_NAME):
         if result is None:
-            result = {"contracts": {COMPILER.SOURCE_NAME: {COMPILER.CONTRACT_NAME: {
+            result = {"contracts": {f"{contract_name}.sol": {contract_name: {
                 "abi": [{"type": "constructor", "inputs": [], "stateMutability": "nonpayable"}],
                 "evm": {"bytecode": {"object": "60006000", "linkReferences": {}},
                         "deployedBytecode": {"object": "6000", "linkReferences": {}}},
@@ -42,6 +43,7 @@ class CompileBundleTests(unittest.TestCase):
             " assert request['settings']['evmVersion']=='prague'\n"
             " assert request['settings']['optimizer']=={'enabled':True,'runs':200}\n"
             " assert '--no-import-callback' in sys.argv\n"
+            f" assert set(request['sources'])=={{{(contract_name + '.sol')!r}}}\n"
             f" print({json.dumps(json.dumps(result))})\n"
         )))
         script.chmod(0o755)
@@ -63,6 +65,32 @@ class CompileBundleTests(unittest.TestCase):
         for name, details in manifest["files"].items():
             self.assertEqual(COMPILER.digest((self.output / name).read_bytes()), details["sha256"])
         self.assertFalse(manifest["compiler"]["matches_documented_official_binary"])
+
+    def test_documents_contract_uses_explicit_source_and_artifact_names(self):
+        self.source.write_text("pragma solidity =0.8.30; contract ObservatoryDocuments {}")
+        manifest = COMPILER.compile_bundle(self.source, self.compiler(contract_name="ObservatoryDocuments"),
+                                           self.output, contract_name="ObservatoryDocuments")
+        self.assertEqual(manifest["contract"], "ObservatoryDocuments")
+        self.assertEqual((self.output / "ObservatoryDocuments.sol").read_bytes(), self.source.read_bytes())
+        self.assertEqual((self.output / "ObservatoryDocuments.creation.hex").read_text(), "0x60006000\n")
+        self.assertTrue((self.output / "ObservatoryDocuments.abi.json").is_file())
+        self.assertFalse(any("ObservatoryEscrow" in path.name for path in self.output.iterdir()))
+
+    def test_unsupported_contract_names_fail_before_reading_source_or_running_compiler(self):
+        for name in ("Other", "../ObservatoryDocuments", "ObservatoryDocuments.sol", "ObservatoryDocuments\n", "", None, []):
+            with self.subTest(name=name), self.assertRaisesRegex(COMPILER.CompileError, "Unsupported contract"):
+                COMPILER.compile_bundle("/missing/source", "/missing/compiler", self.output, contract_name=name)
+        self.assertFalse(self.output.exists())
+
+    def test_cli_rejects_arbitrary_contract_names(self):
+        completed = subprocess.run(
+            [sys.executable, str(ROOT / "tools/contract-studio/compile.py"), str(self.source),
+             "--contract", "Other", "--solc", "/missing/compiler", "--out", str(self.output)],
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("invalid choice", completed.stderr)
+        self.assertFalse(self.output.exists())
 
     def test_rejects_stock_solc_and_wrong_nodus_revision(self):
         for version in ["0.8.30+commit.73712a01.Linux.g++", "0.8.31+nodus.addr256.commit.73712a01", "0.8.30+nodus.addr256.commit.deadbeef"]:
@@ -194,6 +222,23 @@ class CompileBundleTests(unittest.TestCase):
         self.assertEqual(manifest["source_sha256"], COMPILER.digest(generated.stdout))
         second = self.root / "second-generated-bundle"
         repeated = COMPILER.compile_bundle(self.source, os.environ["NODUS_STUDIO_SOLC"], second)
+        self.assertEqual(manifest, repeated)
+
+    @unittest.skipUnless(os.environ.get("NODUS_STUDIO_SOLC"), "Optional real Nodus compiler not provided")
+    def test_real_document_registry_matches_the_bundled_public_artifact(self):
+        self.source.write_bytes((ROOT / "contracts/ObservatoryDocuments.sol").read_bytes())
+        bundled = json.loads((ROOT / "dist/document-registry.json").read_text())
+        manifest = COMPILER.compile_bundle(self.source, os.environ["NODUS_STUDIO_SOLC"], self.output,
+                                           contract_name="ObservatoryDocuments")
+        self.assertEqual(json.loads((self.output / "compiler-diagnostics.json").read_text()), [])
+        self.assertEqual(manifest["contract"], "ObservatoryDocuments")
+        self.assertEqual(manifest["source_sha256"], bundled["sourceSha256"])
+        self.assertEqual(json.loads((self.output / "ObservatoryDocuments.abi.json").read_text()), bundled["abi"])
+        self.assertEqual((self.output / "ObservatoryDocuments.creation.hex").read_text().strip(), bundled["creationBytecode"])
+        self.assertEqual((self.output / "ObservatoryDocuments.runtime.hex").read_text().strip(), bundled["runtimeBytecode"])
+        self.assertFalse(any("ObservatoryEscrow" in path.name for path in self.output.iterdir()))
+        repeated = COMPILER.compile_bundle(self.source, os.environ["NODUS_STUDIO_SOLC"], self.root / "registry-two",
+                                           contract_name="ObservatoryDocuments")
         self.assertEqual(manifest, repeated)
 
 

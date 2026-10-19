@@ -10,10 +10,15 @@ import assert from 'node:assert/strict';
 
 const dist = path.resolve(process.argv[2] || path.join(import.meta.dirname, '../dist'));
 const shell = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-const scripts = ['i18n.js', 'app-translations.js', 'contract-studio-core.js',
-  'contract-studio-i18n.js', 'contract-studio.js', 'app.js'];
-assert.deepEqual([...shell.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]), scripts,
-  'language messages load before the app, with no external script dependency');
+const scripts = [...shell.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]);
+assert.equal(scripts[0],'i18n.js','language initializes first');
+assert.equal(scripts.at(-1),'app.js','all feature modules load before app routing');
+for(const script of ['app-translations.js','contract-studio-core.js','contract-studio-i18n.js','contract-studio.js',
+  'document-notary-core.js','document-notary-i18n.js','document-notary.js'])assert(scripts.includes(script),`shipped shell loads ${script}`);
+assert(scripts.every(script=>/^[a-z0-9-]+\.js$/.test(script)),'no external script dependency');
+assert(scripts.indexOf('contract-studio-core.js')<scripts.indexOf('contract-studio.js'));
+assert(scripts.indexOf('document-notary-core.js')<scripts.indexOf('document-notary.js'));
+
 
 const apiFiles = {
   '/api/dashboard': 'snapshot.json', '/api/history': 'history.json',
@@ -166,17 +171,18 @@ for (const [status, fi, en] of [
 language.setLanguage('fi');
 
 const navTitles = {
-  fi: ['Yleiskuva', 'Tallennustila', 'Verkko', 'Palkkiot', 'Tapahtumat', 'Sopimusstudio'],
-  en: ['Overview', 'Storage', 'Network', 'Rewards', 'Events', 'Contract Studio'],
+  fi: ['Yleiskuva', 'Tallennustila', 'Verkko', 'Palkkiot', 'Tapahtumat', 'Sopimusstudio', 'Escrow-esimerkki'],
+  en: ['Overview', 'Storage', 'Network', 'Rewards', 'Events', 'Contract Studio', 'Escrow example'],
 };
-const routeNames = ['overview', 'storage', 'network', 'rewards', 'events', 'contracts'];
+const routeNames = ['overview', 'storage', 'network', 'rewards', 'events', 'contracts', 'contracts-escrow'];
 const untranslated = {
   overview: ['Kaikki olennainen.', 'Ketjun korkeus', 'Epäonnistumisputki', 'Palvelimen voimavarat', 'Viimeisimmät tapahtumat'],
   storage: ['Tilaa verkon muistille.', 'Arkiston tämänhetkinen tilanne', 'Valmiit segmentit', 'Levyn toimintakunto', 'Peräkkäiset epäonnistumiset'],
   network: ['Verkon rytmi.', 'Verkon korkeus', 'Transaktioita sekunnissa', 'Ketjun eheys', 'Validaattorikomitea'],
   rewards: ['Lompakon kaikki palkkiot.', 'Lataa CSV', 'Maksettu kerätyllä ajalla', 'Euroarvostukset', 'Kerätyt maksut', 'Maksuhistorian lähteet'],
   events: ['Jäljet kertovat', 'Kaikki tapahtumat', 'Huomiot &amp; virheet', 'Mitä seuranta kertoo?', 'Lohkoero tarvitsee myös kontekstin.'],
-  contracts: ['Paikallinen simulaatio', 'Sopimusstudio'],
+  contracts: ['Asiakirjan leimaus', 'Tarkista asiakirja'],
+  'contracts-escrow': ['Paikallinen simulaatio', 'Sopimusstudio'],
 };
 const fiMarkup = new Map();
 for (const lang of ['fi', 'en']) {
@@ -276,7 +282,7 @@ for (const lang of ['fi', 'en']) {
   assert(!storageMarkup.includes(language.t('Oma node ei ole mukana')));
   assert.match(storageMarkup, /— %/, 'missing height cannot produce a zero epoch progress');
   assert.match(run('network()'), lang === 'fi' ? /Tila ei saatavilla/ : /Status unavailable/);
-  for (const page of routeNames.filter(page => page !== 'contracts')) {
+  for (const page of routeNames.filter(page => !page.startsWith('contracts'))) {
     context.location.hash = `#${page}`;
     run('render()');
     const markup = elements.get('#page-content').innerHTML;
@@ -640,4 +646,4 @@ blocked.context.NodusI18n.setLanguage('en');
 assert.equal(blocked.context.NodusI18n.language(), 'en');
 assert.match(blocked.elements.get('#breadcrumb-page').textContent, /Overview/);
 
-console.log('Frontend i18n: FIN/ENG shell and 6 routes, persistence, unavailable storage, locale precision, retained view state and errors PASS.');
+console.log('Frontend i18n: FIN/ENG shell and 7 routes, persistence, unavailable storage, locale precision, retained view state and errors PASS.');

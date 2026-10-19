@@ -8,104 +8,8 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
 const dist = path.resolve(process.argv[2] || path.join(import.meta.dirname, '../dist'));
-const shell = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-const scripts = [...shell.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]);
-const fixtures = {'/api/dashboard':'snapshot.json','/api/history':'history.json',
-  '/api/network':'network.json','/api/rewards':'rewards.json','/api/events':'events.json'};
-const decode = value => value.replace(/&quot;/g,'"').replace(/&#39;/g,"'")
-  .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
-
-// A small tree implements only the browser APIs used by this application. It
-// deliberately retains disabled controls and user-supplied text as real values.
-function node(tag = 'div', attributes = {}, parent = null) {
-  const attrs = {...attributes};
-  const listeners = new Map();
-  let markup = '';
-  let classes = new Set((attrs.class || '').split(/\s+/).filter(Boolean));
-  const el = {
-    tagName:tag.toUpperCase(), parentElement:parent, children:[], style:{}, dataset:{},
-    value:attrs.value || '', name:attrs.name || '', checked:Object.hasOwn(attrs,'checked'),
-    disabled:Object.hasOwn(attrs,'disabled'), hidden:Object.hasOwn(attrs,'hidden'),
-    textContent:'', scrollLeft:0,
-    setAttribute(key,value) {attrs[key]=String(value); if(key==='disabled')this.disabled=true;},
-    getAttribute(key) {return attrs[key]??null;},
-    removeAttribute(key) {delete attrs[key];if(key==='disabled')this.disabled=false;},
-    classList:{add(name){classes.add(name);},remove(name){classes.delete(name);},contains(name){return classes.has(name);},
-      toggle(name,force){const yes=force===undefined?!classes.has(name):force;if(yes)classes.add(name);else classes.delete(name);return yes;}},
-    addEventListener(type,handler){if(!listeners.has(type))listeners.set(type,[]);listeners.get(type).push(handler);},
-    removeEventListener(type,handler){listeners.set(type,(listeners.get(type)||[]).filter(item=>item!==handler));},
-    dispatchEvent(event){for(const handler of listeners.get(event.type)||[])handler.call(this,event);return true;},
-    async fire(type,extra={}) {
-      const event={type,target:this,currentTarget:this,key:'',clientX:0,clientY:0,
-        preventDefault(){this.defaultPrevented=true;},stopPropagation(){this.stopped=true;},...extra};
-      if(this.disabled&&type==='click')return event;
-      for(const handler of listeners.get(type)||[])await handler.call(this,event);
-      await this[`on${type}`]?.(event);
-      return event;
-    },
-    click(){return this.fire('click');},focus(){this.focused=true;},
-    appendChild(child){child.parentElement=this;this.children.push(child);return child;},
-    remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(child=>child!==this);},
-    querySelectorAll(selector){return descendants(this).filter(child=>matches(child,selector));},
-    querySelector(selector){return this.querySelectorAll(selector)[0]||null;},
-    closest(selector){let cursor=this;while(cursor){if(matches(cursor,selector))return cursor;cursor=cursor.parentElement;}return null;},
-    contains(other){return this===other||descendants(this).includes(other);},
-    getBoundingClientRect(){return {left:0,top:0,right:1000,bottom:600,width:1000,height:600};},
-    setPointerCapture(){},releasePointerCapture(){},scrollIntoView(){},showModal(){this.open=true;},close(){this.open=false;},
-  };
-  for(const [key,value]of Object.entries(attrs))if(key.startsWith('data-'))el.dataset[key.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=value;
-  Object.defineProperty(el,'innerHTML',{get(){return markup;},set(value){markup=String(value);this.children=parse(markup,this);}});
-  return el;
-}
-function descendants(root){return root.children.flatMap(child=>[child,...descendants(child)]);}
-function matches(el, selector){
-  if(selector.includes(','))return selector.split(',').some(part=>matches(el,part.trim()));
-  if(selector==='nav a')return el.tagName==='A'&&!!el.dataset.page;
-  if(selector.startsWith('#'))return el.getAttribute('id')===selector.slice(1);
-  if(selector.startsWith('.'))return el.classList.contains(selector.slice(1));
-  const attr=selector.match(/^\[([\w-]+)(?:="([^"]*)")?\]$/);
-  if(attr)return attr[2]===undefined?el.getAttribute(attr[1])!==null:el.getAttribute(attr[1])===attr[2];
-  return el.tagName===selector.toUpperCase();
-}
-function parse(html,parent){
-  const children=[];const stack=[{children,tagName:'ROOT',el:parent}];
-  const tokens=/<\/?([a-z][\w-]*)\b([^>]*)>|([^<]+)/gi;let token;
-  const voidTags=new Set(['INPUT','BR','HR','IMG','META','LINK','SOURCE','AREA','BASE','EMBED','WBR']);
-  while((token=tokens.exec(html))){
-    if(token[3]){stack.at(-1).el.textContent+=decode(token[3]);continue;}
-    const tag=token[1].toUpperCase();
-    if(token[0][1]==='/'){const index=stack.findLastIndex(item=>item.tagName===tag);if(index>0)stack.splice(index);continue;}
-    const attributes={};
-    for(const attribute of token[2].matchAll(/([\w-]+)(?:="([^"]*)"|'([^']*)')?/g))attributes[attribute[1]]=decode(attribute[2]??attribute[3]??'');
-    const current=stack.at(-1);const el=node(tag,attributes,current.el);current.children.push(el);
-    if(!voidTags.has(tag)&&!token[0].endsWith('/>'))stack.push({children:el.children,tagName:tag,el});
-  }
-  return children;
-}
-const flush = async()=>{await new Promise(resolve=>setImmediate(resolve));await new Promise(resolve=>setImmediate(resolve));};
-async function boot({offline=false,storageThrows=false,saved={}}={}){
-  const root=node('document');root.children=parse(shell,root);
-  const document={body:root.querySelector('body'),documentElement:root.querySelector('html'),title:'',
-    querySelector:root.querySelector.bind(root),querySelectorAll:root.querySelectorAll.bind(root),
-    addEventListener(){},createElement:tag=>node(tag),createElementNS:(_,tag)=>node(tag)};
-  const preferences=new Map(Object.entries(saved));const downloads=[];const requests=[];
-  const events=new EventTarget();
-  const context={document,location:{hash:'#contracts'},Event,CustomEvent,AbortController,Date,Intl,Number,BigInt,JSON,console,Blob,
-    navigator:{clipboard:{writeText:async()=>{}}},
-    localStorage:{getItem(key){if(storageThrows)throw Error('Storage blocked');return preferences.get(key)??null;},
-      setItem(key,value){if(storageThrows)throw Error('Storage blocked');preferences.set(key,String(value));},
-      removeItem(key){if(storageThrows)throw Error('Storage blocked');preferences.delete(key);}},
-    addEventListener:events.addEventListener.bind(events),dispatchEvent:events.dispatchEvent.bind(events),scrollTo(){},
-    setTimeout(){return 1;},clearTimeout(){},requestAnimationFrame(callback){callback();return 1;},cancelAnimationFrame(){},
-    URL:{createObjectURL(blob){downloads.push(blob);return 'blob:test';},revokeObjectURL(){}},
-    fetch:async(request,options)=>{requests.push({request,options});if(offline)throw Error('Network unavailable');return {ok:true,
-      json:async()=>JSON.parse(fs.readFileSync(path.join(dist,fixtures[request.split('?')[0]]||request),'utf8'))};},
-  };
-  context.window=context;vm.createContext(context);
-  for(const script of scripts)vm.runInContext(fs.readFileSync(path.join(dist,script),'utf8'),context,{filename:script});
-  await flush();
-  return {context,document,preferences,downloads,requests,root,run:source=>vm.runInContext(source,context)};
-}
+import {boot as bootFrontend,flush} from './frontend-harness.mjs';
+const boot=options=>bootFrontend(dist,options);
 
 const page = app => app.document.querySelector('#page-content');
 const getDraft = app => app.context.NodusContractStudio.getDraft();
@@ -141,7 +45,7 @@ assert.equal(getDraft(offline).config.buyer,'');
 assert.equal(getDraft(offline).config.seller,'');
 offline.context.NodusI18n.setLanguage('en');
 assert.match(page(offline).innerHTML,/CONTRACT STUDIO \/ EXPERIMENTAL/);
-assert.equal(offline.document.title,'Contract Studio — Nodus Observatory');
+assert.equal(offline.document.title,'Escrow example — Nodus Observatory');
 const unedited=JSON.stringify(getDraft(offline));
 await click(offline,'[data-studio-tab="simulation"]');
 assert(select(offline,'[data-studio-action="start-simulation"]').disabled);
@@ -161,7 +65,7 @@ await offline.run('loadData(true)');
 assert.match(page(offline).innerHTML,/CONTRACT STUDIO \/ EXPERIMENTAL/,'later monitoring refresh failures leave the studio open');
 offline.context.location.hash='#overview';offline.run('render()');
 assert.match(page(offline).innerHTML,/Monitoring data could not be loaded/,'monitoring failures are still honest on monitoring routes');
-offline.context.location.hash='#contracts';offline.run('render()');
+offline.context.location.hash='#contracts-escrow';offline.run('render()');
 assert.equal(getState(offline).activeTab,'source','navigation retains local editor state');
 
 // Use only public synthetic addresses and exercise actual input/tab/export
@@ -218,6 +122,16 @@ assert(select(app,'[data-studio-action="download-source"]').disabled);
 await click(app,'[data-studio-remove-edge="5"]');
 assert.equal(app.context.NodusStudioCore.validate(getDraft(app)).valid,true);
 
+// Palette controls explain and select a state already present. They must not
+// silently no-op or insert duplicate states into the executable graph.
+const beforeShow=JSON.stringify(getDraft(app));
+const show=select(app,'[data-studio-add="created"]');
+assert.match(show.textContent,/Show block/);
+await show.click();await flush();
+assert.equal(getState(app).selected,'created');
+assert.equal(JSON.stringify(getDraft(app)),beforeShow,'Show selects without mutating contract semantics or layout');
+assert.match(select(app,'#studio-message').textContent,/Created/);
+
 // Pointer movement and keyboard alternatives modify layout, not contract
 // semantics. Deletion removes incident edges; palette Add and drop both work.
 let handle=select(app,'[data-studio-handle="created"]');
@@ -246,6 +160,7 @@ assert.equal(app.context.NodusStudioCore.generate(getDraft(app)),goodSource);
 await select(app,'[data-studio-handle="paid"]').fire('keydown',{key:'Delete'});
 assert(!getDraft(app).nodes.some(node=>node.type==='paid'));
 assert(!getDraft(app).edges.some(edge=>edge.from==='paid'||edge.to==='paid'));
+assert.match(select(app,'[data-studio-add="paid"]').textContent,/Add/);
 await click(app,'[data-studio-add="paid"]');
 assert(getDraft(app).nodes.some(node=>node.type==='paid'),'Add button is a keyboard/touch fallback');
 const added=getDraft(app).nodes.find(node=>node.type==='paid');
@@ -325,7 +240,7 @@ assert.equal(page(app).innerHTML,overviewMarkup,'Escape outside the studio canno
 
 for(const target of [offline,app]){
   assert(target.requests.every(({options})=>!options?.method||options.method==='GET'),'all network operations remain read-only monitoring queries');
-  assert(target.requests.every(({request})=>request.startsWith('/api/')||Object.values(fixtures).includes(request)),
+  assert(target.requests.every(({request})=>request.startsWith('/api/')||['snapshot.json','history.json','network.json','rewards.json','events.json'].includes(request)),
     'studio never initiates compiler, wallet, RPC or external requests');
 }
 console.log('Contract Studio integration: offline route, FIN/ENG, persistence, exact exports, graph/drag/keyboard handlers, simulation and hostile input PASS.');
