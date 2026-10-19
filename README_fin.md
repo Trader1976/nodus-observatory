@@ -2,6 +2,8 @@
 
 [English](README.md) · **Suomi**
 
+![Nodus Observatoryn yleiskuva](docs/observatory.png)
+
 Näyttävä paikallinen seurantasivu Nodus storage nodelle: ketjun synkronointi,
 arkistosegmentit, verkon tilanne, palvelimen resurssit, tapahtumat ja erillinen
 palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
