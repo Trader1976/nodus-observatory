@@ -22,7 +22,7 @@ done
 [ -n "$frontend_source" ] || { echo "Built frontend/index.html or dist/index.html is missing." >&2; exit 1; }
 command -v python3 >/dev/null
 command -v systemctl >/dev/null
-for filename in collector.py configure.py server.py config.example.json nodus-monitor.service nodus-monitor-collect.service nodus-monitor-collect.timer; do
+for filename in collector.py configure.py server.py document_registry.py config.example.json nodus-monitor.service nodus-monitor-collect.service nodus-monitor-collect.timer; do
   [ -f "$source_dir/$filename" ] || { echo "Missing backend file: $filename" >&2; exit 1; }
 done
 
@@ -79,7 +79,7 @@ systemctl stop nodus-monitor-collect.timer nodus-monitor.service nodus-monitor-c
 install -d -m 0755 -o root -g root /opt/nodus-monitor /opt/nodus-monitor/frontend
 install -d -m 2750 -o root -g nodus-monitor /var/lib/nodus-monitor
 install -d -m 0750 -o root -g nodus-monitor /etc/nodus-monitor
-for filename in collector.py server.py; do
+for filename in collector.py server.py document_registry.py; do
   install -m 0644 -o root -g root "$source_dir/$filename" "/opt/nodus-monitor/$filename"
 done
 for filename in network.py rewards.py enable-reward-history.py; do

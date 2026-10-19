@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from collector import load_config, read_json, utc_now
+from document_registry import lookup_record
 
 
 def readonly_connection(path):
@@ -119,7 +120,8 @@ class Handler(BaseHTTPRequestHandler):
         if len(self.path) > 4096:
             return self.fail(414, "request target too long")
         try:
-            query = parse_qs(parsed.query, max_num_fields=10)
+            query = parse_qs(parsed.query, max_num_fields=10,
+                             keep_blank_values=parsed.path == "/api/documents/record")
             if parsed.path.startswith("/api/"):
                 return self.api(parsed.path, query)
             return self.static(parsed.path)
@@ -129,6 +131,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(503, "monitoring data is temporarily unavailable")
 
     def api(self, route, query):
+        if route == "/api/documents/record":
+            payload, status = lookup_record(self.config, query)
+            return self.send_content(payload, status=status)
         if route in ("/api/dashboard", "/api/health"):
             snapshot = read_json(self.state / "snapshot.json")
             state = freshness(snapshot or {})
