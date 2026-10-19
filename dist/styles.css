@@ -23,3 +23,12 @@
 .reward-chart-readout{min-height:24px;margin:7px 0 0;color:var(--cyan);font:12px/1.7 var(--mono);overflow-wrap:anywhere}
 .reward-chart-help{margin:7px 0 0;color:var(--muted);font-size:9px;line-height:1.8}
 @media(max-width:700px){.reward-month-chart{padding:16px 18px 10px}.reward-chart-readout{font-size:11px}}
+
+.reward-chart-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:17px 25px 0}
+.reward-chart-month{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:10px}
+.reward-chart-month .select{max-width:230px}
+@media(max-width:700px){.reward-chart-controls{padding:16px 18px 0}.reward-chart-month{flex-wrap:wrap}.reward-chart-month .select{min-height:40px}.reward-chart-controls .range-tabs button{min-height:36px}}
+
+.reward-daily-layout{display:flex;align-items:flex-start;min-width:0}
+.reward-daily-layout .reward-chart-scroll{flex:1;min-width:0}
+.reward-month-chart .reward-day-axis{flex:0 0 82px;width:82px;min-width:82px;height:248px}
