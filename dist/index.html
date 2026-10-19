@@ -47,6 +47,16 @@
     </div>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <dialog id="about-dialog"><button class="icon-button dialog-close" aria-label="Sulje" data-i18n-aria-label="Sulje"><span data-icon="close"></span></button><span class="eyebrow" data-i18n="LÄHTEET & LUOTETTAVUUS">LÄHTEET & LUOTETTAVUUS</span><h2 data-i18n="Tieto ensin. Tulkinta sen jälkeen.">Tieto ensin. Tulkinta sen jälkeen.</h2><p data-i18n="Paikallinen kerääjä lukee Nodus CLI:n tilan, palveluiden tiedot ja palvelimen mittarit. Selain näyttää kerätyt tulokset. Sivulta ei hallita nodea eikä käsitellä lompakon yksityisiä avaimia.">Paikallinen kerääjä lukee Nodus CLI:n tilan, palveluiden tiedot ja palvelimen mittarit. Selain näyttää kerätyt tulokset. Sivulta ei hallita nodea eikä käsitellä lompakon yksityisiä avaimia.</p><p data-i18n="Demossa näkyvät synteettiset esimerkit, eivät oikean palvelimen mittaukset. Tuotantokäytön historiakuvaajat yhdistävät vain tallennetut havaintopisteet. Puuttuva mittaus näkyy puuttuvana tietona.">Demossa näkyvät synteettiset esimerkit, eivät oikean palvelimen mittaukset. Tuotantokäytön historiakuvaajat yhdistävät vain tallennetut havaintopisteet. Puuttuva mittaus näkyy puuttuvana tietona.</p><p data-i18n="Palkkioiden euroarvot perustuvat erikseen kirjattuihin arvostuksiin. Puuttuvaa hintaa ei korvata nollalla. CSV on yhteenveto omaa kirjanpitoa varten.">Palkkioiden euroarvot perustuvat erikseen kirjattuihin arvostuksiin. Puuttuvaa hintaa ei korvata nollalla. CSV on yhteenveto omaa kirjanpitoa varten.</p><button class="button primary dialog-close" data-i18n="Selvä">Selvä</button></dialog>
+  <dialog id="about-dialog" aria-labelledby="about-title">
+    <button class="icon-button dialog-close" aria-label="Sulje" data-i18n-aria-label="Sulje"><span data-icon="close"></span></button>
+    <div class="about-content">
+      <span class="eyebrow" data-i18n="LÄHTEET & LUOTETTAVUUS">LÄHTEET & LUOTETTAVUUS</span>
+      <h2 id="about-title" data-i18n="Tieto ensin. Tulkinta sen jälkeen.">Tieto ensin. Tulkinta sen jälkeen.</h2>
+      <p data-i18n="Paikallinen kerääjä lukee Nodus CLI:n tilan, palveluiden tiedot ja palvelimen mittarit. Selain näyttää kerätyt tulokset. Sivulta ei hallita nodea eikä käsitellä lompakon yksityisiä avaimia.">Paikallinen kerääjä lukee Nodus CLI:n tilan, palveluiden tiedot ja palvelimen mittarit. Selain näyttää kerätyt tulokset. Sivulta ei hallita nodea eikä käsitellä lompakon yksityisiä avaimia.</p>
+      <p data-i18n="Demossa näkyvät synteettiset esimerkit, eivät oikean palvelimen mittaukset. Tuotantokäytön historiakuvaajat yhdistävät vain tallennetut havaintopisteet. Puuttuva mittaus näkyy puuttuvana tietona.">Demossa näkyvät synteettiset esimerkit, eivät oikean palvelimen mittaukset. Tuotantokäytön historiakuvaajat yhdistävät vain tallennetut havaintopisteet. Puuttuva mittaus näkyy puuttuvana tietona.</p>
+      <p data-i18n="Palkkioiden euroarvot perustuvat erikseen kirjattuihin arvostuksiin. Puuttuvaa hintaa ei korvata nollalla. CSV on yhteenveto omaa kirjanpitoa varten.">Palkkioiden euroarvot perustuvat erikseen kirjattuihin arvostuksiin. Puuttuvaa hintaa ei korvata nollalla. CSV on yhteenveto omaa kirjanpitoa varten.</p>
+      <button class="button primary dialog-close" data-i18n="Selvä">Selvä</button>
+    </div>
+  </dialog>
 </body>
 </html>
