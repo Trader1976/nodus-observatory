@@ -11,7 +11,10 @@ palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
 ## Nykytila
 
 - Versio **1.0.0**, tuettu Nodus 0.26.7 testnet -asennus Debian/Ubuntu-palvelimella.
-- Viisi näkymää: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
+- Seurantanäkymät: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
+- Tämä kokeiluhaara lisää **Sopimusstudion**: selaimessa toimivan visuaalisen
+  escrow-editorin, tilasimulaation sekä Solidity- ja projektiviennin. Katso
+  [Sopimusstudion ohje](docs/contract-studio_fin.md).
 - Yläreunan **FIN / ENG** vaihtaa koko käyttöliittymän suomeksi tai englanniksi.
   Valinta säilyy samassa selaimessa; oletuskieli on suomi.
 - Paikallinen kerääjä tallentaa mittauksia noin minuutin välein ja palvelee
@@ -41,6 +44,33 @@ Repon esimerkkidata on synteettistä.
 - Valinnainen `smartctl` (`smartmontools`) tuetun fyysisen levyn kuntotietoihin.
 
 Käyttöliittymä ei vaadi käännösvaihetta. Node.js 22 tarvitaan vain kehitystesteihin.
+
+## Sopimusstudio-kokeilu — vain tässä haarassa
+
+`feature/contract-studio` on erillinen kokeilu, jota ei ole yhdistetty
+`main`-haaraan. Studiossa muokataan rajattua escrow-tilakonetta: ostajan talletus,
+ostajan hyväksyntä, myyjän nosto, palautus määräajan jälkeen ja peruutus ennen
+talletusta. Tilojen raahaaminen muuttaa asettelua. Yhteyksien muokkaaminen muuttaa
+kaaviota, joka tarkistetaan ennen koodin vientiä. Puutteellinen tai tukematon
+kaavio ilmoitetaan käyttäjälle eikä sitä korvata huomaamatta toisella sopimuksella.
+
+Editori ja simulaatio toimivat paikallisesti selaimessa. Ne eivät lue avaimia,
+allekirjoita tapahtumia, siirrä kolikoita tai lisää seurannan palvelimelle
+kirjoittavia rajapintoja. Simulaatio on malli, ei ketjun nodessa suoritettu ohjelma.
+Erillinen paikallinen käännöstyökalu tuottaa ABI:n ja bytecoden vain, kun sille
+annetaan oikea Nodus-kääntäjä. Tarkistus ja julkaisu tehdään erikseen Nodus-lompakossa.
+
+Kokeiluhaaran voi asentaa erilliseen työhakemistoon:
+
+```bash
+git clone --branch feature/contract-studio \
+  https://github.com/Trader1976/nodus-observatory.git nodus-observatory-studio
+cd nodus-observatory-studio
+sudo bash backend/install.sh
+```
+
+Tämä päivittää asennetun seurannan kokeiluversioon. Editorin, kääntäjän, testien ja
+rajoitusten ohjeet ovat [Sopimusstudion ohjeessa](docs/contract-studio_fin.md).
 
 ## Asennus lähdekoodista
 
@@ -281,6 +311,8 @@ node --check dist/app-translations.js
 node --check dist/app.js
 node tests/frontend-smoke.mjs dist
 node tests/frontend-i18n.mjs dist
+node tests/contract-studio-core.mjs
+node tests/contract-studio-integration.mjs
 bash -n backend/install.sh
 ```
 

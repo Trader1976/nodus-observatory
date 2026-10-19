@@ -10,7 +10,10 @@ with annual summaries and CSV exports.
 
 ## Features and compatibility
 
-- Five pages: **Overview, Storage, Network, Rewards and Events**.
+- Monitoring pages: **Overview, Storage, Network, Rewards and Events**.
+- This experimental branch adds **Contract Studio**, a browser-local visual escrow
+  editor, state-machine simulation and Solidity/project export. See
+  [the Contract Studio guide](docs/contract-studio.md).
 - **FIN / ENG** controls for the complete interface, including charts, tooltips,
   dialogs, accessibility labels and errors. The browser remembers your choice.
 - A systemd collector that normally samples once a minute, with a read-only web
@@ -32,6 +35,33 @@ output or database schemas; unknown fields are left unknown.
 This is the monitoring application, not the Nodus node source repository. It
 contains no private identity keys or wallet credentials. Each installation
 discovers its own public node identity and uses its own local configuration.
+
+## Contract Studio experiment — this branch only
+
+`feature/contract-studio` is a separate experiment and has not been merged into
+`main`. The studio edits a bounded escrow state machine: buyer deposit, buyer
+approval, seller withdrawal, expiry refund and cancellation before funding.
+Dragging states changes the layout; editing connections changes the graph that
+is checked before code can be exported. Unsupported or incomplete graphs are
+reported instead of silently producing a different contract.
+
+The editor and simulator run locally in the browser. They do not read keys,
+sign transactions, move coins or add write endpoints to the monitoring server.
+The simulation is a model, not execution by a chain node. The separate offline
+compiler helper produces ABI and bytecode only when an actual Nodus compiler is
+provided. Review and publish those artifacts in the Nodus wallet separately.
+
+To try this branch in a separate checkout:
+
+```bash
+git clone --branch feature/contract-studio \
+  https://github.com/Trader1976/nodus-observatory.git nodus-observatory-studio
+cd nodus-observatory-studio
+sudo bash backend/install.sh
+```
+
+This updates the installed monitor to the experiment. Follow the
+[studio guide](docs/contract-studio.md) for the editor, compiler, tests and limits.
 
 ## Requirements
 
@@ -288,6 +318,8 @@ node --check dist/app-translations.js
 node --check dist/app.js
 node tests/frontend-smoke.mjs dist
 node tests/frontend-i18n.mjs dist
+node tests/contract-studio-core.mjs
+node tests/contract-studio-integration.mjs
 bash -n backend/install.sh
 ```
 
