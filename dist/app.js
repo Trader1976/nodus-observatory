@@ -39,7 +39,7 @@ const bytes = (value,digits=1) => {if(!finite(value))return '—'; const n=Numbe
 const dateTime = value => {const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat(locale(),{timeZone:'Europe/Helsinki',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(d):t('Ajankohta puuttuu');};
 const compactDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat(locale(),{timeZone:'Europe/Helsinki',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d):'—';};
 const rawNodus = value => {if(value===null||value===undefined)return '—';try{const n=BigInt(value),abs=n<0n?-n:n;return decimalFi(`${n<0n?'-':''}${abs/100000000n}.${(abs%100000000n).toString().padStart(8,'0')}`);}catch{return '—';}};
-const state = {dashboard:null,history:{points:[]},network:null,rewards:null,events:null,mode:'loading',page:'overview',hours:24,year:2026,eventFilter:'all',rewardsYear:null,rewardsSnapshot:null,loading:false,loadedAt:null,failedSources:[],loadError:null};
+const state = {dashboard:null,history:{points:[]},network:null,rewards:null,events:null,mode:'loading',page:'overview',hours:24,year:2026,eventFilter:'all',rewardsYear:null,rewardsSnapshot:null,rewardMonth:null,loading:false,loadedAt:null,failedSources:[],loadError:null};
 const PAGES = {overview:'Yleiskuva',storage:'Tallennustila',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat'};
 let toastTimer,refreshTimer;
 const SOURCE_NAMES = {dashboard:'Seurantatiedot',history:'Historia',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat'};
@@ -237,16 +237,42 @@ function decimalFi(value){
   const integer=BigInt(match[2]).toLocaleString(locale()),fraction=(match[3]||'').replace(/0+$/,'');
   return `${match[1]}${integer}${fraction?decimalSeparator()+fraction:''}`;
 }
+function rewardChartScale(max){
+  // Only chart geometry uses Number. Exact amounts remain decimal strings.
+  if(!(max>0))return {top:1,step:.25,digits:2,count:4};
+  const rough=max/4,power=10**Math.floor(Math.log10(rough)),fraction=rough/power;
+  const step=Math.max(1e-8,(fraction<=1?1:fraction<=2?2:fraction<=5?5:10)*power);
+  const count=Math.ceil(max/step),top=count*step;
+  return {top,step,count,digits:Math.min(8,Math.max(0,-Math.floor(Math.log10(step))))};
+}
+function rewardChartNumber(value,digits=2){
+  return new Intl.NumberFormat(locale(),{notation:Math.abs(value)>=1e6?'compact':'standard',maximumFractionDigits:digits}).format(value);
+}
 function rewardMonthlyChart(r,yearMatch,pendingSource){
   const rows=yearMatch&&Array.isArray(r.monthly)?r.monthly:[];
   if(!rows.some(row=>Number(row.payout_count)>0))return `<div class="empty reward-empty"><span class="empty-icon" data-icon="wallet"></span><h3>${pendingSource?t('Maksuhistoriaa odotetaan'):t('Ei maksuja kerätyllä ajalla')}</h3><p>${t('Kuukausikuvaaja muodostuu todellisista maksutapahtumista. Arvioituja tuottoja ei näytetä kirjanpitotietoina.')}</p><small>${t('EI MAKSUJA TÄSSÄ AINEISTOSSA · EI TIETOA KOKO HISTORIASTA')}</small></div>`;
-  const max=Math.max(...rows.map(row=>Number(row.paid_nodus||0)),1);
-  let svg=`<svg viewBox="0 0 700 230" role="img" aria-label="${esc(t('Kuukausittaiset palkkiot NODUS-tokenina'))}">`;
-  for(let i=0;i<12;i++){
-    const month=`${state.year}-${String(i+1).padStart(2,'0')}`,row=rows.find(r=>r.month===month),amount=Number(row?.paid_nodus||0),bar=amount/max*150;
-    svg+=`<rect x="${45+i*53}" y="${185-bar}" width="24" height="${bar}" rx="3" fill="#5de0df"/><text x="${57+i*53}" y="210" text-anchor="middle">${i+1}</text><title>${month}: ${esc(decimalFi(row?.paid_nodus||'0'))} NODUS</title>`;
+  const months=Array.from({length:12},(_,i)=>{
+    const month=`${state.year}-${String(i+1).padStart(2,'0')}`,row=rows.find(row=>row.month===month);
+    const known=typeof row?.paid_nodus==='string'&&/^\d+(?:\.\d{1,8})?$/.test(row.paid_nodus)&&Number.isFinite(Number(row.paid_nodus));
+    const amount=known?Number(row.paid_nodus):null;
+    const name=new Intl.DateTimeFormat(locale(),{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(state.year,i,1)));
+    const tooltip=known?t(row.payout_count===1?'{month}: {amount} NODUS · {count} maksu':'{month}: {amount} NODUS · {count} maksua',{month:name,amount:decimalFi(row.paid_nodus),count:int(row.payout_count)}):t('{month}: määrätieto ei saatavilla',{month:name});
+    return {month,amount,known,tooltip,count:row?.payout_count};
+  });
+  const selected=months.find(row=>row.month===state.rewardMonth)||months.filter(row=>row.known&&Number(row.count)>0).at(-1)||months[0];
+  const scale=rewardChartScale(Math.max(0,...months.filter(row=>row.known).map(row=>row.amount)));
+  const left=82,right=688,top=34,bottom=202,slot=(right-left)/12,y=value=>bottom-value/scale.top*(bottom-top);
+  let svg=`<svg viewBox="0 0 710 248" role="group" aria-label="${esc(t('Kuukausittaiset palkkiot NODUS-tokenina'))}"><text class="reward-axis-unit" x="${left-12}" y="15" text-anchor="end">NODUS</text>`;
+  for(let i=0;i<=scale.count;i++){
+    const value=i*scale.step,pos=y(value);
+    svg+=`<line class="grid-line" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="reward-axis-label" x="${left-12}" y="${pos+3}" text-anchor="end">${esc(rewardChartNumber(value,scale.digits))}</text>`;
   }
-  return `<div class="chart-box reward-month-chart">${svg}</svg></div>`;
+  months.forEach((row,i)=>{
+    const x=left+slot*(i+.5),bar=row.known?row.amount/scale.top*(bottom-top):0,active=row.month===selected.month;
+    const digits=row.amount>0?Math.min(8,Math.max(2,1-Math.floor(Math.log10(row.amount)))):0;
+    svg+=`<g class="reward-month-bar" role="button" tabindex="0" aria-label="${esc(row.tooltip)}" aria-pressed="${active}" data-month="${row.month}" data-tooltip="${esc(row.tooltip)}"><title>${esc(row.tooltip)}</title><rect class="reward-month-hit" x="${left+i*slot}" y="${top-20}" width="${slot}" height="${bottom-top+52}" fill="transparent"/>${row.known?`<rect class="reward-bar" x="${x-13}" y="${bottom-bar}" width="26" height="${bar}" rx="3" fill="#5de0df"/><text class="reward-bar-value" x="${x}" y="${bottom-bar-9}" text-anchor="middle">${esc(rewardChartNumber(row.amount,digits))}</text>`:`<text class="reward-bar-value" x="${x}" y="${bottom-9}" text-anchor="middle">—</text>`}<text class="reward-month-label" x="${x}" y="${bottom+24}" text-anchor="middle">${i+1}</text></g>`;
+  });
+  return `<div class="chart-box reward-month-chart"><div class="reward-chart-scroll">${svg}</svg></div><div class="reward-chart-readout" id="reward-chart-tooltip" role="status" aria-live="polite">${esc(selected.tooltip)}</div><p class="reward-chart-help">${t('Valitse kuukausi hiirellä, koskettamalla tai näppäimistöllä. Summat koskevat kerättyjä maksuja.')}</p></div>`;
 }
 function eventItems(){const e=state.events;const rows=Array.isArray(e)?e:Array.isArray(e?.items)?e.items:Array.isArray(e?.events)?e.events:[];return rows.slice().sort((a,b)=>new Date(b.timestamp||b.time||0)-new Date(a.timestamp||a.time||0));}
 function eventsTable(rows){if(!rows.length)return empty(t('Tapahtumaloki odottaa kerääjää'),t('Uudet yhteysvirheet, synkronointitapahtumat ja palveluiden tilamuutokset tallentuvat tänne.'),'activity',true);return `<div class="table-wrap"><table class="data-table"><thead><tr><th>${t("Aika · Helsinki")}</th><th>${t("Tapahtuma")}</th><th>${t("Lähde")}</th><th>${t("Taso")}</th></tr></thead><tbody>${rows.map(event=>{const severity=String(event.level||event.severity||'info').toLowerCase();const cls=/error|err|critical/.test(severity)?'error':/warn/.test(severity)?'warning':'info';const title=event.title||event.type||event.message||t('Tapahtuma');return `<tr><td class="mono">${esc(compactDate(event.timestamp||event.time))}</td><td><strong><i class="event-indicator ${cls}"></i>${esc(dataText(title))}</strong>${event.message&&event.message!==title?`<br><span>${esc(dataText(event.message))}</span>`:''}</td><td class="mono">${esc(event.source||event.service||t('Kerääjä'))}</td><td>${pill(cls==='error'?t('Virhe'):cls==='warning'?t('Huomio'):t('Tieto'),cls==='error'?'red':cls==='warning'?'amber':'muted',false)}</td></tr>`;}).join('')}</tbody></table></div>`;}
@@ -270,6 +296,17 @@ function bindPage(){
   document.querySelectorAll('[data-range]').forEach(button=>button.onclick=async()=>{state.hours=Number(button.dataset.range);if(state.mode==='live'){try{const response=await getData(`/api/history?hours=${state.hours}`,'history.json');state.history=response.data;}catch{toast('Historiatietoja ei voitu hakea.');}}render();});
   document.querySelectorAll('.copy-fp').forEach(button=>button.onclick=async()=>{try{await navigator.clipboard.writeText(state.dashboard.node?.fingerprint||'');toast('Noden sormenjälki kopioitu.');}catch{toast('Kopiointi ei onnistunut tässä selaimessa.');}});
   document.querySelectorAll('.chart-point').forEach(point=>{const target=document.querySelector('#chart-tooltip');const show=()=>{if(target)target.textContent=point.dataset.tooltip;};point.onmouseenter=show;point.onfocus=show;point.onmouseleave=()=>{if(target)target.textContent='';};point.onblur=point.onmouseleave;});
+  const monthBars=document.querySelectorAll('.reward-month-bar');
+  monthBars.forEach(point=>{
+    const select=()=>{
+      state.rewardMonth=point.dataset.month;
+      const target=document.querySelector('#reward-chart-tooltip');
+      if(target)target.textContent=point.dataset.tooltip;
+      monthBars.forEach(bar=>bar.setAttribute('aria-pressed',String(bar===point)));
+    };
+    point.onmouseenter=select;point.onfocus=select;point.onclick=select;
+    point.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();select();}};
+  });
   document.querySelectorAll('[data-filter]').forEach(button=>button.onclick=()=>{state.eventFilter=button.dataset.filter;render();});
   const year=document.querySelector('#reward-year');if(year)year.onchange=async()=>{state.year=Number(year.value);if(state.mode==='live'){try{const result=await getData(`/api/rewards?year=${state.year}`,'rewards.json');state.rewards=result.data;}catch{toast('Palkkiotietoja ei voitu hakea.');}}else {const saved=state.rewardsSnapshot||state.rewards;state.rewards=Number(saved?.year)===state.year?saved:{...saved,year:state.year,items:[],releases:[],monthly:[],summary:{},source:{status:'unavailable',reason:'Tälle vuodelle ei ole tallennettua aineistoa.',complete_year:false}};}render();};
   const exportButton=document.querySelector('#export-rewards');if(exportButton)exportButton.onclick=exportRewards;

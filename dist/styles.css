@@ -8,3 +8,18 @@
 @media(max-width:700px){.language-switch{padding:2px}.language-switch button{min-width:38px;min-height:38px}.topbar-actions{gap:8px}}
 @media(max-width:480px){.topbar{padding:0 16px;gap:10px}.breadcrumb{gap:8px}.breadcrumb-home,.breadcrumb .slash,.topbar-actions .avatar{display:none}.language-switch button{min-height:40px}.breadcrumb #breadcrumb-page{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* Monthly rewards keep exact values readable outside the SVG on every screen. */
+.reward-month-chart{padding:20px 25px 12px;min-height:0}
+.reward-chart-scroll{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-color:#34505d transparent}
+.reward-chart-scroll svg{min-width:600px;overflow:visible}
+.reward-month-bar{cursor:pointer;outline:none}
+.reward-month-bar .reward-bar{opacity:.65;transition:opacity .15s}
+.reward-month-bar[aria-pressed="true"] .reward-bar,.reward-month-bar:hover .reward-bar,.reward-month-bar:focus .reward-bar{opacity:1;stroke:#b6ffef;stroke-width:1.5}
+.reward-month-bar:focus-visible .reward-month-hit{stroke:var(--cyan);stroke-width:1;rx:5}
+.reward-month-chart .reward-bar-value{fill:#b5d9dc;font-size:9px}
+.reward-month-chart .reward-axis-label,.reward-month-chart .reward-axis-unit{fill:#90a5bb;font-size:10px}
+.reward-month-chart .reward-month-label{fill:#90a5bb}
+.reward-chart-readout{min-height:24px;margin:7px 0 0;color:var(--cyan);font:12px/1.7 var(--mono);overflow-wrap:anywhere}
+.reward-chart-help{margin:7px 0 0;color:var(--muted);font-size:9px;line-height:1.8}
+@media(max-width:700px){.reward-month-chart{padding:16px 18px 10px}.reward-chart-readout{font-size:11px}}
