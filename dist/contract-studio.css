@@ -5,3 +5,7 @@
 .studio-flow-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.studio-flow-actions .studio-button{font-size:9px!important;min-height:30px;padding:6px 9px}
 
 .studio-canvas-space{position:relative;overflow:hidden}.studio-canvas-space .studio-canvas{position:absolute;left:0;top:0;transform-origin:0 0}.studio-zoom-bar{display:flex;align-items:center;gap:9px;padding:0 18px 13px;color:#849cb2;font-size:9px}.studio-zoom-bar select{font:9px var(--mono);color:#d8e6ed;background:#101c2b;border:1px solid #375269;border-radius:5px;padding:6px 8px}.studio-zoom-bar>span{margin-left:auto;text-align:right;font-size:8px;max-width:170px}
+
+.studio-howto{margin-top:18px;padding:14px 18px}.studio-howto summary{font-size:11px;color:#b6dcd5;cursor:pointer}.studio-howto ol{margin:12px 0 0;padding-left:20px;display:grid;gap:8px}.studio-howto li{font-size:10px;color:#8fa5ba;line-height:1.7}.studio-palette-item.on-canvas .studio-button{color:#9acfc5;border-color:#365d5d}
+
+.studio-example-back{display:inline-block;margin:0 0 17px;color:#9ccec4;font-size:10px;text-decoration:none}.studio-example-back:hover{color:#c1eee4}

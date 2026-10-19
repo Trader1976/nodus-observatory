@@ -3,6 +3,7 @@
 // Contract Studio is browser-local. Its messages never contain account data.
 globalThis.NodusStudioText = (() => {
   const messages = {
+    'Back to document registry': 'Takaisin asiakirjarekisteriin',
     'CONTRACT STUDIO / EXPERIMENTAL': 'SOPIMUSSTUDIO / KOKEELLINEN',
     'Draw the rules. Question every path.': 'Piirrä säännöt. Kyseenalaista jokainen polku.',
     'A visual escrow workbench for Nodus. Build locally, inspect the source and test the unexpected.': 'Visuaalinen escrow-työpöytä Nodukselle. Rakenna paikallisesti, tutki koodia ja kokeile myös poikkeustilanteet.',
@@ -60,6 +61,17 @@ globalThis.NodusStudioText = (() => {
     'Canvas zoom': 'Kaavion zoomaus', 'Fit': 'Sovita', 'Zoom out to see every path.': 'Loitonna nähdäksesi kaikki polut.',
     'Missing state: {state}. Add the block or restore the standard flow.': 'Tila puuttuu: {state}. Lisää palikka tai palauta vakiokaavio.',
     'Missing path: {from} → {to}. Connect the ports or restore the standard flow.': 'Polku puuttuu: {from} → {to}. Yhdistä portit tai palauta vakiokaavio.',
+    'Each state appears once. Show block selects an existing state; Add restores a removed state.': 'Jokainen tila esiintyy kerran. Näytä palikka valitsee kaaviossa olevan tilan; Lisää palauttaa poistetun tilan.',
+    'Show block': 'Näytä palikka', 'Show {state} on canvas': 'Näytä {state} kaaviossa',
+    'Already on canvas — select and reveal it.': 'Jo kaaviossa — valitse ja tuo palikka näkyviin.',
+    'Add the missing state to the canvas.': 'Lisää puuttuva tila kaavioon.',
+    '{state} is already on the canvas. Selected the existing block.': '{state} on jo kaaviossa. Olemassa oleva palikka valittiin.',
+    '{state} added. Connect its input and output to restore the required paths.': '{state} lisätty. Palauta tarvittavat polut yhdistämällä palikan portit.',
+    'How to explore this example': 'Näin tutustut esimerkkiin',
+    'Select Show block to find a state. Drag its title or use the arrow controls to move it.': 'Etsi tila Näytä palikka -painikkeella. Siirrä sitä raahaamalla otsikosta tai nuolipainikkeilla.',
+    'Remove a selected block, then use Add or drag it from the palette to restore it. Each state can appear only once.': 'Poista valittu palikka ja palauta se Lisää-painikkeella tai raahaamalla palikkavalikosta. Jokainen tila voi esiintyä vain kerran.',
+    'Connect the right output port to a left input port. Restore standard flow repairs all required states and paths.': 'Yhdistä oikeanpuoleinen lähtö vasemmanpuoleiseen tuloon. Palauta vakiokaavio palauttaa kaikki tarvittavat tilat ja polut.',
+    'Use Simulation to try buyer and seller actions without moving coins. The exact escrow rules are explained in Summary.': 'Kokeile Simulaatiossa ostajan ja myyjän toimintoja siirtämättä kolikoita. Escrown tarkat säännöt kerrotaan Yhteenvedossa.',
     'Experimental': 'Kokeellinen', 'Simulation started.': 'Simulaatio aloitettu.', 'Unknown action': 'Tuntematon toiminto',
     'Stored draft unreadable — this session uses a new draft': 'Tallennettua luonnosta ei voi lukea — tässä istunnossa käytetään uutta luonnosta',
     'Invalid fields — the last saved draft is retained': 'Virheellisiä kenttiä — viimeisin tallennettu luonnos säilytetään',

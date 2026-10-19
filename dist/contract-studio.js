@@ -30,7 +30,7 @@
   let root, draft, activeTab = 'summary', selected = null, pendingFrom = null;
   let simulation = null, simulationUsesExamples = false, trace = [], actor = 'buyer', failTransfer = false;
   let status = '', storageStatus = 'saved', replaceAction = null, serial = 0, language = null, mounted = false;
-  let drag = null, changed = false, zoomMode = 'fit', zoomScale = 1;
+  let drag = null, changed = false, zoomMode = 'fit', zoomScale = 1, activeRoute = '#contracts';
 
   function initialDraft() {
     if (!core()) return null;
@@ -69,7 +69,7 @@
   }
   function render() {
     if (!root) return;
-    if (globalThis.location?.hash && globalThis.location.hash !== '#contracts') return;
+    if (globalThis.location?.hash && globalThis.location.hash !== activeRoute) return;
     const previousCanvas=root.querySelector?.('.studio-canvas-scroll');
     const scrollPosition={left:previousCanvas?.scrollLeft||0,top:previousCanvas?.scrollTop||0};
     const connectionsOpen=root.querySelector?.('.studio-connections')?.open===true;
@@ -79,15 +79,16 @@
     }
     const check = validation();
     root.innerHTML = `<div class="studio" id="contract-studio">
-      <div class="studio-head"><div><span class="eyebrow">${escape(s('CONTRACT STUDIO / EXPERIMENTAL'))}</span><h1>${escape(s('Draw the rules. Question every path.'))}</h1><p>${escape(s('A visual escrow workbench for Nodus. Build locally, inspect the source and test the unexpected.'))}</p></div><div class="studio-header-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="3" y="3" width="12" height="10" rx="2"/><rect x="25" y="27" width="12" height="10" rx="2"/><rect x="3" y="27" width="12" height="10" rx="2"/><path d="M9 13v14m0-8h22v8m-3-3 3 3 3-3"/></svg></div></div>
+      <div class="studio-head"><div><a class="studio-example-back" href="#contracts">← ${escape(s('Back to document registry'))}</a><span class="eyebrow">${escape(s('CONTRACT STUDIO / EXPERIMENTAL'))}</span><h1>${escape(s('Draw the rules. Question every path.'))}</h1><p>${escape(s('A visual escrow workbench for Nodus. Build locally, inspect the source and test the unexpected.'))}</p></div><div class="studio-header-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="3" y="3" width="12" height="10" rx="2"/><rect x="25" y="27" width="12" height="10" rx="2"/><rect x="3" y="27" width="12" height="10" rx="2"/><path d="M9 13v14m0-8h22v8m-3-3 3 3 3-3"/></svg></div></div>
       <div class="studio-notice"><span aria-hidden="true">⌁</span><div><strong>${escape(s('No wallet connection. No chain transactions.'))}</strong><p>${escape(s('This prototype produces Solidity source for the Nodus compiler. It does not compile, deploy or sign contracts. Keep keys and recovery phrases in your wallet.'))}</p></div></div>
       ${replaceAction?`<div class="studio-confirm" role="alert"><strong>${escape(s('Replace the current draft?'))}</strong><p>${escape(s('This replaces the project stored in this browser. Export it first if you want to keep it.'))}</p><div class="studio-confirm-actions">${button('Keep draft','keep-draft')}${button('Replace draft','replace-draft',{className:'danger'})}</div></div>`:''}
       <div class="studio-toolbar">${button('Export project','export-project')}${button('Import project','import-project')}${button('Reset draft','reset')}<input id="studio-import" type="file" accept="application/json,.json" hidden><span class="studio-save ${storageStatus!=='saved'?'warning':''}">${escape(s(storageStatus==='saved'?'Saved in this browser':storageStatus==='invalid'?'Invalid fields — the last saved draft is retained':storageStatus==='unreadable'?'Stored draft unreadable — this session uses a new draft':'Session only — browser storage unavailable'))}</span></div>
       <div class="studio-layout">
-        <aside class="studio-panel studio-palette-panel"><div class="studio-panel-heading"><span class="eyebrow">${escape(s('BUILDING BLOCKS'))}</span><h2>${escape(s('One escrow. Six states.'))}</h2><p>${escape(s('Drag a block into the canvas, or use its Add button. Connect an output to an input.'))}</p></div><div class="studio-palette">${Object.entries(types).map(([type,item])=>`<div class="studio-palette-item" draggable="true" data-studio-palette="${type}" style="--state-color:${item.color}"><div class="studio-state-line"><span class="studio-state-dot"></span><strong>${escape(s(item.label))}</strong></div><p>${escape(s(item.description))}</p><button type="button" class="studio-button" data-studio-add="${type}" aria-label="${escape(s('Add {state}',{state:s(item.label)}))}"${draft.nodes.some(node=>node.type===type)?' disabled':''}>+ ${escape(s('Add'))}</button></div>`).join('')}</div></aside>
+        <aside class="studio-panel studio-palette-panel"><div class="studio-panel-heading"><span class="eyebrow">${escape(s('BUILDING BLOCKS'))}</span><h2>${escape(s('One escrow. Six states.'))}</h2><p>${escape(s('Each state appears once. Show block selects an existing state; Add restores a removed state.'))}</p></div><div class="studio-palette">${Object.entries(types).map(([type,item])=>paletteItemHTML(type,item)).join('')}</div></aside>
         <section class="studio-panel studio-flow-panel"><div class="studio-canvas-heading"><div><span class="eyebrow">${escape(s('FLOW CANVAS'))}</span><h2>${escape(s('Escrow lifecycle'))}</h2></div><span class="studio-canvas-tip" id="studio-connect-hint">${escape(pendingMessage())}</span></div><div class="studio-zoom-bar"><label for="studio-zoom">${escape(s('Canvas zoom'))}</label><select id="studio-zoom">${[['fit','Fit'],['0.5','50%'],['0.75','75%'],['1','100%']].map(([value,label])=>`<option value="${value}"${zoomMode===value?' selected':''}>${escape(s(label))}</option>`).join('')}</select><span>${escape(s('Zoom out to see every path.'))}</span></div><div class="studio-canvas-scroll"><div class="studio-canvas-space"><div class="studio-canvas" id="studio-canvas" role="group" aria-label="${escape(s('Escrow lifecycle'))}"><svg class="studio-edges" viewBox="0 0 ${width} ${height}" aria-hidden="true"><defs><marker id="studio-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" style="fill:#638f9b;stroke:none"/></marker></defs><g id="studio-edge-paths">${edgePaths()}</g></svg>${draft.nodes.map(node=>nodeHTML(node)).join('')}</div></div></div><div class="studio-canvas-footer"><p>${escape(s('Move a selected block with arrow keys. Shift + arrow moves 40 px. Delete removes it.'))}</p><div class="studio-flow-actions">${pendingFrom?button('Cancel connection','cancel-connection'):''}${button('Restore standard flow','restore-flow')}</div></div>${selectedPanel()}<details class="studio-connections"><summary>${escape(s('Connections'))} · ${draft.edges.length}</summary>${draft.edges.length?`<ul class="studio-connection-list">${draft.edges.map((edge,index)=>`<li><span>${escape(nodeLabel(edge.from))} → ${escape(nodeLabel(edge.to))}</span><button type="button" data-studio-remove-edge="${index}" aria-label="${escape(`${s('Remove connection')}: ${nodeLabel(edge.from)} → ${nodeLabel(edge.to)}`)}">×</button></li>`).join('')}</ul>`:`<p>${escape(s('No connections. Add the required paths before generating source.'))}</p>`}</details></section>
         <aside class="studio-panel studio-inspector"><div class="studio-panel-heading"><span class="eyebrow">${escape(s('INSPECTOR'))}</span><h2>${escape(s('The agreement'))}</h2></div><form class="studio-form" id="studio-config" novalidate>${field('buyer','Buyer address','0x…',draft.config.buyer,'Nodus EVM address: 0x followed by 64 hexadecimal characters.',check)}${field('seller','Seller address','0x…',draft.config.seller,'Nodus EVM address: 0x followed by 64 hexadecimal characters.',check)}${field('amountNodus','Amount · NODUS','100',draft.config.amountNodus,'Use a dot as decimal separator; up to 8 decimal places.',check)}${field('deadline','Deadline · UTC','2030-01-01T12:00:00Z',draft.config.deadline,'Enter an explicit UTC timestamp, for example 2030-01-01T12:00:00Z.',check)}</form><div class="studio-validation ${check.valid?'valid':''}" id="studio-validation"><strong>${escape(s(check.valid?'Ready for source generation':'Complete the agreement'))}</strong>${check.valid?'':`<ul>${check.errors.map(issue=>`<li>${escape(errorText(issue))}</li>`).join('')}</ul>`}</div><div class="studio-example"><p>${escape(s('No timer sends a transaction. After the deadline, the buyer must call refund().'))}</p></div></aside>
       </div>
+      <details class="studio-howto studio-panel"><summary>${escape(s('How to explore this example'))}</summary><ol><li>${escape(s('Select Show block to find a state. Drag its title or use the arrow controls to move it.'))}</li><li>${escape(s('Remove a selected block, then use Add or drag it from the palette to restore it. Each state can appear only once.'))}</li><li>${escape(s('Connect the right output port to a left input port. Restore standard flow repairs all required states and paths.'))}</li><li>${escape(s('Use Simulation to try buyer and seller actions without moving coins. The exact escrow rules are explained in Summary.'))}</li></ol></details>
       <section class="studio-panel studio-workbench"><div class="studio-workbench-head"><div><span class="eyebrow">${escape(s('WORKBENCH'))}</span><h2>${escape(s('Inspect before you trust.'))}</h2></div><span class="studio-save">${escape(s('LOCAL DRAFT'))}</span></div><div class="studio-tabs" role="tablist" aria-label="${escape(s('WORKBENCH'))}">${[['summary','Summary'],['source','Solidity source'],['simulation','Simulation']].map(([tab,label])=>`<button type="button" id="studio-tab-${tab}" role="tab" data-studio-tab="${tab}" aria-selected="${activeTab===tab}" aria-controls="studio-workbench-content" tabindex="${activeTab===tab?0:-1}">${escape(s(label))}</button>`).join('')}</div><div class="studio-tab-panel" id="studio-workbench-content" role="tabpanel" aria-labelledby="studio-tab-${activeTab}">${activeTab==='source'?sourcePanel(check):activeTab==='simulation'?simulationPanel(check):summaryPanel()}</div></section>
       <div class="studio-message" id="studio-message" role="status" aria-live="polite">${escape(statusText())}</div>
     </div>`;
@@ -100,6 +101,11 @@
   function statusText() { return typeof status === 'string' ? s(status) : status?.text || ''; }
   function field(key,label,placeholder,value,help,check) {
     return `<div class="studio-field"><label for="studio-${key}">${escape(s(label))}</label><input id="studio-${key}" name="${key}" value="${escape(value)}" placeholder="${escape(placeholder)}" type="text" spellcheck="false" autocomplete="off"${key==='amountNodus'?' inputmode="decimal"':''} aria-invalid="${check.errors.some(issue=>issue.field===`config.${key}`)}" aria-describedby="studio-${key}-help"><small id="studio-${key}-help">${escape(s(help))}</small></div>`;
+  }
+  function paletteItemHTML(type,item) {
+    const existing=draft.nodes.some(node=>node.type===type);
+    const state=s(item.label);
+    return `<div class="studio-palette-item${existing?' on-canvas':''}" draggable="true" data-studio-palette="${type}" style="--state-color:${item.color}"><div class="studio-state-line"><span class="studio-state-dot"></span><strong>${escape(state)}</strong></div><p>${escape(s(item.description))}</p><button type="button" class="studio-button" data-studio-add="${type}" aria-label="${escape(s(existing?'Show {state} on canvas':'Add {state}',{state}))}" title="${escape(s(existing?'Already on canvas — select and reveal it.':'Add the missing state to the canvas.'))}">${existing?'↗':'+'} ${escape(s(existing?'Show block':'Add'))}</button></div>`;
   }
   function nodeHTML(node) {
     const item = types[node.type];
@@ -143,11 +149,21 @@
   function bounded(value,min,max) { return Math.round(Math.max(min,Math.min(max,value))); }
   function notify(message) { status=message; const element=root?.querySelector('#studio-message'); if(element)element.textContent=statusText(); }
   function selectedNode() { return draft.nodes.find(node=>node.id===selected); }
+  function revealNode(id,message) {
+    selected=id;
+    render();
+    const handle=root?.querySelector(`[data-studio-handle="${id}"]`);
+    handle?.scrollIntoView?.({block:'nearest',inline:'center'});
+    handle?.focus?.({preventScroll:true});
+    if(message)notify({text:s(message,{state:nodeLabel(id)})});
+  }
   function addNode(type,x,y) {
-    if (!types[type] || draft.nodes.some(node=>node.type===type)) return;
+    if (!types[type]) return;
+    const existing=draft.nodes.find(node=>node.type===type);
+    if(existing){revealNode(existing.id,'{state} is already on the canvas. Selected the existing block.');return;}
     let id;do{id=`${type}-${++serial}`;}while(draft.nodes.some(node=>node.id===id));
     const node={id,type,x:bounded(x??70+draft.nodes.length*35,18,width-nodeWidth-18),y:bounded(y??350,18,height-nodeHeight-18)};
-    draft.nodes.push(node); selected=node.id; semanticEdit(); render();
+    draft.nodes.push(node); semanticEdit(); revealNode(node.id,'{state} added. Connect its input and output to restore the required paths.');
   }
   function removeNode() {
     if (!selectedNode()) return;
@@ -296,8 +312,10 @@
     bind();
   }
   globalThis.NodusContractStudio = Object.freeze({
-    mount(target) {
-      const sameRoot=root===target&&target?.querySelector?.('#contract-studio');
+    mount(target, options = {}) {
+      const previousRoute=activeRoute;
+      if(typeof options.route==='string'&&/^#[a-z0-9-]+$/.test(options.route))activeRoute=options.route;
+      const sameRoot=root===target&&target?.querySelector?.('#contract-studio')&&previousRoute===activeRoute;
       root=target;
       if(!draft)draft=initialDraft();
       if(!sameRoot||!mounted||language!==currentLanguage()){render();mounted=true;}
@@ -305,6 +323,6 @@
     getDraft:()=>draft?clone(draft):null,
     getState:()=>({activeTab,selected,pendingFrom,simulation:simulation?clone(simulation):null,simulationUsesExamples,trace:clone(trace),storageStatus,changed,zoomMode,zoomScale}),
   });
-  globalThis.addEventListener?.('resize',()=>{if(globalThis.location?.hash==='#contracts')applyZoom();});
-  globalThis.addEventListener?.('keydown',event=>{if(event.key==='Escape'&&pendingFrom&&globalThis.location?.hash==='#contracts'){pendingFrom=null;render();}});
+  globalThis.addEventListener?.('resize',()=>{if(globalThis.location?.hash===activeRoute)applyZoom();});
+  globalThis.addEventListener?.('keydown',event=>{if(event.key==='Escape'&&pendingFrom&&globalThis.location?.hash===activeRoute){pendingFrom=null;render();}});
 })();
