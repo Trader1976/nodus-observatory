@@ -3,6 +3,10 @@
 // Source-key messages for rendered pages, charts and known backend summaries.
 // Raw diagnostics, wallet identifiers and machine-readable exports are never rewritten.
 NodusI18n.addMessages({
+  "{month}: {amount} NODUS · {count} maksu": "{month}: {amount} NODUS · {count} payment",
+  "{month}: {amount} NODUS · {count} maksua": "{month}: {amount} NODUS · {count} payments",
+  "{month}: määrätieto ei saatavilla": "{month}: amount unavailable",
+  "Valitse kuukausi hiirellä, koskettamalla tai näppäimistöllä. Summat koskevat kerättyjä maksuja.": "Select a month with your mouse, touch or keyboard. Amounts cover collected payments.",
   "Tila ei saatavilla": "Status unavailable",
   "Epoch-jäsenyys ei saatavilla": "Epoch membership unavailable",
   "Noden jäsenyystieto ei saatavilla.": "Node membership information unavailable.",
