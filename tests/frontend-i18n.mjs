@@ -365,6 +365,81 @@ for (const lang of ['fi', 'en']) {
   assert.match(run('storage()'), lang === 'fi' ? /staking-palkkiot voivat jatkua/ : /continue earning staking rewards/);
 }
 
+// Monthly reward values, axes and interactions must refer to the selected
+// month, rather than a root SVG title for January's empty column.
+const rewardFixture = {
+  year:2026,
+  monthly:Array.from({length:12},(_,i)=>({month:`2026-${String(i+1).padStart(2,'0')}`,
+    payout_count:i===9?3:0,paid_nodus:i===9?'1234.56789012':'0.00000000'})),
+};
+const previousRewards = run('JSON.stringify(state.rewards)');
+for (const lang of ['fi','en']) {
+  language.setLanguage(lang);
+  run(`state.year=2026; state.rewardMonth=null; state.rewards=${JSON.stringify(rewardFixture)}`);
+  const markup = run('rewardMonthlyChart(state.rewards,true,false)');
+  assert.match(markup, /class="reward-axis-unit"[^>]*>NODUS/);
+  const ticks = [...markup.matchAll(/class="reward-axis-label"[^>]*>([^<]+)<\/text>/g)].map(match=>decode(match[1]));
+  assert.deepEqual(ticks,[0,500,1000,1500].map(value=>new Intl.NumberFormat(language.locale()).format(value)));
+  const groups = [...markup.matchAll(/<g class="reward-month-bar"([^>]*)>([\s\S]*?)<\/g>/g)];
+  assert.equal(groups.length,12);
+  assert.equal((markup.match(/<title>/g)||[]).length,12,'one title per month');
+  assert(!markup.slice(0,markup.indexOf('<g ')).includes('<title>'),'no root SVG title overriding month titles');
+  const october = groups.find(group=>group[1].includes('data-month="2026-10"'));
+  assert.match(october[2],new RegExp(lang==='fi'?'1[\\s]?234,56789012':'1,234\\.56789012'));
+  assert(october[1].includes('aria-pressed="true"'),'last paid month is selected initially');
+  assert.match(markup,lang==='fi'?/lokakuu 2026/:/October 2026/);
+  assert.match(markup,/id="reward-chart-tooltip" role="status" aria-live="polite"/);
+  assert.match(markup,lang==='fi'?/3 maksua/:/3 payments/);
+  assert.match(markup,lang==='fi'?/1[\s]?234,57<\/text>/:/1,234.57<\/text>/,'a visible rounded value labels the bar');
+
+  const bars = groups.map(group=>{
+    const attrs={};
+    for(const match of group[1].matchAll(/([\w-]+)="([^"]*)"/g))attrs[match[1]]=decode(match[2]);
+    return createElement(attrs);
+  });
+  const originalQuery = document.querySelectorAll;
+  document.querySelectorAll=selector=>selector==='.reward-month-bar'?bars:originalQuery(selector);
+  run('bindPage()');
+  const readout = document.querySelector('#reward-chart-tooltip');
+  bars[9].onmouseenter();
+  assert.equal(readout.textContent,bars[9].dataset.tooltip,'hover reads the actual October value');
+  assert.equal(run('state.rewardMonth'),'2026-10');
+  bars[0].onfocus();
+  assert.equal(readout.textContent,bars[0].dataset.tooltip,'keyboard focus reads January');
+  assert.equal(bars[0].getAttribute('aria-pressed'),'true');
+  assert.equal(bars[9].getAttribute('aria-pressed'),'false');
+  let prevented=false;
+  bars[9].onkeydown({key:' ',preventDefault(){prevented=true;}});
+  assert(prevented,'Space selects without scrolling');
+  assert.equal(readout.textContent,bars[9].dataset.tooltip);
+  bars[0].onclick();
+  assert.equal(run('state.rewardMonth'),'2026-01','click/touch selection is retained');
+  bars[9].onkeydown({key:'Enter',preventDefault(){}});
+  assert.equal(run('state.rewardMonth'),'2026-10');
+  language.setLanguage(lang==='fi'?'en':'fi');
+  assert.match(run('rewardMonthlyChart(state.rewards,true,false)'),/data-month="2026-10"/);
+  assert(run('rewardMonthlyChart(state.rewards,true,false)').includes('aria-pressed="true" data-month="2026-10"'),'language changes retain selection');
+  document.querySelectorAll=originalQuery;
+}
+language.setLanguage('en');
+for (const [amount,expectedTop] of [['0.00000001',1e-8],['0.00000007',8e-8],['0.12',.15],['7.24238585',8],['1234.56789012',1500],['1250000',1500000]]) {
+  const scale=run(`rewardChartScale(${amount})`);
+  assert(Math.abs(scale.top-expectedTop)<=expectedTop*1e-12,`axis adapts to ${amount}`);
+  assert(scale.top>=Number(amount));
+  run(`state.rewards={monthly:[{month:'2026-10',payout_count:1,paid_nodus:'${amount}'}]}; state.rewardMonth=null`);
+  const markup=run('rewardMonthlyChart(state.rewards,true,false)');
+  assert(!/NaN|Infinity/.test(markup));
+  assert(markup.includes(`${run(`decimalFi('${amount}')`)} NODUS`),'tooltip retains every token decimal');
+  assert(!markup.includes('January 2026: 0 NODUS'),'a missing month is unavailable, not invented zero');
+  assert.match(markup,/amount unavailable/);
+}
+run(`state.rewards={monthly:[{month:'2026-10',payout_count:1,paid_nodus:'12345678901234567.89012345'}]}`);
+assert(run('rewardMonthlyChart(state.rewards,true,false)').includes('12,345,678,901,234,567.89012345 NODUS'),'large exact values bypass floating-point tooltip formatting');
+assert(!/NaN|Infinity/.test(run('rewardMonthlyChart(state.rewards,true,false)')));
+assert(!run('rewardMonthlyChart(state.rewards,false,true)').includes('reward-month-chart'),'wrong-year data produces no bars');
+assert(!run('rewardMonthlyChart({monthly:[]},true,true)').includes('reward-month-chart'),'missing source produces no invented rewards');
+run(`state.rewards=JSON.parse(${JSON.stringify(previousRewards)}); state.rewardMonth=null`);
+
 // CSV is a stable accounting interchange format in either display language.
 run(`state.mode='snapshot'; state.rewards={year:2027,network:'testnet',timezone:'Europe/Helsinki',
   source:{status:'partial',runs:[]},items:[{event_id:'receipt-1',kind:'payout',height:123,
