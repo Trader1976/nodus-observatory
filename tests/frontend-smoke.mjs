@@ -14,7 +14,7 @@ function element() {
   return {
     innerHTML: '', textContent: '', dataset: {}, style: {}, value: '2026',
     classList: { add() {}, remove() {}, toggle() {} },
-    addEventListener() {}, querySelectorAll() { return []; },
+    addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; },
     setAttribute() {}, removeAttribute() {}, showModal() {}, close() {},
     appendChild() {}, remove() {}, click() {},
   };
@@ -49,18 +49,21 @@ const context = {
   URL: { createObjectURL(blob) { csvBlob = blob; return 'blob:test'; }, revokeObjectURL() {} },
 };
 vm.createContext(context);
-for (const script of ['i18n.js', 'app-translations.js', 'app.js']) {
+for (const script of ['i18n.js', 'app-translations.js', 'contract-studio-core.js',
+  'contract-studio-i18n.js', 'contract-studio.js', 'app.js']) {
   vm.runInContext(fs.readFileSync(path.join(dist, script), 'utf8'), context, { filename: script });
 }
 await new Promise(resolve => setImmediate(resolve));
 
-for (const page of ['overview', 'storage', 'network', 'rewards', 'events']) {
+for (const page of ['overview', 'storage', 'network', 'rewards', 'events', 'contracts']) {
   context.location.hash = `#${page}`;
   vm.runInContext('render()', context);
   const markup = elements.get('#page-content').innerHTML;
   assert(markup.length > 500, `${page} rendered content`);
   assert(!/undefined|NaN|Infinity/.test(markup), `${page} has no invalid numeric values`);
 }
+context.location.hash = '#overview';
+vm.runInContext('render()', context);
 assert.match(elements.get('#source-label').textContent, /Synteettinen demo/);
 assert.match(elements.get('#source-label').textContent, /ei palvelinmittauksia/);
 assert.match(elements.get('#source-detail').textContent, /DEMO/);
@@ -147,4 +150,4 @@ vm.runInContext("state.mode='live'", context);
 await vm.runInContext('exportRewards()', context);
 assert.equal(csvBlob, oldBlob);
 assert.match(elements.get('#toast').textContent, /CSV-vienti epäonnistui/);
-console.log('Frontend smoke: 5 pages, static provenance, year restore, exact CSV, null gaps, unknown states, and export failures PASS.');
+console.log('Frontend smoke: 6 pages, static provenance, year restore, exact CSV, null gaps, unknown states, and export failures PASS.');

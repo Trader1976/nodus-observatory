@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 
 const dist = path.resolve(process.argv[2] || path.join(import.meta.dirname, '../dist'));
 const shell = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-const scripts = ['i18n.js', 'app-translations.js', 'app.js'];
+const scripts = ['i18n.js', 'app-translations.js', 'contract-studio-core.js',
+  'contract-studio-i18n.js', 'contract-studio.js', 'app.js'];
 assert.deepEqual([...shell.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]), scripts,
   'language messages load before the app, with no external script dependency');
 
@@ -42,7 +43,7 @@ function createElement(attributes = {}) {
       },
     },
     click() { this.dispatchEvent(new Event('click')); this.onclick?.({ target: this, currentTarget: this }); },
-    querySelectorAll() { return []; }, appendChild() {}, remove() {},
+    querySelectorAll() { return []; }, querySelector() { return null; }, appendChild() {}, remove() {},
     showModal() { this.open = true; }, close() { this.open = false; },
   };
   for (const [name, value] of Object.entries(attrs)) {
@@ -105,7 +106,7 @@ async function boot({ saved = null, storageThrows = false, withApp = true } = {}
   // Browser globals and window name the same object, as they do in a real page.
   context.window = context;
   vm.createContext(context);
-  for (const script of scripts.slice(0, withApp ? 3 : 2)) {
+  for (const script of withApp ? scripts : scripts.filter(script => script !== 'app.js')) {
     vm.runInContext(fs.readFileSync(path.join(dist, script), 'utf8'), context, { filename: script });
   }
   await new Promise(resolve => setImmediate(resolve));
@@ -165,16 +166,17 @@ for (const [status, fi, en] of [
 language.setLanguage('fi');
 
 const navTitles = {
-  fi: ['Yleiskuva', 'Tallennustila', 'Verkko', 'Palkkiot', 'Tapahtumat'],
-  en: ['Overview', 'Storage', 'Network', 'Rewards', 'Events'],
+  fi: ['Yleiskuva', 'Tallennustila', 'Verkko', 'Palkkiot', 'Tapahtumat', 'Sopimusstudio'],
+  en: ['Overview', 'Storage', 'Network', 'Rewards', 'Events', 'Contract Studio'],
 };
-const routeNames = ['overview', 'storage', 'network', 'rewards', 'events'];
+const routeNames = ['overview', 'storage', 'network', 'rewards', 'events', 'contracts'];
 const untranslated = {
   overview: ['Kaikki olennainen.', 'Ketjun korkeus', 'Epäonnistumisputki', 'Palvelimen voimavarat', 'Viimeisimmät tapahtumat'],
   storage: ['Tilaa verkon muistille.', 'Arkiston tämänhetkinen tilanne', 'Valmiit segmentit', 'Levyn toimintakunto', 'Peräkkäiset epäonnistumiset'],
   network: ['Verkon rytmi.', 'Verkon korkeus', 'Transaktioita sekunnissa', 'Ketjun eheys', 'Validaattorikomitea'],
   rewards: ['Lompakon kaikki palkkiot.', 'Lataa CSV', 'Maksettu kerätyllä ajalla', 'Euroarvostukset', 'Kerätyt maksut', 'Maksuhistorian lähteet'],
   events: ['Jäljet kertovat', 'Kaikki tapahtumat', 'Huomiot &amp; virheet', 'Mitä seuranta kertoo?', 'Lohkoero tarvitsee myös kontekstin.'],
+  contracts: ['Paikallinen simulaatio', 'Sopimusstudio'],
 };
 const fiMarkup = new Map();
 for (const lang of ['fi', 'en']) {
@@ -203,6 +205,8 @@ for (const lang of ['fi', 'en']) {
       for (const label of untranslated[page]) assert(!markup.includes(label), `${page}: fixed UI label is translated: ${label}`);
     }
   }
+  context.location.hash = '#overview';
+  run('render()');
   assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /Synteettinen demo/ : /Synthetic demo/);
   assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /ei palvelinmittauksia/ : /no server measurements/);
   assert.match(elements.get('#source-detail').textContent, lang === 'fi' ? /EI LIVE-DATAA/ : /NO LIVE DATA/);
@@ -272,7 +276,7 @@ for (const lang of ['fi', 'en']) {
   assert(!storageMarkup.includes(language.t('Oma node ei ole mukana')));
   assert.match(storageMarkup, /— %/, 'missing height cannot produce a zero epoch progress');
   assert.match(run('network()'), lang === 'fi' ? /Tila ei saatavilla/ : /Status unavailable/);
-  for (const page of routeNames) {
+  for (const page of routeNames.filter(page => page !== 'contracts')) {
     context.location.hash = `#${page}`;
     run('render()');
     const markup = elements.get('#page-content').innerHTML;
@@ -280,7 +284,7 @@ for (const lang of ['fi', 'en']) {
     assert.match(markup, /nodus-status/);
     assert.match(markup, lang === 'fi' ? /virhekoodiin 1/ : /exited with code 1/);
     assert.match(markup, lang === 'fi' ? /aikaraja ylittyi/ : /query timed out/);
-    assert.match(markup, /nodus-cli/, 'show the CLI diagnostic hint on every route');
+    assert.match(markup, /nodus-cli/, 'show the CLI diagnostic hint on every monitoring route');
     assert.match(markup, /role="status"/, 'collection failures are announced accessibly');
   }
   assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /OSITTAINEN TILANNE/ : /PARTIAL SNAPSHOT/);
@@ -636,4 +640,4 @@ blocked.context.NodusI18n.setLanguage('en');
 assert.equal(blocked.context.NodusI18n.language(), 'en');
 assert.match(blocked.elements.get('#breadcrumb-page').textContent, /Overview/);
 
-console.log('Frontend i18n: FIN/ENG shell and 5 routes, persistence, unavailable storage, locale precision, retained view state and errors PASS.');
+console.log('Frontend i18n: FIN/ENG shell and 6 routes, persistence, unavailable storage, locale precision, retained view state and errors PASS.');
