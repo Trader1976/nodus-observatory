@@ -29,6 +29,7 @@ OFFICIAL_COMPILER_SHA256 = "6c981f36ee790a46fa2310c4eb925e35909b020a58a19654a063
 OFFICIAL_ARCHIVE_SHA256 = "a09d6486c944a795009f08dbc8210ce2eee2785248f9f5f7edc2aaa9c6934649"
 SOURCE_NAME = "ObservatoryEscrow.sol"
 CONTRACT_NAME = "ObservatoryEscrow"
+CONTRACT_NAMES = (CONTRACT_NAME, "ObservatoryDocuments")
 MAX_INPUT_BYTES = 1024 * 1024
 MAX_OUTPUT_BYTES = 16 * 1024 * 1024
 SETTINGS = {
@@ -115,7 +116,11 @@ def check_hex(value, label, limit):
     return value.lower()
 
 
-def compile_bundle(source_path, compiler_path, output_path, project_path=None, timeout=60):
+def compile_bundle(source_path, compiler_path, output_path, project_path=None, timeout=60,
+                   contract_name=CONTRACT_NAME):
+    if not isinstance(contract_name, str) or contract_name not in CONTRACT_NAMES:
+        raise CompileError("Unsupported contract. Choose ObservatoryEscrow or ObservatoryDocuments.")
+    source_name = f"{contract_name}.sol"
     source = read_input(source_path)
     # The editor emits self-contained code. Even an import inside a comment is
     # refused here rather than trying to resolve user-supplied paths or URLs.
@@ -137,7 +142,7 @@ def compile_bundle(source_path, compiler_path, output_path, project_path=None, t
     version = compiler_identity(compiler, timeout)
     compiler_hash = digest(compiler.read_bytes())
     standard_input = {
-        "language": "Solidity", "sources": {SOURCE_NAME: {"content": source.decode("utf-8")}},
+        "language": "Solidity", "sources": {source_name: {"content": source.decode("utf-8")}},
         "settings": SETTINGS,
     }
     try:
@@ -159,14 +164,14 @@ def compile_bundle(source_path, compiler_path, output_path, project_path=None, t
             for d in failures[:10]
         ))
     try:
-        compiled = result["contracts"][SOURCE_NAME][CONTRACT_NAME]
+        compiled = result["contracts"][source_name][contract_name]
         abi = compiled["abi"]
         creation = compiled["evm"]["bytecode"]
         runtime = compiled["evm"]["deployedBytecode"]
         metadata = json.loads(compiled["metadata"])
         layout = compiled["storageLayout"]
     except (KeyError, TypeError, json.JSONDecodeError) as exc:
-        raise CompileError(f"Missing or malformed {CONTRACT_NAME} compiler output.") from exc
+        raise CompileError(f"Missing or malformed {contract_name} compiler output.") from exc
     if not isinstance(abi, list) or any(not isinstance(item, dict) for item in abi):
         raise CompileError("Contract ABI is not an array of objects.")
     if any(item.get("type") == "constructor" and item.get("inputs") for item in abi):
@@ -187,19 +192,19 @@ def compile_bundle(source_path, compiler_path, output_path, project_path=None, t
         return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
 
     files = {
-        SOURCE_NAME: source,
-        "ObservatoryEscrow.abi.json": json_bytes(abi),
-        "ObservatoryEscrow.creation.hex": ("0x" + creation_hex + "\n").encode("ascii"),
-        "ObservatoryEscrow.runtime.hex": ("0x" + runtime_hex + "\n").encode("ascii"),
-        "ObservatoryEscrow.metadata.json": json_bytes(metadata),
-        "ObservatoryEscrow.storage-layout.json": json_bytes(layout),
+        source_name: source,
+        f"{contract_name}.abi.json": json_bytes(abi),
+        f"{contract_name}.creation.hex": ("0x" + creation_hex + "\n").encode("ascii"),
+        f"{contract_name}.runtime.hex": ("0x" + runtime_hex + "\n").encode("ascii"),
+        f"{contract_name}.metadata.json": json_bytes(metadata),
+        f"{contract_name}.storage-layout.json": json_bytes(layout),
         "compiler-input.json": json_bytes(standard_input),
         "compiler-diagnostics.json": json_bytes(diagnostics),
     }
     if project is not None:
         files["project.json"] = project
     manifest = {
-        "schema": "nodus-observatory-compiled-contract-v1", "contract": CONTRACT_NAME,
+        "schema": "nodus-observatory-compiled-contract-v1", "contract": contract_name,
         "compiled": True, "deployed": False, "address_bytes": 32,
         "compiler": {"version": version, "sha256": compiler_hash,
                      "matches_documented_official_binary": compiler_hash == OFFICIAL_COMPILER_SHA256},
@@ -232,7 +237,9 @@ def compile_bundle(source_path, compiler_path, output_path, project_path=None, t
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", help="Exported ObservatoryEscrow.sol (UTF-8, self-contained)")
+    parser.add_argument("source", help="Exported Solidity source (UTF-8, self-contained)")
+    parser.add_argument("--contract", choices=CONTRACT_NAMES, default=CONTRACT_NAME,
+                        help="Contract to export (default: ObservatoryEscrow)")
     parser.add_argument("--solc", required=True, help="Explicit path to trusted solc-nodus")
     parser.add_argument("--out", required=True, help="New output directory (must not exist)")
     parser.add_argument("--project", help="Optional JSON project to archive, without asserting it matches the source")
@@ -241,11 +248,12 @@ def main(argv=None):
     if not 1 <= args.timeout <= 300:
         parser.error("--timeout must be between 1 and 300 seconds")
     try:
-        manifest = compile_bundle(args.source, args.solc, args.out, args.project, args.timeout)
+        manifest = compile_bundle(args.source, args.solc, args.out, args.project, args.timeout,
+                                  contract_name=args.contract)
     except (CompileError, OSError) as exc:
         print(f"Contract Studio: {exc}", file=sys.stderr)
         return 1
-    print(f"Compiled {CONTRACT_NAME} with {manifest['compiler']['version']}")
+    print(f"Compiled {manifest['contract']} with {manifest['compiler']['version']}")
     print(f"Files: {Path(args.out).absolute()}")
     print("Not deployed. Review the source, ABI and manifest before using the Nodus wallet.")
     return 0
