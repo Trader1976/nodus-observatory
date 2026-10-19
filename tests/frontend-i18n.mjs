@@ -440,6 +440,151 @@ assert(!run('rewardMonthlyChart(state.rewards,false,true)').includes('reward-mon
 assert(!run('rewardMonthlyChart({monthly:[]},true,true)').includes('reward-month-chart'),'missing source produces no invented rewards');
 run(`state.rewards=JSON.parse(${JSON.stringify(previousRewards)}); state.rewardMonth=null`);
 
+// Daily charts use the same collected wallet payouts, preserving exact raw
+// amounts and Helsinki calendar days independently of browser display locale.
+const dailyRewardFixture = {
+  year:2026, timezone:'Europe/Helsinki', source:{status:'partial',complete_year:false},
+  items:[
+    {kind:'payout',block_time_utc:'2026-10-17T21:30:00Z',amount_raw:'10000000'},
+    {kind:'payout',block_time_local:'2026-10-18T00:05:00+03:00',amount_raw:'20000000'},
+    {kind:'payout',block_time_utc:'2026-10-19T09:00:00Z',amount_raw:'1234567890123456789012345'},
+    {kind:'payout',block_time_utc:'2026-10-20T09:00:00Z',amount_raw:'1'},
+    // A principal release can never become earned income, even if a source
+    // incorrectly includes it in items rather than the separate release list.
+    {kind:'release',block_time_utc:'2026-10-17T21:30:00Z',amount_raw:'90000000000'},
+  ],
+  releases:[{kind:'release',block_time_utc:'2026-10-17T21:30:00Z',amount_raw:'80000000000'}],
+  summary:{payout_count:4,pending_nodus:'99.00000000'},
+};
+const dailyRows = (fixture,month='2026-10',matches=true) => JSON.parse(run(
+  `JSON.stringify(rewardDailyRows(${JSON.stringify(fixture)},${matches},${JSON.stringify(month)}))`));
+for (const lang of ['fi','en']) {
+  language.setLanguage(lang);
+  run('state.year=2026');
+  const rows=dailyRows(dailyRewardFixture);
+  assert.equal(rows.length,31,'daily view includes each real calendar day in the selected month');
+  assert.deepEqual(rows.find(row=>row.day==='2026-10-18'),
+    {day:'2026-10-18',paid_nodus:'0.30000000',payout_count:2},'same-day payments sum exactly, excluding release and pending amounts');
+  assert.equal(rows.find(row=>row.day==='2026-10-19').paid_nodus,'12345678901234567.89012345','huge token totals stay exact');
+  assert.equal(rows.find(row=>row.day==='2026-10-20').paid_nodus,'0.00000001','smallest raw unit remains visible');
+  assert.deepEqual(rows.find(row=>row.day==='2026-10-17'),
+    {day:'2026-10-17',paid_nodus:'0.00000000',payout_count:0},'UTC previous-day payments belong to their Helsinki day');
+  const january=dailyRows(dailyRewardFixture,'2026-01');
+  assert(january.every(row=>row.paid_nodus==='0.00000000'&&row.payout_count===0),
+    'another month can show collected-data zeros while retaining the partial-history warning');
+}
+
+const dayBoundaryFixture={year:2026,items:[
+  {kind:'payout',block_time_utc:'2025-12-31T22:30:00Z',amount_raw:'1'},
+  {kind:'payout',block_time_utc:'2026-03-29T00:30:00Z',amount_raw:'2'},
+  {kind:'payout',block_time_utc:'2026-03-29T01:30:00Z',amount_raw:'3'},
+  {kind:'payout',block_time_utc:'2026-10-25T00:30:00Z',amount_raw:'4'},
+  {kind:'payout',block_time_utc:'2026-10-25T01:30:00Z',amount_raw:'5'},
+  {kind:'payout',block_time_utc:'2026-12-31T22:30:00Z',amount_raw:'90000000'},
+]};
+assert.equal(dailyRows(dayBoundaryFixture,'2026-01')[0].paid_nodus,'0.00000001','Helsinki new year includes a previous-UTC-year payment');
+assert.equal(dailyRows(dayBoundaryFixture,'2026-03').find(row=>row.day==='2026-03-29').paid_nodus,'0.00000005','spring DST transition uses Helsinki calendar day');
+assert.equal(dailyRows(dayBoundaryFixture).find(row=>row.day==='2026-10-25').paid_nodus,'0.00000009','repeated autumn hour is not dropped or duplicated');
+assert(dailyRows(dayBoundaryFixture,'2026-12').every(row=>row.paid_nodus==='0.00000000'),'a payment already in Helsinki next year is excluded');
+run('state.year=2028');
+const leapRows=dailyRows({year:2028,items:[{kind:'payout',block_time_utc:'2028-02-29T10:00:00Z',amount_raw:'7'}]},'2028-02');
+assert.equal(leapRows.length,29,'leap February includes exactly 29 days');
+assert.deepEqual(leapRows.at(-1),{day:'2028-02-29',paid_nodus:'0.00000007',payout_count:1});
+run('state.year=2026');
+assert.equal(dailyRows(dailyRewardFixture,'2026-10',false),null,'wrong report year cannot leak into daily bars');
+for (const fixture of [
+  {}, {items:[]}, {items:[{kind:'release',amount_raw:'10'}]},
+  {monthly:[{month:'2026-10',payout_count:2,paid_nodus:'5.00000000'}]},
+  {items:[{kind:'payout',block_time_utc:'2027-01-01T00:00:00Z',amount_raw:'1'}]},
+  {items:[{kind:'payout',block_time_utc:'not-a-date',amount_raw:'1'}]},
+  {items:[{kind:'payout',block_time_utc:'2026-10-18T12:00:00',amount_raw:'1'}]},
+  {items:[{kind:'payout',block_time_utc:'2026-10-18T12:00:00Z',amount_raw:'0.1'}]},
+  {items:[{kind:'payout',block_time_utc:'2026-10-18T12:00:00Z',amount_raw:'-1'}]},
+  {items:[{kind:'payout',block_time_utc:'2026-10-18T12:00:00Z'}]},
+]) assert.equal(dailyRows(fixture),null,'missing or malformed dated payouts never invent daily zero income');
+const incompleteDay={...dailyRewardFixture,items:[...dailyRewardFixture.items,
+  {kind:'payout',block_time_utc:'2026-10-18T12:00:00Z',amount_raw:'broken'}]};
+assert.equal(dailyRows(incompleteDay),null,'a malformed payout cannot silently understate a daily total');
+
+for (const lang of ['fi','en']) {
+  language.setLanguage(lang);
+  run(`state.year=2026; state.rewards=${JSON.stringify(dailyRewardFixture)};
+    state.rewardPeriod='daily';state.rewardDailyMonth='2026-10';state.rewardDay='2026-10-18'`);
+  const markup=run('rewardDailyChart(state.rewards,true,false)');
+  assert.match(markup,/class="reward-axis-unit"[^>]*>NODUS/);
+  assert.match(markup,/class="reward-axis-label"/,'daily chart retains an automatically scaled value axis');
+  assert(!/NaN|Infinity/.test(markup));
+  const groups=[...markup.matchAll(/<g class="reward-month-bar"([^>]*)>([\s\S]*?)<\/g>/g)];
+  assert.equal(groups.length,31,'one interactive bar per October day');
+  assert.equal(groups.filter(group=>group[1].includes('aria-pressed="true"')).length,1,
+    'exactly one day is selected, rather than every bar in the same month');
+  const selected=groups.find(group=>group[1].includes('data-day="2026-10-18"'));
+  assert(selected&&selected[1].includes('aria-pressed="true"'),'selected day is retained in chart state');
+  assert(selected[1].includes('data-month="2026-10"'),'day controls retain their selected month');
+  assert(selected[2].includes(`${run("decimalFi('0.30000000')")} NODUS`),'daily tooltip uses an exact localized sum');
+  assert(selected[2].includes(new Intl.DateTimeFormat(language.locale(),{
+    day:'numeric',month:'long',year:'numeric',timeZone:'UTC',
+  }).format(new Date('2026-10-18T00:00:00Z'))),'daily tooltip localizes its calendar date');
+  assert(markup.includes(`${run("decimalFi('0.00000001')")} NODUS`),'tiny daily payout never becomes zero in the readout');
+  assert(markup.includes(`${run("decimalFi('12345678901234567.89012345')")} NODUS`),'large daily payout stays exact in readout');
+  assert.match(markup,/id="reward-chart-tooltip" role="status" aria-live="polite"/);
+
+  const bars=groups.map(group=>{
+    const attrs={};
+    for(const match of group[1].matchAll(/([\w-]+)="([^"]*)"/g))attrs[match[1]]=decode(match[2]);
+    return createElement(attrs);
+  });
+  const periodButtons=['monthly','daily'].map(period=>createElement({'data-reward-period':period}));
+  const originalQuery=document.querySelectorAll;
+  document.querySelectorAll=selector=>selector==='.reward-month-bar'?bars:
+    selector==='[data-reward-period]'?periodButtons:originalQuery(selector);
+  run('bindPage()');
+  const readout=document.querySelector('#reward-chart-tooltip');
+  bars[19].onfocus();
+  assert.equal(run('state.rewardDay'),'2026-10-20','keyboard focus selects the actual day');
+  assert.equal(readout.textContent,bars[19].dataset.tooltip);
+  bars[17].onclick();
+  assert.equal(run('state.rewardDay'),'2026-10-18','click or touch selects the day');
+  let prevented=false;
+  bars[18].onkeydown({key:' ',preventDefault(){prevented=true;}});
+  assert(prevented,'daily keyboard selection does not scroll the page');
+  assert.equal(run('state.rewardDay'),'2026-10-19');
+  language.setLanguage(lang==='fi'?'en':'fi');
+  assert(run('rewardDailyChart(state.rewards,true,false)').includes('aria-pressed="true" data-month="2026-10" data-day="2026-10-19"'),
+    'changing language keeps the selected day');
+  assert.equal(run('state.rewardPeriod'),'daily','changing language keeps daily mode');
+  language.setLanguage(lang);
+
+  const savedItems=run('JSON.stringify(state.rewards.items)');
+  periodButtons[0].onclick();
+  assert.equal(run('state.rewardPeriod'),'monthly','period selector changes to monthly');
+  periodButtons[1].onclick();
+  assert.equal(run('state.rewardPeriod'),'daily','period selector changes back to daily');
+  assert.equal(run('JSON.stringify(state.rewards.items)'),savedItems,'view changes never mutate underlying accounting rows');
+  const monthSelect=document.querySelector('#reward-chart-month');
+  monthSelect.value='2026-02';
+  monthSelect.onchange();
+  assert.equal(run('state.rewardDailyMonth'),'2026-02','daily month selector changes the displayed calendar month');
+  assert.equal((run('rewardDailyChart(state.rewards,true,false)').match(/data-day="/g)||[]).length,28);
+  document.querySelectorAll=originalQuery;
+}
+run(`state.rewards=${JSON.stringify(dailyRewardFixture)};state.rewardDailyMonth='2026-10';state.rewardDay=null;
+  state.rewards.source.status='unavailable'`);
+assert.equal((run('rewardDailyChart(state.rewards,true,false)').match(/data-day="/g)||[]).length,31,
+  'a temporary source outage preserves collected daily payments');
+assert(!run("rewardDailyChart({monthly:[{month:'2026-10',payout_count:1,paid_nodus:'9.00000000'}]},true,false)").includes('data-day="'),
+  'monthly totals without dated items do not become invented daily payouts');
+const savedRewardSnapshot=run('JSON.stringify(state.rewardsSnapshot)');
+run('state.mode="snapshot";state.rewardsSnapshot=null;state.rewardDailyMonth="2026-10";state.rewardDay="2026-10-19";bindPage()');
+elements.get('#reward-year').value='2027';
+await elements.get('#reward-year').onchange();
+assert.equal(run('state.rewardDailyMonth'),null,'changing tax year clears the previous calendar month');
+assert.equal(run('state.rewardDay'),null,'changing tax year clears the selected day');
+assert.match(run('rewardSelectedMonth(state.rewards,true)'),/^2027-\d\d$/,'daily month resolves within the new tax year');
+assert(!run('rewardDailyChart(state.rewards,true,true)').includes('data-day="'),'previous-year payouts do not remain in daily bars');
+run(`state.year=2026;state.rewardsSnapshot=JSON.parse(${JSON.stringify(savedRewardSnapshot)})`);
+run(`state.rewards=JSON.parse(${JSON.stringify(previousRewards)});state.rewardPeriod='monthly';state.rewardDailyMonth=null;state.rewardDay=null`);
+
 // CSV is a stable accounting interchange format in either display language.
 run(`state.mode='snapshot'; state.rewards={year:2027,network:'testnet',timezone:'Europe/Helsinki',
   source:{status:'partial',runs:[]},items:[{event_id:'receipt-1',kind:'payout',height:123,
