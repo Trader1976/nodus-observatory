@@ -12,9 +12,10 @@ palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
 
 - Versio **1.0.0**, tuettu Nodus 0.26.7 testnet -asennus Debian/Ubuntu-palvelimella.
 - Seurantanäkymät: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
-- Tämä kokeiluhaara lisää **Sopimusstudion**: selaimessa toimivan visuaalisen
-  escrow-editorin, tilasimulaation sekä Solidity- ja projektiviennin. Katso
-  [Sopimusstudion ohje](docs/contract-studio_fin.md).
+- Tämä kokeiluhaara lisää **Sopimusstudion**: asiakirjan paikallisen tiivistyksen,
+  lompakossa tehtävän leimauksen ja rekisterin lukutarkistuksen. Visuaalinen
+  escrow-editori säilyy esimerkkinä. Katso [asiakirjojen ohje](docs/document-notary_fin.md)
+  ja [escrow-ohje](docs/contract-studio_fin.md).
 - Yläreunan **FIN / ENG** vaihtaa koko käyttöliittymän suomeksi tai englanniksi.
   Valinta säilyy samassa selaimessa; oletuskieli on suomi.
 - Paikallinen kerääjä tallentaa mittauksia noin minuutin välein ja palvelee
@@ -48,7 +49,15 @@ Käyttöliittymä ei vaadi käännösvaihetta. Node.js 22 tarvitaan vain kehitys
 ## Sopimusstudio-kokeilu — vain tässä haarassa
 
 `feature/contract-studio` on erillinen kokeilu, jota ei ole yhdistetty
-`main`-haaraan. Studiossa muokataan rajattua escrow-tilakonetta: ostajan talletus,
+`main`-haaraan. Asiakirjatoiminto laskee tiedoston SHA-256-tiivisteen paikallisesti
+(enintään 64 MiB), valmistelee oikean rekisterin ABI:n, bytecoden ja lompakkokutsun
+tiedot sekä lukee kirjauksen omalta nodelta rajatun lukukyselyn avulla. Tiedostoja
+tai yksityisiä avaimia ei lähetetä. Tulos kertoo valitun rekisterin ja julkaisijan
+kirjauksesta; se ei todista tekijyyttä, sisällön totuutta tai ketjuun kuulumista
+riippumattomasti. Nykyinen CLI ei varmista julkaistun sopimuksen koodia automaattisesti.
+Katso [asiakirjan leimaus ja tarkistus](docs/document-notary_fin.md).
+
+**Escrow-esimerkki** säilyttää aiemman rajatun tilakoneen: ostajan talletus,
 ostajan hyväksyntä, myyjän nosto, palautus määräajan jälkeen ja peruutus ennen
 talletusta. Tilojen raahaaminen muuttaa asettelua. Yhteyksien muokkaaminen muuttaa
 kaaviota, joka tarkistetaan ennen koodin vientiä. Puutteellinen tai tukematon
@@ -58,7 +67,10 @@ Editori ja simulaatio toimivat paikallisesti selaimessa. Ne eivät lue avaimia,
 allekirjoita tapahtumia, siirrä kolikoita tai lisää seurannan palvelimelle
 kirjoittavia rajapintoja. Simulaatio on malli, ei ketjun nodessa suoritettu ohjelma.
 Erillinen paikallinen käännöstyökalu tuottaa ABI:n ja bytecoden vain, kun sille
-annetaan oikea Nodus-kääntäjä. Tarkistus ja julkaisu tehdään erikseen Nodus-lompakossa.
+annetaan oikea Nodus-kääntäjä. Asiakirjapohjan mukana toimitetaan myös toistettavasti
+käännetyt tiedostot. Sopimusten julkaisu ja rekisteröintikutsut tarkistetaan ja
+allekirjoitetaan erikseen Nodus-lompakossa. Tiedoston valinta tai viite-JSONin
+lataaminen ei vielä kirjaa mitään ketjuun.
 
 Kokeiluhaaran voi asentaa erilliseen työhakemistoon:
 
@@ -160,7 +172,7 @@ Sama käyttöliittymä ja API toimivat sekä localhostissa että suojatulla etä
 
 ## Käyttöliittymän kielet
 
-Yläreunan FIN/ENG-painikkeet vaihtavat kaikkien kuuden näkymän, kuvaajien,
+Yläreunan FIN/ENG-painikkeet vaihtavat kaikkien näkymien, esimerkkien, kuvaajien,
 työkaluvihjeiden, virhetilojen ja tietoa-ikkunan kielen heti. Sivu, kuvaajan
 aikaväli, tapahtumasuodatin ja palkkiovuosi säilyvät vaihdossa. Valinta tallennetaan
 selaimen paikalliseen tallennustilaan kyseiselle osoitteelle. Jos tallennustila
@@ -313,6 +325,8 @@ node tests/frontend-smoke.mjs dist
 node tests/frontend-i18n.mjs dist
 node tests/contract-studio-core.mjs
 node tests/contract-studio-integration.mjs
+node tests/document-notary-core.mjs
+node tests/document-notary-integration.mjs
 bash -n backend/install.sh
 ```
 
