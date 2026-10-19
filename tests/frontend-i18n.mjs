@@ -241,6 +241,83 @@ language.setLanguage('en');
 assert.equal(run("decimalFi('12345678901234567.89012345')").replace(/[\s,]/g, ''), '12345678901234567.89012345');
 assert.equal(run("rawNodus('1234567890123456789012345')").replace(/[\s,]/g, ''), '12345678901234567.89012345');
 
+// A failed CLI probe must remain unknown, even though the collector and
+// services are running. Freshness does not imply a successful node query.
+const healthyDashboard = run('JSON.stringify(state.dashboard)');
+for (const lang of ['fi', 'en']) {
+  language.setLanguage(lang);
+  run(`state.mode='live'; state.dashboard=JSON.parse(${JSON.stringify(healthyDashboard)});
+    state.dashboard.generated_at=new Date().toISOString();
+    state.dashboard.freshness={available:true,stale:false};
+    state.dashboard.chain={height:null,network_height:null,behind:null,sync_ok:null};
+    state.dashboard.storage={registered:null,status:null,is_member:null,
+      epoch_start:100,epoch_end:200};
+    state.dashboard.quality={partial:true,errors:[
+      {source:'nodus-status',message:'probe exited with code 1'},
+      {source:'storage-status',message:'command timed out'}]};`);
+  for (const registration of ['null', 'undefined']) {
+    run(`state.dashboard.storage.registered=${registration}`);
+    const card = run('graceCard()');
+    assert.match(card, lang === 'fi' ? /Tila ei saatavilla/ : /Status unavailable/);
+    assert(!card.includes(language.t('ei rekisteröity')), 'unknown is not unregistered');
+    assert(!card.includes('✓'), 'unknown is not registered');
+  }
+  assert.match(run('syncPill()'), lang === 'fi' ? /Tila ei saatavilla/ : /Status unavailable/);
+  const overviewMarkup = run('overview()');
+  assert(!overviewMarkup.includes(language.t('Synkronoidaan')), 'unknown is not synchronizing');
+  assert(!overviewMarkup.includes(language.t('Oma node jäljessä verkosta')), 'missing difference is not a known lag');
+  const storageMarkup = run('storage()');
+  assert.match(storageMarkup, lang === 'fi' ? /Epoch-jäsenyys ei saatavilla/ : /Epoch membership unavailable/);
+  assert(!storageMarkup.includes(language.t('Ei epochin jäsen')), 'unknown membership is not negative');
+  assert(!storageMarkup.includes(language.t('Oma node ei ole mukana')));
+  assert.match(storageMarkup, /— %/, 'missing height cannot produce a zero epoch progress');
+  assert.match(run('network()'), lang === 'fi' ? /Tila ei saatavilla/ : /Status unavailable/);
+  for (const page of routeNames) {
+    context.location.hash = `#${page}`;
+    run('render()');
+    const markup = elements.get('#page-content').innerHTML;
+    assert.match(markup, lang === 'fi' ? /Osa seurantatiedoista puuttuu/ : /Some monitoring data is unavailable/);
+    assert.match(markup, /nodus-status/);
+    assert.match(markup, lang === 'fi' ? /virhekoodiin 1/ : /exited with code 1/);
+    assert.match(markup, lang === 'fi' ? /aikaraja ylittyi/ : /query timed out/);
+    assert.match(markup, /nodus-cli/, 'show the CLI diagnostic hint on every route');
+    assert.match(markup, /role="status"/, 'collection failures are announced accessibly');
+  }
+  assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /OSITTAINEN TILANNE/ : /PARTIAL SNAPSHOT/);
+  assert(!elements.get('#source-banner').classList.contains('live'), 'partial collection is not marked healthy');
+  assert.match(elements.get('#source-detail').textContent, lang === 'fi' ? /OSITTAINEN MITTAUS/ : /PARTIAL COLLECTION/);
+
+  run(`state.dashboard.quality={partial:false,errors:[
+    {source:'<img src=x onerror=alert(1)>',message:'<script>alert(1)</script>'}]}`);
+  const escapedNotice = run('collectionNotice()');
+  assert(escapedNotice.includes('&lt;img'), 'diagnostic source is escaped');
+  assert(escapedNotice.includes('&lt;script&gt;'), 'diagnostic message is escaped');
+  assert(!escapedNotice.includes('<script>'));
+  assert(run('collectionPartial()'), 'errors imply a partial result even if the flag is false');
+  run('state.dashboard.quality={partial:true,errors:[]}');
+  assert(run('collectionNotice()').length > 0, 'partial without details remains visible');
+
+  run(`state.dashboard.storage={registered:false,status:'not_registered',is_member:false}`);
+  assert(run('graceCard()').includes(language.t('ei rekisteröity')), 'known negative remains negative');
+  assert(run('graceCard()').includes(language.t('Ketjutiedon mukaan tätä nodea ei ole rekisteröity storage-rooliin.')));
+  assert(run('membershipPill()').includes(language.t('Ei epochin jäsen')));
+  run(`state.dashboard.storage={registered:true,status:'ACTIVE',is_member:true};
+    state.dashboard.chain={behind:17,sync_ok:true};`);
+  assert(run('graceCard()').includes('✓'), 'known positive remains registered');
+  assert(run('membershipPill()').includes(language.t('Epochin jäsen')));
+  assert(run('syncPill()').includes(language.t('Synkronoidaan')), 'matching chain IDs do not prove catch-up');
+  run('state.dashboard.chain.behind=0');
+  assert(run('syncPill()').includes(language.t('Synkronissa')));
+
+  run('state.dashboard.quality={partial:false,errors:[]}; sourceBanner()');
+  assert.equal(run('collectionNotice()'), '', 'recovery removes the diagnostic notice');
+  assert(elements.get('#source-banner').classList.contains('live'), 'successful fresh collection recovers');
+  assert.match(elements.get('#source-label').textContent, lang === 'fi' ? /Paikallinen kerääjä/ : /Local collector/);
+  run('delete state.dashboard.quality');
+  assert.equal(run('collectionNotice()'), '', 'older snapshots without quality remain supported');
+}
+run(`state.dashboard=JSON.parse(${JSON.stringify(healthyDashboard)}); state.mode='snapshot';`);
+
 // Earlier imported payments belong to the whole wallet and remain visible,
 // including their monthly bars, while the storage role is still in grace.
 run(`state.year=2026; state.dashboard.storage.in_grace=true;
