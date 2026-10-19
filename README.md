@@ -172,7 +172,7 @@ remote access must use an authenticated proxy.
 
 ## Interface languages
 
-The header's **FIN / ENG** controls switch all five pages immediately. The
+The header's **FIN / ENG** controls switch all six pages immediately. The
 current page, chart range, event filter and reward year are retained. Finnish is
 the default. The preference is stored per browser and website; if storage is
 blocked, switching still works for the current page.

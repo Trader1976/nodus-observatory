@@ -160,7 +160,7 @@ Sama käyttöliittymä ja API toimivat sekä localhostissa että suojatulla etä
 
 ## Käyttöliittymän kielet
 
-Yläreunan FIN/ENG-painikkeet vaihtavat kaikkien viiden näkymän, kuvaajien,
+Yläreunan FIN/ENG-painikkeet vaihtavat kaikkien kuuden näkymän, kuvaajien,
 työkaluvihjeiden, virhetilojen ja tietoa-ikkunan kielen heti. Sivu, kuvaajan
 aikaväli, tapahtumasuodatin ja palkkiovuosi säilyvät vaihdossa. Valinta tallennetaan
 selaimen paikalliseen tallennustilaan kyseiselle osoitteelle. Jos tallennustila
