@@ -2,6 +2,8 @@
 
 **English** · [Suomi](README_fin.md)
 
+![Nodus Observatory overview dashboard](docs/observatory.png)
+
 A local dashboard for a Nodus storage node: chain synchronisation, archive
 segments, network status, server resources, events and a separate reward ledger
 with annual summaries and CSV exports.
