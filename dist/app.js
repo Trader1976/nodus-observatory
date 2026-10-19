@@ -39,7 +39,7 @@ const bytes = (value,digits=1) => {if(!finite(value))return '—'; const n=Numbe
 const dateTime = value => {const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat(locale(),{timeZone:'Europe/Helsinki',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(d):t('Ajankohta puuttuu');};
 const compactDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat(locale(),{timeZone:'Europe/Helsinki',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d):'—';};
 const rawNodus = value => {if(value===null||value===undefined)return '—';try{const n=BigInt(value),abs=n<0n?-n:n;return decimalFi(`${n<0n?'-':''}${abs/100000000n}.${(abs%100000000n).toString().padStart(8,'0')}`);}catch{return '—';}};
-const state = {dashboard:null,history:{points:[]},network:null,rewards:null,events:null,mode:'loading',page:'overview',hours:24,year:2026,eventFilter:'all',rewardsYear:null,rewardsSnapshot:null,rewardMonth:null,loading:false,loadedAt:null,failedSources:[],loadError:null};
+const state = {dashboard:null,history:{points:[]},network:null,rewards:null,events:null,mode:'loading',page:'overview',hours:24,year:2026,eventFilter:'all',rewardsYear:null,rewardsSnapshot:null,rewardMonth:null,rewardDay:null,rewardDailyMonth:null,rewardPeriod:'monthly',loading:false,loadedAt:null,failedSources:[],loadError:null};
 const PAGES = {overview:'Yleiskuva',storage:'Tallennustila',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat'};
 let toastTimer,refreshTimer;
 const SOURCE_NAMES = {dashboard:'Seurantatiedot',history:'Historia',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat'};
@@ -225,7 +225,7 @@ function rewards(){
     <div class="notice ${pendingSource?'':'cyan'}"><span data-icon="wallet"></span><div><strong>${t('Omistajalompakon yhteenveto.')}</strong> ${t('Maksut sisältävät lompakon kaikkien palkkioroolien tuotot. Lähde ei erittele roolien tai yksittäisten nodejen osuuksia.')} ${t('Odottava kertymä ja vakuuksien palautukset pidetään erillään maksetuista palkkioista.')} ${source.complete_year?t('Koko verovuoden kattavuus on vahvistettu.'):t('Koko verovuoden kattavuutta ei ole vahvistettu.')}${state.dashboard.storage?.in_grace?`<br>${t('Storage-rooli on grace-jaksolla: storage-palkkioita ei vielä kerry. Staking-palkkiot voivat silti jatkua.')}`:''}</div></div>
     <div class="metrics">${metric(t('Maksettu kerätyllä ajalla'),summary.paid_nodus!==null&&summary.paid_nodus!==undefined?`${esc(decimalFi(summary.paid_nodus))}<span class="unit">NODUS</span>`:'—',t('Valittu vuosi · kerätyt maksut · kaikki palkkioroolit'),'wallet','accent')}${metric(t('Euromääräinen yhteensä'),summary.eur_total!==null&&summary.eur_total!==undefined?`${esc(decimalFi(summary.eur_total))}<span class="unit">€</span>`:'—',`${summary.eur_complete===false?t('Osasumma · '):''}${t('{count} tapahtumaa arvostettu euroissa',{count:int(summary.valued_count||0)})}`,'receipt')}${metric(t('Odottava kertymä'),summary.pending_nodus!==null&&summary.pending_nodus!==undefined?`${esc(decimalFi(summary.pending_nodus))}<span class="unit">NODUS</span>`:'—',t('Erillinen tieto · ei lisätty maksettuihin'),'clock')}${metric(t('Maksutapahtumat'),count,pendingSource?t('Maksuhistoriaa ei ole vielä saatu'):t('{count} ilman euroarvostusta',{count:int(summary.unvalued_count||0)}),'layers')}</div>
     ${rewardCoverage(source)}
-    <div class="two-col"><section class="panel">${panelHead(t('Maksetut palkkiot kuukausittain'),t('{year} · lompakon kerätyt maksut, kaikki palkkioroolit',{year:state.year}),pill('TESTNET','amber',false))}${rewardMonthlyChart(r,yearMatch,pendingSource)}<div class="chart-foot"><span>${t('Kuvaajan nollat koskevat vain kerättyä aineistoa.')}</span><strong>${source.complete_year?t('VUOSI KATTAVA'):t('OSITTAINEN HISTORIA')}</strong></div></section>
+    <div class="two-col">${rewardChartPanel(r,yearMatch,pendingSource)}
     <section class="panel">${panelHead(t('Yhteenvetoa varten'),t('Tietojen kattavuus ja puuttuvat arvostukset'))}<div class="tax-checks"><div class="check-row"><span data-icon="info"></span><div><strong>${t('Maksuhistorian kattavuus')}</strong><span>${source.complete_year?t('Koko vuoden lähdeaineisto vahvistettu'):pendingSource?t('Tyhjä aineisto ei tarkoita lompakon nollatuottoa.'):t('Osittainen aineisto · ei koko vuoden vahvistusta')} ${t('Lähteiden lohkoalueet voivat sisältää aukkoja. CSV säilyttää erilliset kattavuusjaksot.')}</span></div></div><div class="check-row"><span data-icon="receipt"></span><div><strong>${t('Euroarvostukset')}</strong><span>${t('{valued} valmis · {missing} puuttuu. Puuttuva arvo säilyy tyhjänä.',{valued:int(summary.valued_count||0),missing:int(summary.unvalued_count||0)})}</span></div></div><div class="check-row"><span data-icon="wallet"></span><div><strong>${t('Vakuuksien palautukset')}</strong><span>${summary.released_nodus!==null&&summary.released_nodus!==undefined?`${esc(decimalFi(summary.released_nodus))} NODUS · `:''}${t('Erilliset palautusrivit CSV:ssä. Ei lisätty palkkiotuottoihin.')}</span></div></div><div class="check-row"><span data-icon="clock"></span><div><strong>${t('Aikavyöhyke Europe/Helsinki')}</strong><span>${t('CSV sisältää UTC-ajan ja paikallisen ajan sekä lohkon tunnisteen.')}</span></div></div><div class="check-row"><span data-icon="shield"></span><div><strong>${t('Testnet merkitään vientiin')}</strong><span>${t('Tapahtumat ja lähdetiedot mukaan. Verokäsittelyä ei päätellä automaattisesti.')}</span></div></div></div></section></div>
     <div class="section-heading"><h2>${t('Kerätyt maksut')}</h2><span class="year-label">${state.year} / ${pendingSource?t('LÄHDE ODOTTAA'):t('{count} TAPAHTUMAA',{count:int(items.length)})}</span></div><section class="panel">${items.length?`<div class="reward-summary">${t('Omistajalompakon maksut. Euroarvojen summassa ovat vain arvostetut tapahtumat.')}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>${t('Aika · Helsinki')}</th><th>${t('Lohko')}</th><th>${t('Palkkio / NODUS')}</th><th>${t('Maksutiedon lähde')}</th><th>${t('Euroarvo')}</th><th>${t('Arvostuslähde')}</th></tr></thead><tbody>${items.map(item=>`<tr><td>${esc(dateTime(item.block_time_utc||item.block_time_local))}</td><td class="mono">${int(item.height)}</td><td class="mono">${esc(decimalFi(item.amount_nodus))}</td><td>${esc(rewardSourceName(item.source))}</td><td>${item.eur_value===null||item.eur_value===undefined?`<span class="pill amber">${t('Puuttuu')}</span>`:esc(decimalFi(item.eur_value))+' €'}</td><td>${esc(item.valuation_source||'—')}</td></tr>`).join('')}</tbody></table></div>`:empty(pendingSource?t('Ei vielä haettua maksuhistoriaa'):t('Ei maksuja kerätyssä aineistossa'),pendingSource?t('Vanhemmat maksut näkyvät, kun historialähteen haku onnistuu. Tyhjä näkymä ei tarkoita nollatuottoa.'):t('Tulos koskee lähteen ilmoittamaa lohkoaluetta. Se ei yksin vahvista koko vuoden nollatuottoa.'),'wallet')}<div class="data-note">${esc(dataText(source.reason)||t('Lähteen ajankohta ja lohkoalue tulevat mukaan, kun tiedonkeruu on käytössä.'))} ${t('Tallennetut maksut säilyvät näkyvissä myös lähteen tilapäisen häiriön aikana.')}</div></section>`;
 }
@@ -248,6 +248,67 @@ function rewardChartScale(max){
 function rewardChartNumber(value,digits=2){
   return new Intl.NumberFormat(locale(),{notation:Math.abs(value)>=1e6?'compact':'standard',maximumFractionDigits:digits}).format(value);
 }
+function rewardDayKey(item){
+  const value=item.block_time_utc||item.block_time_local;
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value))return null;
+  const date=new Date(value);
+  if(!Number.isFinite(date.getTime()))return null;
+  const parts=rewardDayKey.formatter.formatToParts(date),part=name=>parts.find(part=>part.type===name).value;
+  return `${part('year').padStart(4,'0')}-${part('month')}-${part('day')}`;
+}
+rewardDayKey.formatter=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Helsinki',year:'numeric',month:'2-digit',day:'2-digit'});
+function rewardDailyRows(r,yearMatch,monthKey){
+  if(!yearMatch||!Array.isArray(r.items)||!new RegExp(`^${state.year}-(0[1-9]|1[0-2])$`).test(monthKey))return null;
+  const totals=new Map();let observed=false;
+  for(const item of r.items){
+    if(item?.kind!=='payout')continue;
+    const day=rewardDayKey(item);
+    if(!day)return null;
+    if(Number(day.slice(0,4))!==state.year)continue;
+    if(typeof item.amount_raw!=='string'||!/^\d+$/.test(item.amount_raw))return null;
+    const previous=totals.get(day)||{raw:0n,count:0};
+    totals.set(day,{raw:previous.raw+BigInt(item.amount_raw),count:previous.count+1});observed=true;
+  }
+  if(!observed)return null;
+  const month=Number(monthKey.slice(5)),days=new Date(Date.UTC(state.year,month,0)).getUTCDate();
+  return Array.from({length:days},(_,i)=>{
+    const day=`${monthKey}-${String(i+1).padStart(2,'0')}`,value=totals.get(day)||{raw:0n,count:0};
+    return {day,paid_nodus:`${value.raw/100000000n}.${(value.raw%100000000n).toString().padStart(8,'0')}`,payout_count:value.count};
+  });
+}
+function rewardSelectedMonth(r,yearMatch){
+  const valid=value=>typeof value==='string'&&new RegExp(`^${state.year}-(0[1-9]|1[0-2])$`).test(value);
+  if(valid(state.rewardDailyMonth))return state.rewardDailyMonth;
+  if(valid(state.rewardMonth))return state.rewardMonth;
+  const paid=yearMatch&&Array.isArray(r.monthly)?r.monthly.filter(row=>valid(row.month)&&Number(row.payout_count)>0).map(row=>row.month).sort():[];
+  if(paid.length)return paid.at(-1);
+  const dated=yearMatch&&Array.isArray(r.items)?r.items.filter(item=>item?.kind==='payout').map(item=>rewardDayKey(item)?.slice(0,7)).filter(valid).sort():[];
+  if(dated.length)return dated.at(-1);
+  const today=rewardDayKey({block_time_utc:new Date().toISOString()});
+  return today?.startsWith(`${state.year}-`)?today.slice(0,7):`${state.year}-01`;
+}
+function rewardChartControls(r,yearMatch){
+  const daily=state.rewardPeriod==='daily',month=rewardSelectedMonth(r,yearMatch);
+  const choices=Array.from({length:12},(_,i)=>{
+    const key=`${state.year}-${String(i+1).padStart(2,'0')}`,name=new Intl.DateTimeFormat(locale(),{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(state.year,i,1)));
+    return `<option value="${key}" ${key===month?'selected':''}>${esc(name)}</option>`;
+  }).join('');
+  return `<div class="reward-chart-controls"><div class="range-tabs" role="group" aria-label="${esc(t('Palkkiokuvaajan aikajako'))}">${[['daily','Päivittäin'],['monthly','Kuukausittain']].map(([period,label])=>`<button data-reward-period="${period}" class="${daily===(period==='daily')?'active':''}" aria-pressed="${daily===(period==='daily')}">${t(label)}</button>`).join('')}</div>${daily?`<label class="reward-chart-month">${t('Kuukausi')}<select class="select" id="reward-chart-month" aria-label="${esc(t('Päiväkuvaajan kuukausi'))}">${choices}</select></label>`:''}</div>`;
+}
+function rewardChartPanel(r,yearMatch,pendingSource){
+  const daily=state.rewardPeriod==='daily';
+  return `<section class="panel">${panelHead(daily?t('Maksetut palkkiot päivittäin'):t('Maksetut palkkiot kuukausittain'),t('{year} · lompakon kerätyt maksut, kaikki palkkioroolit',{year:state.year}),pill('TESTNET','amber',false))}${rewardChartControls(r,yearMatch)}${daily?rewardDailyChart(r,yearMatch,pendingSource):rewardMonthlyChart(r,yearMatch,pendingSource)}<div class="chart-foot"><span>${t('Kuvaajan nollat koskevat vain kerättyä aineistoa.')}${daily?' '+t('Päiväjako: Europe/Helsinki.'):''}</span><strong>${r.source?.complete_year?t('VUOSI KATTAVA'):t('OSITTAINEN HISTORIA')}</strong></div></section>`;
+}
+function rewardDailyChart(r,yearMatch,pendingSource){
+  const month=rewardSelectedMonth(r,yearMatch),rows=rewardDailyRows(r,yearMatch,month);
+  if(!rows)return empty(pendingSource?t('Maksuhistoriaa odotetaan'):t('Päiväkuvaaja odottaa päivättyjä maksuja'),t('Päiväsummat lasketaan kerättyjen maksujen aikaleimoista. Kuukausisummaa ei jaeta arvioiduiksi päivätuotoiksi.'),'wallet');
+  const points=rows.map(row=>{
+    const name=new Intl.DateTimeFormat(locale(),{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${row.day}T00:00:00Z`));
+    const tooltip=t(row.payout_count===1?'{month}: {amount} NODUS · {count} maksu':'{month}: {amount} NODUS · {count} maksua',{month:name,amount:decimalFi(row.paid_nodus),count:int(row.payout_count)});
+    return {month,day:row.day,amount:Number(row.paid_nodus),known:true,tooltip,count:row.payout_count};
+  });
+  return rewardBarsChart(points,true);
+}
 function rewardMonthlyChart(r,yearMatch,pendingSource){
   const rows=yearMatch&&Array.isArray(r.monthly)?r.monthly:[];
   if(!rows.some(row=>Number(row.payout_count)>0))return `<div class="empty reward-empty"><span class="empty-icon" data-icon="wallet"></span><h3>${pendingSource?t('Maksuhistoriaa odotetaan'):t('Ei maksuja kerätyllä ajalla')}</h3><p>${t('Kuukausikuvaaja muodostuu todellisista maksutapahtumista. Arvioituja tuottoja ei näytetä kirjanpitotietoina.')}</p><small>${t('EI MAKSUJA TÄSSÄ AINEISTOSSA · EI TIETOA KOKO HISTORIASTA')}</small></div>`;
@@ -259,20 +320,28 @@ function rewardMonthlyChart(r,yearMatch,pendingSource){
     const tooltip=known?t(row.payout_count===1?'{month}: {amount} NODUS · {count} maksu':'{month}: {amount} NODUS · {count} maksua',{month:name,amount:decimalFi(row.paid_nodus),count:int(row.payout_count)}):t('{month}: määrätieto ei saatavilla',{month:name});
     return {month,amount,known,tooltip,count:row?.payout_count};
   });
-  const selected=months.find(row=>row.month===state.rewardMonth)||months.filter(row=>row.known&&Number(row.count)>0).at(-1)||months[0];
-  const scale=rewardChartScale(Math.max(0,...months.filter(row=>row.known).map(row=>row.amount)));
-  const left=82,right=688,top=34,bottom=202,slot=(right-left)/12,y=value=>bottom-value/scale.top*(bottom-top);
-  let svg=`<svg viewBox="0 0 710 248" role="group" aria-label="${esc(t('Kuukausittaiset palkkiot NODUS-tokenina'))}"><text class="reward-axis-unit" x="${left-12}" y="15" text-anchor="end">NODUS</text>`;
+  return rewardBarsChart(months);
+}
+function rewardBarsChart(points,daily=false){
+  const selection=daily?state.rewardDay:state.rewardMonth;
+  const selected=points.find(row=>(daily?row.day:row.month)===selection)||points.filter(row=>row.known&&Number(row.count)>0).at(-1)||points[0];
+  const scale=rewardChartScale(Math.max(0,...points.filter(row=>row.known).map(row=>row.amount)));
+  const width=daily?points.length*42+22:710,left=daily?0:82,right=width-22,top=34,bottom=202,slot=(right-left)/points.length,y=value=>bottom-value/scale.top*(bottom-top);
+  let axis='<text class="reward-axis-unit" x="70" y="15" text-anchor="end">NODUS</text>';
+  let svg=`<svg viewBox="0 0 ${width} 248" ${daily?`style="min-width:${width}px"`:''} role="group" aria-label="${esc(daily?t('Päivittäiset palkkiot NODUS-tokenina'):t('Kuukausittaiset palkkiot NODUS-tokenina'))}">${daily?'':axis}`;
   for(let i=0;i<=scale.count;i++){
     const value=i*scale.step,pos=y(value);
-    svg+=`<line class="grid-line" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="reward-axis-label" x="${left-12}" y="${pos+3}" text-anchor="end">${esc(rewardChartNumber(value,scale.digits))}</text>`;
+    svg+=`<line class="grid-line" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/>`;
+    const tick=`<text class="reward-axis-label" x="70" y="${pos+3}" text-anchor="end">${esc(rewardChartNumber(value,scale.digits))}</text>`;
+    if(daily)axis+=tick;else svg+=tick;
   }
-  months.forEach((row,i)=>{
-    const x=left+slot*(i+.5),bar=row.known?row.amount/scale.top*(bottom-top):0,active=row.month===selected.month;
+  points.forEach((row,i)=>{
+    const x=left+slot*(i+.5),bar=row.known?row.amount/scale.top*(bottom-top):0,active=daily?row.day===selected.day:row.month===selected.month;
     const digits=row.amount>0?Math.min(8,Math.max(2,1-Math.floor(Math.log10(row.amount)))):0;
-    svg+=`<g class="reward-month-bar" role="button" tabindex="0" aria-label="${esc(row.tooltip)}" aria-pressed="${active}" data-month="${row.month}" data-tooltip="${esc(row.tooltip)}"><title>${esc(row.tooltip)}</title><rect class="reward-month-hit" x="${left+i*slot}" y="${top-20}" width="${slot}" height="${bottom-top+52}" fill="transparent"/>${row.known?`<rect class="reward-bar" x="${x-13}" y="${bottom-bar}" width="26" height="${bar}" rx="3" fill="#5de0df"/><text class="reward-bar-value" x="${x}" y="${bottom-bar-9}" text-anchor="middle">${esc(rewardChartNumber(row.amount,digits))}</text>`:`<text class="reward-bar-value" x="${x}" y="${bottom-9}" text-anchor="middle">—</text>`}<text class="reward-month-label" x="${x}" y="${bottom+24}" text-anchor="middle">${i+1}</text></g>`;
+    svg+=`<g class="reward-month-bar" role="button" tabindex="0" aria-label="${esc(row.tooltip)}" aria-pressed="${active}" data-month="${row.month}" ${daily?`data-day="${row.day}"`:''} data-tooltip="${esc(row.tooltip)}"><title>${esc(row.tooltip)}</title><rect class="reward-month-hit" x="${left+i*slot}" y="${top-20}" width="${slot}" height="${bottom-top+52}" fill="transparent"/>${row.known?`<rect class="reward-bar" x="${x-13}" y="${bottom-bar}" width="26" height="${bar}" rx="3" fill="#5de0df"/><text class="reward-bar-value" x="${x}" y="${bottom-bar-9}" text-anchor="middle">${esc(rewardChartNumber(row.amount,digits))}</text>`:`<text class="reward-bar-value" x="${x}" y="${bottom-9}" text-anchor="middle">—</text>`}<text class="reward-month-label" x="${x}" y="${bottom+24}" text-anchor="middle">${i+1}</text></g>`;
   });
-  return `<div class="chart-box reward-month-chart"><div class="reward-chart-scroll">${svg}</svg></div><div class="reward-chart-readout" id="reward-chart-tooltip" role="status" aria-live="polite">${esc(selected.tooltip)}</div><p class="reward-chart-help">${t('Valitse kuukausi hiirellä, koskettamalla tai näppäimistöllä. Summat koskevat kerättyjä maksuja.')}</p></div>`;
+  const plot=daily?`<div class="reward-daily-layout"><svg class="reward-day-axis" viewBox="0 0 82 248" aria-hidden="true">${axis}</svg><div class="reward-chart-scroll">${svg}</svg></div></div>`:`<div class="reward-chart-scroll">${svg}</svg></div>`;
+  return `<div class="chart-box reward-month-chart">${plot}<div class="reward-chart-readout" id="reward-chart-tooltip" role="status" aria-live="polite">${esc(selected.tooltip)}</div><p class="reward-chart-help">${daily?t('Valitse päivä hiirellä, koskettamalla tai näppäimistöllä. Voit vierittää kuvaajaa sivusuunnassa.'):t('Valitse kuukausi hiirellä, koskettamalla tai näppäimistöllä. Summat koskevat kerättyjä maksuja.')}</p></div>`;
 }
 function eventItems(){const e=state.events;const rows=Array.isArray(e)?e:Array.isArray(e?.items)?e.items:Array.isArray(e?.events)?e.events:[];return rows.slice().sort((a,b)=>new Date(b.timestamp||b.time||0)-new Date(a.timestamp||a.time||0));}
 function eventsTable(rows){if(!rows.length)return empty(t('Tapahtumaloki odottaa kerääjää'),t('Uudet yhteysvirheet, synkronointitapahtumat ja palveluiden tilamuutokset tallentuvat tänne.'),'activity',true);return `<div class="table-wrap"><table class="data-table"><thead><tr><th>${t("Aika · Helsinki")}</th><th>${t("Tapahtuma")}</th><th>${t("Lähde")}</th><th>${t("Taso")}</th></tr></thead><tbody>${rows.map(event=>{const severity=String(event.level||event.severity||'info').toLowerCase();const cls=/error|err|critical/.test(severity)?'error':/warn/.test(severity)?'warning':'info';const title=event.title||event.type||event.message||t('Tapahtuma');return `<tr><td class="mono">${esc(compactDate(event.timestamp||event.time))}</td><td><strong><i class="event-indicator ${cls}"></i>${esc(dataText(title))}</strong>${event.message&&event.message!==title?`<br><span>${esc(dataText(event.message))}</span>`:''}</td><td class="mono">${esc(event.source||event.service||t('Kerääjä'))}</td><td>${pill(cls==='error'?t('Virhe'):cls==='warning'?t('Huomio'):t('Tieto'),cls==='error'?'red':cls==='warning'?'amber':'muted',false)}</td></tr>`;}).join('')}</tbody></table></div>`;}
@@ -299,7 +368,7 @@ function bindPage(){
   const monthBars=document.querySelectorAll('.reward-month-bar');
   monthBars.forEach(point=>{
     const select=()=>{
-      state.rewardMonth=point.dataset.month;
+      if(point.dataset.day)state.rewardDay=point.dataset.day;else state.rewardMonth=point.dataset.month;
       const target=document.querySelector('#reward-chart-tooltip');
       if(target)target.textContent=point.dataset.tooltip;
       monthBars.forEach(bar=>bar.setAttribute('aria-pressed',String(bar===point)));
@@ -308,7 +377,24 @@ function bindPage(){
     point.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();select();}};
   });
   document.querySelectorAll('[data-filter]').forEach(button=>button.onclick=()=>{state.eventFilter=button.dataset.filter;render();});
-  const year=document.querySelector('#reward-year');if(year)year.onchange=async()=>{state.year=Number(year.value);if(state.mode==='live'){try{const result=await getData(`/api/rewards?year=${state.year}`,'rewards.json');state.rewards=result.data;}catch{toast('Palkkiotietoja ei voitu hakea.');}}else {const saved=state.rewardsSnapshot||state.rewards;state.rewards=Number(saved?.year)===state.year?saved:{...saved,year:state.year,items:[],releases:[],monthly:[],summary:{},source:{status:'unavailable',reason:'Tälle vuodelle ei ole tallennettua aineistoa.',complete_year:false}};}render();};
+  if(state.rewardPeriod==='daily'){
+    const selected=[...monthBars].find(bar=>bar.dataset.day&&bar.getAttribute('aria-pressed')==='true');
+    const viewport=document.querySelector('.reward-month-chart .reward-chart-scroll');
+    if(selected&&typeof selected.getBoundingClientRect==='function'&&typeof viewport?.getBoundingClientRect==='function'){
+      const bar=selected.getBoundingClientRect(),view=viewport.getBoundingClientRect();
+      if(bar.left<view.left||bar.right>view.right)viewport.scrollLeft+=bar.left-view.left+(bar.width-view.width)/2;
+    }
+  }
+  document.querySelectorAll('[data-reward-period]').forEach(button=>button.onclick=()=>{
+    if(['daily','monthly'].includes(button.dataset.rewardPeriod)){state.rewardPeriod=button.dataset.rewardPeriod;render();}
+  });
+  const chartMonth=document.querySelector('#reward-chart-month');
+  if(chartMonth)chartMonth.onchange=()=>{
+    if(new RegExp(`^${state.year}-(0[1-9]|1[0-2])$`).test(chartMonth.value)){
+      state.rewardDailyMonth=chartMonth.value;state.rewardMonth=chartMonth.value;state.rewardDay=null;render();
+    }
+  };
+  const year=document.querySelector('#reward-year');if(year)year.onchange=async()=>{state.year=Number(year.value);state.rewardMonth=null;state.rewardDailyMonth=null;state.rewardDay=null;if(state.mode==='live'){try{const result=await getData(`/api/rewards?year=${state.year}`,'rewards.json');state.rewards=result.data;}catch{toast('Palkkiotietoja ei voitu hakea.');}}else {const saved=state.rewardsSnapshot||state.rewards;state.rewards=Number(saved?.year)===state.year?saved:{...saved,year:state.year,items:[],releases:[],monthly:[],summary:{},source:{status:'unavailable',reason:'Tälle vuodelle ei ole tallennettua aineistoa.',complete_year:false}};}render();};
   const exportButton=document.querySelector('#export-rewards');if(exportButton)exportButton.onclick=exportRewards;
 }
 async function exportRewards(){

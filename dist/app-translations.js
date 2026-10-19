@@ -3,6 +3,17 @@
 // Source-key messages for rendered pages, charts and known backend summaries.
 // Raw diagnostics, wallet identifiers and machine-readable exports are never rewritten.
 NodusI18n.addMessages({
+  "Päivittäin": "Daily",
+  "Kuukausittain": "Monthly",
+  "Kuukausi": "Month",
+  "Palkkiokuvaajan aikajako": "Reward chart grouping",
+  "Päiväkuvaajan kuukausi": "Daily chart month",
+  "Maksetut palkkiot päivittäin": "Daily paid rewards",
+  "Päiväjako: Europe/Helsinki.": "Days use Europe/Helsinki time.",
+  "Päiväkuvaaja odottaa päivättyjä maksuja": "Daily chart is waiting for dated payments",
+  "Päiväsummat lasketaan kerättyjen maksujen aikaleimoista. Kuukausisummaa ei jaeta arvioiduiksi päivätuotoiksi.": "Daily totals use the timestamps of collected payments. Monthly totals are not divided into estimated daily income.",
+  "Päivittäiset palkkiot NODUS-tokenina": "Daily rewards in NODUS tokens",
+  "Valitse päivä hiirellä, koskettamalla tai näppäimistöllä. Voit vierittää kuvaajaa sivusuunnassa.": "Select a day with your mouse, touch or keyboard. You can scroll the chart horizontally.",
   "{month}: {amount} NODUS · {count} maksu": "{month}: {amount} NODUS · {count} payment",
   "{month}: {amount} NODUS · {count} maksua": "{month}: {amount} NODUS · {count} payments",
   "{month}: määrätieto ei saatavilla": "{month}: amount unavailable",
