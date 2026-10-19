@@ -3,6 +3,19 @@
 // Source-key messages for rendered pages, charts and known backend summaries.
 // Raw diagnostics, wallet identifiers and machine-readable exports are never rewritten.
 NodusI18n.addMessages({
+  "Tila ei saatavilla": "Status unavailable",
+  "Epoch-jäsenyys ei saatavilla": "Epoch membership unavailable",
+  "Noden jäsenyystieto ei saatavilla.": "Node membership information unavailable.",
+  "Lohkoero ei saatavilla": "Block difference unavailable",
+  "Ketjutiedon mukaan tätä nodea ei ole rekisteröity storage-rooliin.": "On-chain data shows this node is not registered for the storage role.",
+  "OSITTAINEN TILANNE": "PARTIAL SNAPSHOT",
+  "OSITTAINEN MITTAUS": "PARTIAL COLLECTION",
+  "Osa seurantatiedoista puuttuu.": "Some monitoring data is unavailable.",
+  "Puuttuva tilatieto ei tarkoita, että node olisi menettänyt rekisteröintinsä.": "Missing status information does not mean the node has lost its registration.",
+  "Noduksen tilakysely epäonnistui. Tarkista nodus-cli-ohjelman versio ja yhteys nodeen.": "The Nodus status query failed. Check the nodus-cli version and the connection to the node.",
+  "Kysely päättyi virhekoodiin {code}.": "The query exited with code {code}.",
+  "Kyselyn aikaraja ylittyi.": "The query timed out.",
+  "Tilavastauksesta puuttuu luettava lohkokorkeus.": "The status response contains no readable block height.",
   "Ei saatavilla": "Unavailable",
   "Ajankohta puuttuu": "Timestamp unavailable",
   "Yleiskuva": "Overview",
