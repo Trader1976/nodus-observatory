@@ -11,7 +11,11 @@ avaintenhallintarajapintaa.
 
 ## Rakenna ja tarkista escrow
 
-Avaa sivuvalikosta **Sopimusstudio**. Anna ostajan ja myyjän **Nodus EVM
+Avaa sivuvalikosta **Sopimusstudio** ja valitse **Escrow-esimerkki**.
+[Asiakirjarekisteri](document-notary_fin.md) on oletustyötila. Aiemmat escrow-luonnokset
+säilyvät samassa selaimessa. Paletin painike näyttää jo kaaviossa olevan palikan
+luomatta kaksoiskappaletta. Poistetun palikan voi palauttaa **Lisää**-painikkeella.
+Anna ostajan ja myyjän **Nodus EVM
 -osoitteet**, NODUS-määrä ja tarkka määräaika. Uuden luonnoksen tyhjät osoitteet
 on täytettävä ennen lähdekoodin vientiä tai oman sopimuksen simulointia.
 Simulaattorin erillinen esimerkkitila käyttää julkisia mallitunnisteita

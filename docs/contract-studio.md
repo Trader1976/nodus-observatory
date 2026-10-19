@@ -10,7 +10,11 @@ compiler or key-management endpoint to the server.
 
 ## Build and inspect an escrow
 
-Open **Contract Studio** in the sidebar. Set the buyer and seller to their
+Open **Contract Studio** in the sidebar, then choose **Escrow example**. The
+[document registry](document-notary.md) is the default workspace. Existing escrow
+drafts are retained in the same browser. Palette controls show an existing block
+instead of creating duplicates; after removing a block, **Add** restores it.
+Set the buyer and seller to their
 **Nodus EVM addresses**, the amount in NODUS and an explicit deadline. The blank
 addresses in a new draft must be filled before source export or simulation of
 that agreement. The separate example-simulation action uses public dummy
