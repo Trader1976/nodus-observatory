@@ -67,6 +67,37 @@ native/EVM bridge. Imported projects are data: the editor validates their
 schema and graph and does not execute imported code. Drafts are saved in this
 browser; use project export/import to transfer them to another browser.
 
+### Save and load named projects
+
+**Saved projects** keeps up to 50 named projects in this device's browser at the
+same website address. Enter a **Project name** and choose **Save as new project**.
+Later, select an entry showing its name and last save time, then **Load project**.
+Loading restores the agreement settings, exact amounts, node positions and
+connections. Incomplete graphs and empty addresses may be saved; invalid fields
+and unsupported connections must be corrected first. Simulation execution state
+is not part of a project, and loading clears the previous simulation.
+
+**Save changes** updates the open named project. Enter a different name and use
+**Save as new project** for a separate copy. Duplicate names never overwrite
+existing saves. Editing the settings or graph does not update a named snapshot:
+the existing single working-draft autosave remains separate. Reopening the page
+restores that working draft; load a named project from the list to resume editing
+its saved copy.
+
+Loading asks before replacing changes in the open draft. Reset and file import
+do not change named saves. **Delete saved project** requires confirmation and
+retains the open draft. A project changed in another tab cannot be overwritten
+with a stale version: load it again or save your work as a new project. Failed
+writes are reported and retain the previous save. An unreadable catalog is never
+automatically replaced.
+
+Named projects do not go to the server or another browser or device. Clearing
+website data can delete them. Use **Export project** and **Import project** for
+backups and transfers; these also work when browser storage is unavailable.
+Project files retain the compatible `nodus-contract-studio/v1` graph format,
+without the catalog's name and timestamps. They contain agreement settings and
+the graph, not the on-chain state of a deployed contract.
+
 Ordinary unsolicited payments are rejected by the generated contract. The EVM
 can nevertheless force a balance onto an address through `SELFDESTRUCT` without
 calling its receive function. The escrow pays exactly the agreed amount; it has

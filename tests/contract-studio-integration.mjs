@@ -238,9 +238,126 @@ const escapeEvent=new Event('keydown');Object.defineProperty(escapeEvent,'key',{
 app.context.dispatchEvent(escapeEvent);
 assert.equal(page(app).innerHTML,overviewMarkup,'Escape outside the studio cannot overwrite the active route');
 
-for(const target of [offline,app]){
+// Named snapshots are separate from the single autosaved working draft. Saving
+// and loading must preserve incomplete graphs, exact amounts and layout, and
+// must never claim success after a failed write or clobber another named copy.
+const projectsKey='nodus-observatory-contract-projects-v1';
+const named=await boot();named.context.NodusI18n.setLanguage('en');
+const catalog=target=>JSON.parse(target.preferences.get(projectsKey)).projects;
+async function chooseProject(target,id){
+  const field=select(target,'#studio-saved-project');field.value=id;await field.fire('change');await flush();
+}
+await action(named,'save-new');
+assert.equal(named.preferences.has(projectsKey),false,'empty name cannot create a saved entry');
+await input(named,'project-name','First agreement');await action(named,'save-new');
+const first=catalog(named)[0], originalDraft=JSON.stringify(getDraft(named));
+assert.equal(first.name,'First agreement');
+assert.equal(JSON.stringify(JSON.parse(first.json)),originalDraft,'incomplete addresses can be saved as a draft');
+assert.equal(getState(named).changed,false);
+assert.equal(getState(named).activeProjectId,first.id);
+assert(!select(named,'[data-studio-action="save-project"]').disabled);
+assert.match(select(named,'#studio-project-message').textContent,/Project saved/);
+
+await input(named,'amountNodus','123456789012.34567890');
+assert.match(select(named,'#studio-project-message').textContent,/have not been saved/,'working autosave never implies the named copy was updated');
+await select(named,'[data-studio-handle="created"]').fire('keydown',{key:'ArrowRight',shiftKey:true});
+await select(named,'[data-studio-handle="paid"]').fire('keydown',{key:'Delete'});
+await input(named,'project-name','Second agreement');await action(named,'save-new');
+const second=catalog(named).find(entry=>entry.id!==first.id), secondDraft=JSON.stringify(getDraft(named));
+assert.equal(catalog(named).length,2);
+assert.equal(catalog(named)[0].json,first.json,'saving a new project retains the previous snapshot');
+
+const reloaded=await boot({saved:Object.fromEntries(named.preferences)});reloaded.context.NodusI18n.setLanguage('en');
+assert.equal(catalog(reloaded).length,2,'saved list survives a fresh browser session');
+assert.equal(JSON.stringify(getDraft(reloaded)),secondDraft,'legacy working-draft autosave still restores');
+assert(select(reloaded,`[value="${first.id}"]`));
+assert(select(reloaded,`[value="${second.id}"]`));
+await chooseProject(reloaded,first.id);await action(reloaded,'load-project');
+assert(select(reloaded,'[data-studio-action="replace-draft"]'),'loading protects working changes');
+await action(reloaded,'keep-draft');assert.equal(JSON.stringify(getDraft(reloaded)),secondDraft);
+await action(reloaded,'load-project');await action(reloaded,'replace-draft');
+assert.equal(JSON.stringify(getDraft(reloaded)),originalDraft);
+assert.equal(getState(reloaded).projectName,first.name);
+await click(reloaded,'[data-studio-tab="simulation"]');await action(reloaded,'simulate-examples');
+await chooseProject(reloaded,second.id);await action(reloaded,'load-project');
+assert.equal(JSON.stringify(getDraft(reloaded)),secondDraft,'partial graph and moved positions restore exactly');
+assert.equal(getState(reloaded).simulation,null,'loading a different agreement clears the old simulation');
+assert.equal(getDraft(reloaded).config.amountNodus,'123456789012.34567890');
+
+await input(reloaded,'amountNodus','200');await action(reloaded,'save-project');
+assert.equal(catalog(reloaded).length,2,'Save changes updates rather than duplicates');
+assert.equal(catalog(reloaded).find(entry=>entry.id===first.id).json,first.json);
+assert.equal(JSON.parse(catalog(reloaded).find(entry=>entry.id===second.id).json).config.amountNodus,'200');
+assert.equal(catalog(reloaded).find(entry=>entry.id===second.id).createdAt,second.createdAt);
+const beforeDuplicate=reloaded.preferences.get(projectsKey);
+await input(reloaded,'project-name','first AGREEMENT');await action(reloaded,'save-new');
+assert.equal(reloaded.preferences.get(projectsKey),beforeDuplicate,'case-insensitive duplicate name cannot overwrite a project');
+await input(reloaded,'project-name','Second agreement');
+await input(reloaded,'amountNodus','invalid');await action(reloaded,'save-project');
+assert.equal(reloaded.preferences.get(projectsKey),beforeDuplicate,'invalid working fields never save an older valid snapshot as current');
+await input(reloaded,'amountNodus','300');
+
+const normalSetItem=reloaded.context.localStorage.setItem;
+reloaded.context.localStorage.setItem=(key,value)=>{if(key===projectsKey)throw Error('Quota exceeded');normalSetItem(key,value);};
+await action(reloaded,'save-project');
+assert.equal(reloaded.preferences.get(projectsKey),beforeDuplicate,'quota failure retains previous snapshot');
+assert.equal(getState(reloaded).changed,true,'failed save does not clear unsaved changes');
+assert.match(select(reloaded,'#studio-project-message').textContent,/Saving failed/);
+reloaded.context.localStorage.setItem=normalSetItem;
+
+// A write re-reads other tabs' entries and checks the loaded revision before
+// updating that same project. Unrelated new saves must not be lost.
+const external=JSON.parse(beforeDuplicate);
+external.projects.push({...first,id:'p-other-tab',name:'Other tab'});
+reloaded.preferences.set(projectsKey,JSON.stringify(external));
+await action(reloaded,'save-project');
+assert.equal(catalog(reloaded).length,3);
+const conflict=JSON.parse(reloaded.preferences.get(projectsKey));
+conflict.projects.find(entry=>entry.id===second.id).name='Edited in another tab';
+reloaded.preferences.set(projectsKey,JSON.stringify(conflict));
+await input(reloaded,'amountNodus','400');await action(reloaded,'save-project');
+assert.equal(JSON.parse(catalog(reloaded).find(entry=>entry.id===second.id).json).config.amountNodus,'300');
+assert.match(select(reloaded,'#studio-project-message').textContent,/another tab/);
+
+await chooseProject(reloaded,first.id);await action(reloaded,'delete-project');
+assert.equal(catalog(reloaded).length,3,'delete requires confirmation');
+await action(reloaded,'keep-project');assert.equal(catalog(reloaded).length,3);
+const openBeforeDelete=JSON.stringify(getDraft(reloaded));
+await action(reloaded,'delete-project');await action(reloaded,'confirm-delete-project');
+assert.equal(catalog(reloaded).length,2);assert.equal(JSON.stringify(getDraft(reloaded)),openBeforeDelete);
+await chooseProject(reloaded,second.id);await action(reloaded,'delete-project');await action(reloaded,'confirm-delete-project');
+assert.equal(getState(reloaded).activeProjectId,null,'deleting the active saved copy detaches the retained working draft');
+assert.equal(JSON.stringify(getDraft(reloaded)),openBeforeDelete);
+
+await input(reloaded,'project-name','<img src=x onerror=alert(1)>');await action(reloaded,'save-new');
+assert(!page(reloaded).innerHTML.includes('<img src=x'),'project names remain text in inputs, options and headings');
+assert(page(reloaded).innerHTML.includes('&lt;img'));
+const namedBeforeImport=reloaded.preferences.get(projectsKey);
+await importDraft(reloaded,reloaded.context.NodusStudioCore.defaultDraft());
+assert.equal(getState(reloaded).activeProjectId,null,'file import is detached from saved projects');
+assert.equal(reloaded.preferences.get(projectsKey),namedBeforeImport);
+await action(reloaded,'reset');
+assert.equal(reloaded.preferences.get(projectsKey),namedBeforeImport,'reset never clears saved projects');
+
+const corruptSaved=await boot({saved:{[projectsKey]:'corrupt saved catalog'}});
+assert.equal(getState(corruptSaved).projectsStatus,'unreadable');
+await input(corruptSaved,'project-name','Rescue');
+await select(corruptSaved,'[data-studio-action="save-new"]').onclick();
+assert.equal(corruptSaved.preferences.get(projectsKey),'corrupt saved catalog','even a direct handler cannot overwrite unreadable storage');
+await input(offline,'project-name','Offline');
+await select(offline,'[data-studio-action="save-new"]').onclick();
+assert.equal(offline.preferences.has(projectsKey),false);
+await action(offline,'export-project');assert(offline.downloads.length>0,'file backup remains available when project storage is blocked');
+
+const fullCatalog=JSON.stringify({schema:'nodus-contract-studio/projects-v1',projects:Array.from({length:50},(_,i)=>({...first,id:`p-capacity-${i}`,name:`Saved ${i}`}))});
+const full=await boot({saved:{[projectsKey]:fullCatalog}});full.context.NodusI18n.setLanguage('en');
+await input(full,'project-name','Extra project');await action(full,'save-new');
+assert.equal(full.preferences.get(projectsKey),fullCatalog,'capacity limit never drops older entries');
+assert.match(select(full,'#studio-project-message').textContent,/50-project limit/);
+
+for(const target of [offline,app,named,reloaded,corruptSaved,full]){
   assert(target.requests.every(({options})=>!options?.method||options.method==='GET'),'all network operations remain read-only monitoring queries');
   assert(target.requests.every(({request})=>request.startsWith('/api/')||['snapshot.json','history.json','network.json','rewards.json','events.json'].includes(request)),
     'studio never initiates compiler, wallet, RPC or external requests');
 }
-console.log('Contract Studio integration: offline route, FIN/ENG, persistence, exact exports, graph/drag/keyboard handlers, simulation and hostile input PASS.');
+console.log('Contract Studio integration: offline route, FIN/ENG, autosave and named save/load, failed writes and conflicts, exact exports, graph/drag/keyboard handlers, simulation and hostile input PASS.');

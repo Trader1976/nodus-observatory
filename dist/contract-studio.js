@@ -17,6 +17,9 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const clone = value => JSON.parse(JSON.stringify(value));
   const storageKey = 'nodus-observatory-contract-draft-v1';
+  const projectsKey = 'nodus-observatory-contract-projects-v1';
+  const projectsSchema = 'nodus-contract-studio/projects-v1';
+  const maxProjects = 50;
   const width = 1050, height = 590, nodeWidth = 170, nodeHeight = 89;
   const types = {
     created: { label:'Created', description:'Await the buyer’s deposit.', color:'#7edbd2' },
@@ -31,6 +34,117 @@
   let simulation = null, simulationUsesExamples = false, trace = [], actor = 'buyer', failTransfer = false;
   let status = '', storageStatus = 'saved', replaceAction = null, serial = 0, language = null, mounted = false;
   let drag = null, changed = false, zoomMode = 'fit', zoomScale = 1, activeRoute = '#contracts';
+  let projectName = '', activeProjectId = null, activeRevision = null, selectedProjectId = '', deleteProjectId = null;
+  let projects = [], projectsStatus = 'ready', projectMessage = '';
+
+  function validProjectName(value) {
+    return typeof value === 'string' && value === value.trim() && value.length > 0 && value.length <= 100 && !/[\u0000-\u001f\u007f]/.test(value);
+  }
+  function readProjects() {
+    // Re-read before every operation so another tab's unrelated saves are retained.
+    let saved;
+    try { saved = globalThis.localStorage.getItem(projectsKey); }
+    catch { projectsStatus = 'unavailable'; projects = []; return false; }
+    try {
+      if (saved === null) { projects = []; projectsStatus = 'ready'; return true; }
+      if (saved.length > 4 * 1024 * 1024) throw Error('size');
+      const catalog = JSON.parse(saved), ids = new Set();
+      if (catalog?.schema !== projectsSchema || !Array.isArray(catalog.projects) || catalog.projects.length > maxProjects) throw Error('schema');
+      for (const entry of catalog.projects) {
+        if (!entry || typeof entry.id !== 'string' || !/^p-[a-zA-Z0-9-]{1,80}$/.test(entry.id) || ids.has(entry.id) || !validProjectName(entry.name)) throw Error('entry');
+        for (const key of ['createdAt', 'updatedAt']) {
+          if (typeof entry[key] !== 'string' || !Number.isFinite(Date.parse(entry[key])) || new Date(entry[key]).toISOString() !== entry[key]) throw Error('date');
+        }
+        core().importProject(entry.json);
+        ids.add(entry.id);
+      }
+      projects = catalog.projects;
+      projectsStatus = 'ready';
+      return true;
+    } catch { projectsStatus = 'unreadable'; projects = []; return false; }
+  }
+  function writeProjects(next) {
+    try {
+      globalThis.localStorage.setItem(projectsKey, JSON.stringify({schema:projectsSchema, projects:next}));
+      projects = next;
+      projectsStatus = 'ready';
+      return true;
+    } catch { projectMessage = 'Saving failed. Browser storage may be full or blocked. Export the project to a file.'; return false; }
+  }
+  function saveProject(asNew) {
+    const name = projectName.trim();
+    if (!validProjectName(name)) { projectMessage = 'Enter a project name of 1–100 characters.'; render(); return; }
+    let json;
+    try { json = core().exportProject(draft); }
+    catch { projectMessage = 'Correct invalid fields or unsupported connections before saving. Incomplete drafts can be saved.'; render(); return; }
+    if (!readProjects()) { render(); return; }
+    const previous = asNew ? null : projects.find(entry => entry.id === activeProjectId);
+    if (!asNew && (!previous || JSON.stringify(previous) !== activeRevision)) {
+      projectMessage = 'This saved project changed or was deleted in another tab. Load it again or save a new project.'; render(); return;
+    }
+    if (projects.some(entry => entry.id !== previous?.id && entry.name.toLowerCase() === name.toLowerCase())) {
+      projectMessage = 'That name is already in use. Choose another name or load the saved project.'; render(); return;
+    }
+    if (asNew && projects.length >= maxProjects) { projectMessage = 'The 50-project limit has been reached. Export and delete an older project first.'; render(); return; }
+    const now = new Date().toISOString();
+    let id = previous?.id;
+    if (!id) {
+      do { id = `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,12)}`; } while (projects.some(entry => entry.id === id));
+    }
+    const entry = {id, name, createdAt:previous?.createdAt || now, updatedAt:now, json};
+    const next = previous ? projects.map(item => item.id === id ? entry : item) : [...projects, entry];
+    if (writeProjects(next)) {
+      activeProjectId = id; activeRevision = JSON.stringify(entry); selectedProjectId = id;
+      projectName = name; changed = false; deleteProjectId = null; replaceAction = null;
+      projectMessage = 'Project saved in this browser.';
+    }
+    render();
+  }
+  function loadProject() {
+    const id = selectedProjectId;
+    if (!readProjects()) { render(); return; }
+    const entry = projects.find(item => item.id === id);
+    if (!entry) { projectMessage = 'Select a saved project to load.'; render(); return; }
+    requestReplace(() => {
+      // The confirmation may have stayed open while another tab changed storage.
+      if (!readProjects()) { replaceAction = null; render(); return; }
+      const current = projects.find(item => item.id === id);
+      if (!current) { replaceAction = null; projectMessage = 'Select a saved project to load.'; render(); return; }
+      replaceDraft(core().importProject(current.json), 'Saved project loaded.');
+      projectName = current.name; activeProjectId = id; activeRevision = JSON.stringify(current);
+      selectedProjectId = id; projectMessage = 'Saved project loaded.'; render();
+    });
+  }
+  function deleteProject() {
+    const id = deleteProjectId;
+    deleteProjectId = null;
+    if (!readProjects()) { render(); return; }
+    if (!projects.some(entry => entry.id === id)) { render(); return; }
+    if (writeProjects(projects.filter(entry => entry.id !== id))) {
+      if (activeProjectId === id) { activeProjectId = null; activeRevision = null; changed = true; }
+      selectedProjectId = ''; projectMessage = 'Saved project deleted. The open draft is retained.';
+    }
+    render();
+  }
+  function projectNotice() {
+    if (projectsStatus === 'unreadable') return 'Saved projects could not be read. The stored data has been retained. Export the open draft to a file.';
+    if (projectsStatus === 'unavailable') return 'Project storage is unavailable. Export the project to a file.';
+    return projectMessage || (activeProjectId && changed ? 'Changes to this named project have not been saved.' : '');
+  }
+  function refreshProjectNotice() {
+    const element = root?.querySelector('#studio-project-message');
+    if (element) element.textContent = s(projectNotice());
+  }
+  function projectsPanel() {
+    readProjects();
+    const selectedEntry = projects.find(entry => entry.id === selectedProjectId);
+    const deleting = projects.find(entry => entry.id === deleteProjectId);
+    return `<section class="studio-panel studio-projects" aria-labelledby="studio-projects-heading"><div class="studio-projects-heading"><h2 id="studio-projects-heading">${escape(s('Saved projects'))}</h2><p>${escape(s('Stored in this browser on this device. Export a project file for backup or another computer.'))}</p>${activeProjectId?`<p>${escape(s('Open saved project: {name}',{name:JSON.parse(activeRevision).name}))}</p>`:''}</div>
+      <div class="studio-project-controls"><div class="studio-field"><label for="studio-project-name">${escape(s('Project name'))}</label><input id="studio-project-name" type="text" maxlength="100" autocomplete="off" value="${escape(projectName)}"></div><div class="studio-project-buttons">${button('Save as new project','save-new',{className:'primary',disabled:projectsStatus!=='ready'})}${button('Save changes','save-project',{disabled:!activeProjectId || projectsStatus!=='ready'})}</div></div>
+      <div class="studio-project-controls"><div class="studio-field"><label for="studio-saved-project">${escape(s('Choose a saved project'))}</label><select id="studio-saved-project"${projectsStatus!=='ready'?' disabled':''}><option value="">${escape(s(projects.length?'Select a project…':'No saved projects yet.'))}</option>${projects.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(entry=>`<option value="${escape(entry.id)}"${entry.id===selectedProjectId?' selected':''}>${escape(entry.name)} · ${escape(new Date(entry.updatedAt).toLocaleString(currentLanguage()==='fi'?'fi-FI':'en-GB'))}</option>`).join('')}</select></div><div class="studio-project-buttons">${button('Load project','load-project',{disabled:!selectedEntry})}${button('Delete saved project','delete-project',{className:'danger',disabled:!selectedEntry})}</div></div>
+      ${deleting?`<div class="studio-project-delete" role="alert"><p>${escape(s('Delete “{name}” from saved projects? The open draft will be retained.',{name:deleting.name}))}</p><div class="studio-project-buttons">${button('Keep saved project','keep-project')}${button('Confirm deletion','confirm-delete-project',{className:'danger'})}</div></div>`:''}
+      <p id="studio-project-message" role="status" aria-live="polite">${escape(s(projectNotice()))}</p></section>`;
+  }
 
   function initialDraft() {
     if (!core()) return null;
@@ -56,9 +170,9 @@
   function validation() { return core().validate(draft); }
   function semanticEdit() {
     simulation = null; trace = []; simulationUsesExamples = false;
-    changed = true; status = ''; persist();
+    changed = true; status = ''; projectMessage = ''; persist(); refreshProjectNotice();
   }
-  function layoutEdit() { changed = true; persist(); }
+  function layoutEdit() { changed = true; projectMessage = ''; persist(); refreshProjectNotice(); }
   function button(label, action, options = {}) {
     return `<button type="button" class="studio-button ${options.className || ''}" data-studio-action="${escape(action)}"${options.disabled?' disabled':''}${options.title?` title="${escape(options.title)}"`:''}>${escape(s(label))}</button>`;
   }
@@ -81,8 +195,9 @@
     root.innerHTML = `<div class="studio" id="contract-studio">
       <div class="studio-head"><div><a class="studio-example-back" href="#contracts">← ${escape(s('Back to document registry'))}</a><span class="eyebrow">${escape(s('CONTRACT STUDIO / EXPERIMENTAL'))}</span><h1>${escape(s('Draw the rules. Question every path.'))}</h1><p>${escape(s('A visual escrow workbench for Nodus. Build locally, inspect the source and test the unexpected.'))}</p></div><div class="studio-header-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="3" y="3" width="12" height="10" rx="2"/><rect x="25" y="27" width="12" height="10" rx="2"/><rect x="3" y="27" width="12" height="10" rx="2"/><path d="M9 13v14m0-8h22v8m-3-3 3 3 3-3"/></svg></div></div>
       <div class="studio-notice"><span aria-hidden="true">⌁</span><div><strong>${escape(s('No wallet connection. No chain transactions.'))}</strong><p>${escape(s('This prototype produces Solidity source for the Nodus compiler. It does not compile, deploy or sign contracts. Keep keys and recovery phrases in your wallet.'))}</p></div></div>
-      ${replaceAction?`<div class="studio-confirm" role="alert"><strong>${escape(s('Replace the current draft?'))}</strong><p>${escape(s('This replaces the project stored in this browser. Export it first if you want to keep it.'))}</p><div class="studio-confirm-actions">${button('Keep draft','keep-draft')}${button('Replace draft','replace-draft',{className:'danger'})}</div></div>`:''}
+      ${replaceAction?`<div class="studio-confirm" role="alert"><strong>${escape(s('Replace the current draft?'))}</strong><p>${escape(s('Changes to the open draft will be replaced. Save or export it first to keep them. Named saved projects are retained.'))}</p><div class="studio-confirm-actions">${button('Keep draft','keep-draft')}${button('Replace draft','replace-draft',{className:'danger'})}</div></div>`:''}
       <div class="studio-toolbar">${button('Export project','export-project')}${button('Import project','import-project')}${button('Reset draft','reset')}<input id="studio-import" type="file" accept="application/json,.json" hidden><span class="studio-save ${storageStatus!=='saved'?'warning':''}">${escape(s(storageStatus==='saved'?'Saved in this browser':storageStatus==='invalid'?'Invalid fields — the last saved draft is retained':storageStatus==='unreadable'?'Stored draft unreadable — this session uses a new draft':'Session only — browser storage unavailable'))}</span></div>
+      ${projectsPanel()}
       <div class="studio-layout">
         <aside class="studio-panel studio-palette-panel"><div class="studio-panel-heading"><span class="eyebrow">${escape(s('BUILDING BLOCKS'))}</span><h2>${escape(s('One escrow. Six states.'))}</h2><p>${escape(s('Each state appears once. Show block selects an existing state; Add restores a removed state.'))}</p></div><div class="studio-palette">${Object.entries(types).map(([type,item])=>paletteItemHTML(type,item)).join('')}</div></aside>
         <section class="studio-panel studio-flow-panel"><div class="studio-canvas-heading"><div><span class="eyebrow">${escape(s('FLOW CANVAS'))}</span><h2>${escape(s('Escrow lifecycle'))}</h2></div><span class="studio-canvas-tip" id="studio-connect-hint">${escape(pendingMessage())}</span></div><div class="studio-zoom-bar"><label for="studio-zoom">${escape(s('Canvas zoom'))}</label><select id="studio-zoom">${[['fit','Fit'],['0.5','50%'],['0.75','75%'],['1','100%']].map(([value,label])=>`<option value="${value}"${zoomMode===value?' selected':''}>${escape(s(label))}</option>`).join('')}</select><span>${escape(s('Zoom out to see every path.'))}</span></div><div class="studio-canvas-scroll"><div class="studio-canvas-space"><div class="studio-canvas" id="studio-canvas" role="group" aria-label="${escape(s('Escrow lifecycle'))}"><svg class="studio-edges" viewBox="0 0 ${width} ${height}" aria-hidden="true"><defs><marker id="studio-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" style="fill:#638f9b;stroke:none"/></marker></defs><g id="studio-edge-paths">${edgePaths()}</g></svg>${draft.nodes.map(node=>nodeHTML(node)).join('')}</div></div></div><div class="studio-canvas-footer"><p>${escape(s('Move a selected block with arrow keys. Shift + arrow moves 40 px. Delete removes it.'))}</p><div class="studio-flow-actions">${pendingFrom?button('Cancel connection','cancel-connection'):''}${button('Restore standard flow','restore-flow')}</div></div>${selectedPanel()}<details class="studio-connections"><summary>${escape(s('Connections'))} · ${draft.edges.length}</summary>${draft.edges.length?`<ul class="studio-connection-list">${draft.edges.map((edge,index)=>`<li><span>${escape(nodeLabel(edge.from))} → ${escape(nodeLabel(edge.to))}</span><button type="button" data-studio-remove-edge="${index}" aria-label="${escape(`${s('Remove connection')}: ${nodeLabel(edge.from)} → ${nodeLabel(edge.to)}`)}">×</button></li>`).join('')}</ul>`:`<p>${escape(s('No connections. Add the required paths before generating source.'))}</p>`}</details></section>
@@ -177,7 +292,7 @@
     node.x=bounded(node.x+dx,18,width-nodeWidth-18); node.y=bounded(node.y+dy,18,height-nodeHeight-18);
     layoutEdit(); render();
   }
-  function replaceDraft(next,message) { draft=next;selected=null;pendingFrom=null;semanticEdit();changed=false;replaceAction=null;status=message;render(); }
+  function replaceDraft(next,message) { draft=next;selected=null;pendingFrom=null;activeProjectId=null;activeRevision=null;projectName='';projectMessage='';deleteProjectId=null;semanticEdit();changed=false;replaceAction=null;status=message;render(); }
   function requestReplace(action) { if(changed){replaceAction=action;render();}else action(); }
   function connect(to) {
     if(!pendingFrom){selected=to;render();return;}
@@ -211,6 +326,12 @@
     trace.push({action:'advanceTime',actor,ok:result.ok,stage:result.state.stage,code:result.error?.code,at:result.state.nowSeconds});trace=trace.slice(-200);simulation=result.state;render();
   }
   async function act(action) {
+    if(action==='save-new'){saveProject(true);return;}
+    if(action==='save-project'){saveProject(false);return;}
+    if(action==='load-project'){loadProject();return;}
+    if(action==='delete-project'){deleteProjectId=selectedProjectId;render();return;}
+    if(action==='keep-project'){deleteProjectId=null;render();return;}
+    if(action==='confirm-delete-project'){deleteProject();return;}
     if(action==='export-project'){
       try{download(core().exportProject(draft),'nodus-escrow-project.json','application/json');notify('Draft exported.');}catch(error){notify({text:(error.errors||[error]).map(errorText).join(' ')});}return;
     }
@@ -240,6 +361,10 @@
   }
   function bind() {
     root.querySelectorAll('[data-studio-action]').forEach(element=>element.onclick=()=>act(element.dataset.studioAction));
+    const nameInput=root.querySelector('#studio-project-name');
+    if(nameInput)nameInput.oninput=()=>{projectName=nameInput.value;changed=true;projectMessage='';refreshProjectNotice();};
+    const savedProject=root.querySelector('#studio-saved-project');
+    if(savedProject)savedProject.onchange=()=>{selectedProjectId=savedProject.value;deleteProjectId=null;projectMessage='';render();root.querySelector('#studio-saved-project')?.focus();};
     root.querySelectorAll('[data-studio-tab]').forEach(element=>{
       element.onclick=()=>{activeTab=element.dataset.studioTab;render();root.querySelector(`#studio-tab-${activeTab}`)?.focus();};
       element.onkeydown=event=>{
@@ -321,7 +446,7 @@
       if(!sameRoot||!mounted||language!==currentLanguage()){render();mounted=true;}
     },
     getDraft:()=>draft?clone(draft):null,
-    getState:()=>({activeTab,selected,pendingFrom,simulation:simulation?clone(simulation):null,simulationUsesExamples,trace:clone(trace),storageStatus,changed,zoomMode,zoomScale}),
+    getState:()=>({activeTab,selected,pendingFrom,simulation:simulation?clone(simulation):null,simulationUsesExamples,trace:clone(trace),storageStatus,changed,zoomMode,zoomScale,activeProjectId,projectName,projectsStatus}),
   });
   globalThis.addEventListener?.('resize',()=>{if(globalThis.location?.hash===activeRoute)applyZoom();});
   globalThis.addEventListener?.('keydown',event=>{if(event.key==='Escape'&&pendingFrom&&globalThis.location?.hash===activeRoute){pendingFrom=null;render();}});

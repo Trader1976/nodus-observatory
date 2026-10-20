@@ -69,6 +69,39 @@ Tuodut projektit ovat dataa: editori tarkistaa niiden skeeman ja kaavion eikä
 suorita tuotua koodia. Luonnokset tallentuvat tähän selaimeen. Siirrä projekti
 toiseen selaimeen vienti- ja tuontitoiminnoilla.
 
+### Nimettyjen projektien tallennus ja lataus
+
+**Tallennetut projektit** säilyttää enintään 50 nimettyä projektia tämän laitteen
+samassa selaimessa ja samassa verkko-osoitteessa. Anna **Projektin nimi** ja valitse
+**Tallenna uutena projektina**. Valitse myöhemmin projekti nimen ja viimeisimmän
+tallennusajan sisältävästä listasta ja paina **Lataa projekti**. Lataus palauttaa
+ehdot, tarkat summat, palikoiden sijainnit ja yhteydet. Myös keskeneräisen
+kaavion tai tyhjät osoitteet voi tallentaa; virheelliset kentät tai tukemattomat
+yhteydet pitää korjata ensin. Simulaation suoritustilaa ei tallenneta projektiin,
+ja lataus tyhjentää edellisen simulaation.
+
+**Tallenna muutokset** päivittää avoimen nimetyn projektin. Toisen nimen käyttö
+ja **Tallenna uutena projektina** luo erillisen kopion. Sama nimi ei korvaa
+aiempaa tallennusta. Pelkkä ehtojen tai kaavion muokkaus ei päivitä nimettyä
+kopiota: selaimen yhden työluonnoksen automaattitallennus toimii erikseen.
+Sivun uudelleenavaus palauttaa työluonnoksen; valitse nimetty projekti listasta,
+kun haluat jatkaa sen tallennetun kopion muokkausta.
+
+Jos avoimeen luonnokseen on tehty muutoksia, lataus kysyy ennen niiden
+korvaamista. Nollaus ja tiedoston tuonti eivät muuta nimettyjä tallennuksia.
+**Poista tallennettu projekti** kysyy vahvistuksen ja säilyttää avoimen
+luonnoksen. Toisessa välilehdessä muuttunutta projektia ei korvata vanhalla
+versiolla: lataa se uudelleen tai tallenna työsi uutena projektina.
+Tallennusvirheestä näytetään ilmoitus, ja edellinen tallennus säilytetään.
+Lukukelvotonta tallennuslistaa ei korvata automaattisesti.
+
+Nimetyt projektit eivät siirry palvelimelle eivätkä toiseen selaimeen tai
+laitteeseen. Selaimen sivustotietojen tyhjennys voi poistaa ne. Käytä
+**Vie projekti**- ja **Tuo projekti** -toimintoja siirtoon ja varmuuskopiointiin;
+ne toimivat myös ilman selaintallennusta. Projektitiedosto on aiempi yhteensopiva
+`nodus-contract-studio/v1`-kaavio ilman tallennuslistan nimeä ja aikaleimoja.
+Se sisältää sopimusehdot ja kaavion, ei julkaistun sopimuksen ketjutilaa.
+
 Tuotettu sopimus hylkää tavalliset ylimääräiset maksut. EVM voi silti pakottaa
 osoitteelle saldoa `SELFDESTRUCT`-toiminnolla kutsumatta vastaanottofunktiota.
 Escrow maksaa täsmälleen sovitun summan, eikä siinä ole ylimääräisen saldon
