@@ -13,8 +13,9 @@ with annual summaries and CSV exports.
 - Monitoring pages: **Overview, Storage, Network, Rewards and Events**.
 - This experimental branch adds **Contract Studio**: local document hashing,
   wallet-based registration and read-only registry lookup. The visual escrow
-  editor remains available as an example. See the [document guide](docs/document-notary.md)
-  and [escrow guide](docs/contract-studio.md).
+  editor remains available as an example, alongside a configurable state/action/
+  condition/role editor. See the [document guide](docs/document-notary.md),
+  [visual editor guide](docs/contract-studio-builder.md) and [escrow guide](docs/contract-studio.md).
 - **FIN / ENG** controls for the complete interface, including charts, tooltips,
   dialogs, accessibility labels and errors. The browser remembers your choice.
 - A systemd collector that normally samples once a minute, with a read-only web
@@ -53,6 +54,14 @@ buyer approval, seller withdrawal, expiry refund and cancellation before funding
 Dragging states changes the layout; editing connections changes the graph that
 is checked before code can be exported. Unsupported or incomplete graphs are
 reported instead of silently producing a different contract.
+
+The **Visual editor** (`#contracts-editor`) adds configurable states, callable
+actions, roles and AND/OR conditions. Its v2 generator and local simulator support
+exact deposits and transfers, one-round approval quorums and authorized hash
+recording. Earlier v1 saves keep their meaning and can be explicitly converted
+to a separate editable copy. Both editors share the named save list. See the
+[visual editor guide](docs/contract-studio-builder.md) for supported operations,
+compiler selection and limits.
 
 The editor and simulator run locally in the browser. They do not read keys,
 sign transactions, move coins or add write endpoints to the monitoring server.

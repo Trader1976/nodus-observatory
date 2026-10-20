@@ -14,9 +14,12 @@ const scripts = [...shell.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(match 
 assert.equal(scripts[0],'i18n.js','language initializes first');
 assert.equal(scripts.at(-1),'app.js','all feature modules load before app routing');
 for(const script of ['app-translations.js','contract-studio-core.js','contract-studio-i18n.js','contract-studio.js',
+  'contract-studio-workflow-core.js','contract-studio-builder-i18n.js','contract-studio-builder.js',
   'document-notary-core.js','document-notary-i18n.js','document-notary.js'])assert(scripts.includes(script),`shipped shell loads ${script}`);
 assert(scripts.every(script=>/^[a-z0-9-]+\.js$/.test(script)),'no external script dependency');
 assert(scripts.indexOf('contract-studio-core.js')<scripts.indexOf('contract-studio.js'));
+assert(scripts.indexOf('contract-studio-core.js')<scripts.indexOf('contract-studio-workflow-core.js'));
+assert(scripts.indexOf('contract-studio-workflow-core.js')<scripts.indexOf('contract-studio-builder.js'));
 assert(scripts.indexOf('document-notary-core.js')<scripts.indexOf('document-notary.js'));
 
 
@@ -171,10 +174,10 @@ for (const [status, fi, en] of [
 language.setLanguage('fi');
 
 const navTitles = {
-  fi: ['Yleiskuva', 'Tallennustila', 'Verkko', 'Palkkiot', 'Tapahtumat', 'Sopimusstudio', 'Escrow-esimerkki'],
-  en: ['Overview', 'Storage', 'Network', 'Rewards', 'Events', 'Contract Studio', 'Escrow example'],
+  fi: ['Yleiskuva', 'Tallennustila', 'Verkko', 'Palkkiot', 'Tapahtumat', 'Sopimusstudio', 'Escrow-esimerkki', 'Visuaalinen sopimuseditori'],
+  en: ['Overview', 'Storage', 'Network', 'Rewards', 'Events', 'Contract Studio', 'Escrow example', 'Visual contract editor'],
 };
-const routeNames = ['overview', 'storage', 'network', 'rewards', 'events', 'contracts', 'contracts-escrow'];
+const routeNames = ['overview', 'storage', 'network', 'rewards', 'events', 'contracts', 'contracts-escrow', 'contracts-editor'];
 const untranslated = {
   overview: ['Kaikki olennainen.', 'Ketjun korkeus', 'Epäonnistumisputki', 'Palvelimen voimavarat', 'Viimeisimmät tapahtumat'],
   storage: ['Tilaa verkon muistille.', 'Arkiston tämänhetkinen tilanne', 'Valmiit segmentit', 'Levyn toimintakunto', 'Peräkkäiset epäonnistumiset'],
@@ -183,6 +186,7 @@ const untranslated = {
   events: ['Jäljet kertovat', 'Kaikki tapahtumat', 'Huomiot &amp; virheet', 'Mitä seuranta kertoo?', 'Lohkoero tarvitsee myös kontekstin.'],
   contracts: ['Asiakirjan leimaus', 'Tarkista asiakirja'],
   'contracts-escrow': ['Paikallinen simulaatio', 'Sopimusstudio'],
+  'contracts-editor': ['Tallennetut projektit', 'Rakennuspalikat'],
 };
 const fiMarkup = new Map();
 for (const lang of ['fi', 'en']) {
@@ -646,4 +650,4 @@ blocked.context.NodusI18n.setLanguage('en');
 assert.equal(blocked.context.NodusI18n.language(), 'en');
 assert.match(blocked.elements.get('#breadcrumb-page').textContent, /Overview/);
 
-console.log('Frontend i18n: FIN/ENG shell and 7 routes, persistence, unavailable storage, locale precision, retained view state and errors PASS.');
+console.log('Frontend i18n: FIN/ENG shell and 8 routes, persistence, unavailable storage, locale precision, retained view state and errors PASS.');

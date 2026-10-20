@@ -32,8 +32,11 @@ jobs:
           node --check dist/app-translations.js
           node --check dist/app.js
           node --check dist/contract-studio-core.js
+          node --check dist/contract-studio-workflow-core.js
           node --check dist/contract-studio-i18n.js
           node --check dist/contract-studio.js
+          node --check dist/contract-studio-builder.js
+          node --check dist/contract-studio-builder-i18n.js
           node --check dist/document-notary-core.js
           node --check dist/document-notary-i18n.js
           node --check dist/document-notary.js
@@ -41,6 +44,8 @@ jobs:
           node tests/frontend-i18n.mjs dist
           node tests/contract-studio-core.mjs
           node tests/contract-studio-integration.mjs
+          node tests/contract-studio-workflow-core.mjs
+          node tests/contract-studio-builder-integration.mjs
           node tests/document-notary-core.mjs
           node tests/document-notary-integration.mjs
       - name: Installer syntax

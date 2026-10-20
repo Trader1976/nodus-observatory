@@ -14,8 +14,9 @@ palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
 - Seurantanäkymät: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
 - Tämä kokeiluhaara lisää **Sopimusstudion**: asiakirjan paikallisen tiivistyksen,
   lompakossa tehtävän leimauksen ja rekisterin lukutarkistuksen. Visuaalinen
-  escrow-editori säilyy esimerkkinä. Katso [asiakirjojen ohje](docs/document-notary_fin.md)
-  ja [escrow-ohje](docs/contract-studio_fin.md).
+  escrow-editori säilyy esimerkkinä. Uudessa editorissa voi muokata tiloja,
+  toimintoja, ehtoja ja rooleja. Katso [asiakirjojen ohje](docs/document-notary_fin.md),
+  [visuaalisen editorin ohje](docs/contract-studio-builder_fin.md) ja [escrow-ohje](docs/contract-studio_fin.md).
 - Yläreunan **FIN / ENG** vaihtaa koko käyttöliittymän suomeksi tai englanniksi.
   Valinta säilyy samassa selaimessa; oletuskieli on suomi.
 - Paikallinen kerääjä tallentaa mittauksia noin minuutin välein ja palvelee
@@ -62,6 +63,14 @@ ostajan hyväksyntä, myyjän nosto, palautus määräajan jälkeen ja peruutus 
 talletusta. Tilojen raahaaminen muuttaa asettelua. Yhteyksien muokkaaminen muuttaa
 kaaviota, joka tarkistetaan ennen koodin vientiä. Puutteellinen tai tukematon
 kaavio ilmoitetaan käyttäjälle eikä sitä korvata huomaamatta toisella sopimuksella.
+
+**Visuaalinen editori** (`#contracts-editor`) lisää omat tilat, kutsuttavat
+toiminnot, roolit ja JA/TAI-ehdot. V2-generaattori ja paikallinen simulaattori
+tukevat täsmällisiä talletuksia ja maksuja, yhden hyväksyntäkierroksen
+koorumeita sekä valtuutetun kutsujan tiivistekirjauksia. V1-tallennusten merkitys
+säilyy, ja niistä voi erikseen muuntaa muokattavan kopion. Editoreilla on yhteinen
+nimettyjen tallennusten lista. Tuetut toiminnot, kääntäjän valinta ja rajat on
+kuvattu [visuaalisen editorin ohjeessa](docs/contract-studio-builder_fin.md).
 
 Editori ja simulaatio toimivat paikallisesti selaimessa. Ne eivät lue avaimia,
 allekirjoita tapahtumia, siirrä kolikoita tai lisää seurannan palvelimelle

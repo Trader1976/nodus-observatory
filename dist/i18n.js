@@ -55,6 +55,8 @@ window.NodusI18n = (() => {
     'Tapahtumat': 'Events',
     'Sopimusstudio': 'Contract Studio',
     'Escrow-esimerkki': 'Escrow example',
+    'Visuaalinen sopimuseditori': 'Visual contract editor',
+    'Selaimessa toimiva sopimuseditori': 'Browser-local contract editor',
     'Asiakirjan tiiviste selaimessa, rekisteritieto omalta nodelta': 'File hash in your browser, registry data from your node',
     'LEIMAUS LOMPAKOSSA · TARKISTUS VAIN LUKU': 'RECORD IN WALLET · READ-ONLY LOOKUP',
     'KOKEILU': 'LAB',

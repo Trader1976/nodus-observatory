@@ -3,6 +3,8 @@
 // Contract Studio is browser-local. Its messages never contain account data.
 globalThis.NodusStudioText = (() => {
   const messages = {
+    'Visual editor': 'Visuaalinen editori',
+    'Open this project in the visual editor. The current escrow draft is retained.': 'Avaa tämä projekti visuaalisessa editorissa. Nykyinen escrow-luonnos säilytetään.',
     'Saved projects': 'Tallennetut projektit',
     'Stored in this browser on this device. Export a project file for backup or another computer.': 'Tallennetaan tämän laitteen tähän selaimeen. Vie projekti tiedostoksi varmuuskopiota tai toista tietokonetta varten.',
     'Project name': 'Projektin nimi',

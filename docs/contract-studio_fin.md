@@ -2,6 +2,9 @@
 
 [English](contract-studio.md) · **Suomi**
 
+Tämä sivu kuvaa alkuperäistä rajattua **Escrow-esimerkkiä**. Omien tilojen,
+toimintojen, roolien ja ehtojen käyttö on kuvattu [visuaalisen editorin ohjeessa](contract-studio-builder_fin.md).
+
 Sopimusstudio on kokeilu haarassa `feature/contract-studio`. Sitä ei ole liitetty
 `main`-haaraan. Selainpohjaisella editorilla voi rakentaa yhden rajatun
 escrow-sopimuspohjan, kokeilla sen tilamallia ja viedä projektin sekä

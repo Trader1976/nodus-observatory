@@ -2,6 +2,9 @@
 
 **English** · [Suomi](contract-studio_fin.md)
 
+This page describes the original bounded **Escrow example**. For editable states,
+actions, roles and conditions, see the [Visual editor](contract-studio-builder.md).
+
 Contract Studio is an experiment on `feature/contract-studio`. It is not part of
 `main`. It adds a browser-local visual editor for one bounded escrow template,
 an interactive state-machine model and deterministic Solidity/project exports.

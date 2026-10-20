@@ -56,7 +56,7 @@ for (const script of scripts) {
 }
 await new Promise(resolve => setImmediate(resolve));
 
-for (const page of ['overview', 'storage', 'network', 'rewards', 'events', 'contracts', 'contracts-escrow']) {
+for (const page of ['overview', 'storage', 'network', 'rewards', 'events', 'contracts', 'contracts-escrow', 'contracts-editor']) {
   context.location.hash = `#${page}`;
   vm.runInContext('render()', context);
   const markup = elements.get('#page-content').innerHTML;
@@ -151,4 +151,4 @@ vm.runInContext("state.mode='live'", context);
 await vm.runInContext('exportRewards()', context);
 assert.equal(csvBlob, oldBlob);
 assert.match(elements.get('#toast').textContent, /CSV-vienti epäonnistui/);
-console.log('Frontend smoke: 7 pages, static provenance, year restore, exact CSV, null gaps, unknown states, and export failures PASS.');
+console.log('Frontend smoke: 8 pages, static provenance, year restore, exact CSV, null gaps, unknown states, and export failures PASS.');

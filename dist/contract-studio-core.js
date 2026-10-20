@@ -152,7 +152,8 @@
     return { valid: errors.length === 0, errors };
   }
 
-  const validate = draft => inspect(draft, true);
+  const validate = draft => draft?.schema === 'nodus-contract-studio/v2' && globalThis.NodusWorkflowCore
+    ? globalThis.NodusWorkflowCore.validate(draft) : inspect(draft, true);
 
   function normalizedDraft(draft) {
     return {
@@ -167,6 +168,7 @@
   }
 
   function exportProject(draft) {
+    if (draft?.schema === 'nodus-contract-studio/v2' && globalThis.NodusWorkflowCore) return globalThis.NodusWorkflowCore.exportProject(draft);
     const result = inspect(draft, false);
     if (!result.valid) throw failure('invalid_project', result.errors);
     const output = JSON.stringify(normalizedDraft(draft), null, 2) + '\n';
@@ -179,12 +181,14 @@
     if (json.length > MAX_PROJECT_LENGTH) throw failure('project_too_large');
     let draft;
     try { draft = JSON.parse(json); } catch { throw failure('malformed_json'); }
+    if (draft?.schema === 'nodus-contract-studio/v2' && globalThis.NodusWorkflowCore) return globalThis.NodusWorkflowCore.importProject(json);
     const result = inspect(draft, false);
     if (!result.valid) throw failure('invalid_project', result.errors);
     return normalizedDraft(draft);
   }
 
   function generate(draft) {
+    if (draft?.schema === 'nodus-contract-studio/v2' && globalThis.NodusWorkflowCore) return globalThis.NodusWorkflowCore.generate(draft);
     const result = validate(draft);
     if (!result.valid) throw failure('invalid_project', result.errors);
     const { wei } = parseNodusAmount(draft.config.amountNodus);
@@ -283,6 +287,7 @@ contract ObservatoryEscrow {
   const validSeconds = value => Number.isSafeInteger(value) && value >= 0 && value <= MAX_SECONDS;
 
   function createSimulation(draft, nowSeconds = Math.floor(Date.now() / 1000)) {
+    if (draft?.schema === 'nodus-contract-studio/v2' && globalThis.NodusWorkflowCore) return globalThis.NodusWorkflowCore.createSimulation(draft, nowSeconds);
     const result = validate(draft);
     if (!result.valid) throw failure('invalid_project', result.errors);
     if (!validSeconds(nowSeconds)) throw failure('simulation_time');
@@ -313,6 +318,7 @@ contract ObservatoryEscrow {
   }
 
   function transition(sim, command) {
+    if (sim?.schema === 'nodus-contract-studio/workflow-simulation-v2' && globalThis.NodusWorkflowCore) return globalThis.NodusWorkflowCore.transition(sim, command);
     const reject = code => ({ ok: false, state: sim, events: [], error: { code } });
     if (!validSimulation(sim)) return reject('invalid_simulation');
     if (!isObject(command)) return reject('simulation_command');

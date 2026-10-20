@@ -9,6 +9,7 @@ globalThis.NodusDocumentText=(()=>{
     'Record a document’s SHA-256 digest in Nodus. Later, check whether the exact same bytes have a record under a selected publisher.':'Kirjaa asiakirjan SHA-256-tiiviste Nodukseen. Tarkista myöhemmin, löytyykö täsmälleen samalle tiedostolle valitun julkaisijan rekisterimerkintä.',
     'Contract examples':'Sopimusesimerkit','Hash · register · check':'Laske tiiviste · rekisteröi · tarkista',
     'Escrow example':'Escrow-esimerkki','Explore the earlier payment contract':'Tutki aiempaa maksusopimusta',
+    'Visual editor':'Visuaalinen editori','Build states, actions and conditions':'Rakenna tilat, toiminnot ja ehdot',
     'Your document stays on this device.':'Asiakirjasi pysyy tällä laitteella.',
     'Only an explicit record check sends its digest and the selected public addresses to this server. Signing stays in the Nodus wallet. No file upload, private keys or automatic transactions.':'Vain erikseen pyytämäsi tarkistus lähettää tiivisteen ja valitut julkiset osoitteet tälle palvelimelle. Allekirjoitus tehdään Nodus-lompakossa. Ei tiedoston lähetystä, yksityisiä avaimia tai automaattisia tapahtumia.',
     'Document workflow':'Asiakirjan työnkulku','Record a document':'Leimaa asiakirja','Check a document':'Tarkista asiakirja','Set up a registry':'Ota rekisteri käyttöön',

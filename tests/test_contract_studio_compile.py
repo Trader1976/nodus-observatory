@@ -241,6 +241,64 @@ class CompileBundleTests(unittest.TestCase):
                                            contract_name="ObservatoryDocuments")
         self.assertEqual(manifest, repeated)
 
+    @unittest.skipUnless(os.environ.get("NODUS_STUDIO_SOLC") and shutil.which("node"),
+                         "Optional real compiler and development Node.js not provided")
+    def test_real_workflow_templates_and_extended_actions_compile(self):
+        # Compile the shipped generator's output, including quorum, evidence,
+        # balance predicates and OR groups. No handwritten Solidity substitute.
+        script = """
+        require('./dist/contract-studio-core.js');
+        require('./dist/contract-studio-workflow-core.js');
+        const samples=[];
+        for (const template of NodusWorkflowCore.templates) {
+          const project=NodusWorkflowCore.defaultDraft(template);
+          project.config.deadline='2030-01-02T12:00:00Z';
+          project.roles.forEach((role,index)=>role.address='0x'+String(index+1).repeat(64));
+          if (template==='blank') {
+            project.states.push({id:'finished',label:'Finished',initial:false,terminal:true,x:400,y:100});
+            project.transitions.push({id:'finish',label:'Finish',from:'start',to:'finished',
+              caller:'owner',operation:'move',recipient:'',amountNodus:'',guard:{mode:'all',conditions:[]}});
+          }
+          if (template==='escrow') {
+            project.transitions.push({id:'attest',label:'Record evidence',from:'created',to:'created',
+              caller:'buyer',operation:'recordHash',recipient:'',amountNodus:'',
+              guard:{mode:'any',conditions:[{type:'approvedBy',value:'buyer'},
+                {type:'hashEquals',value:'0x'+'0'.repeat(64)}]}});
+            project.transitions.push({id:'vote',label:'Record approval',from:'created',to:'created',
+              caller:'buyer',operation:'approve',recipient:'',amountNodus:'',
+              guard:{mode:'all',conditions:[]}});
+            project.transitions.find(t=>t.id==='withdraw').guard.conditions.push({type:'balanceAtLeast',value:'100'});
+          }
+          samples.push({template,project,source:NodusWorkflowCore.generate(project),
+            actions:NodusWorkflowCore.describeActions(project)});
+        }
+        process.stdout.write(JSON.stringify(samples));
+        """
+        generated = subprocess.run([shutil.which("node"), "-e", script], cwd=ROOT,
+                                   capture_output=True, check=True, timeout=10)
+        for sample in json.loads(generated.stdout):
+            with self.subTest(template=sample["template"]):
+                self.source.write_text(sample["source"], encoding="utf-8")
+                output = self.root / ("workflow-" + sample["template"])
+                manifest = COMPILER.compile_bundle(self.source, os.environ["NODUS_STUDIO_SOLC"], output,
+                                                   contract_name="ObservatoryWorkflow")
+                diagnostics = json.loads((output / "compiler-diagnostics.json").read_text())
+                self.assertFalse(any(item.get("severity") == "error" for item in diagnostics))
+                self.assertEqual(manifest["contract"], "ObservatoryWorkflow")
+                self.assertEqual((output / "ObservatoryWorkflow.sol").read_bytes(), self.source.read_bytes())
+                functions = {item["name"]: item for item in json.loads((output / "ObservatoryWorkflow.abi.json").read_text())
+                             if item.get("type") == "function"}
+                for action in sample["actions"]:
+                    transition = next(item for item in sample["project"]["transitions"] if item["id"] == action["id"])
+                    function = functions[action["functionName"]]
+                    self.assertEqual(function["stateMutability"], "payable" if transition["operation"] == "deposit" else "nonpayable")
+                    self.assertEqual([item["type"] for item in function["inputs"]],
+                                     ["bytes32"] if transition["operation"] == "recordHash" else [])
+                for index in range(len(sample["project"]["roles"])):
+                    self.assertEqual(functions[f"role_{index}"]["outputs"][0]["type"], "address")
+                self.assertFalse(any(item.get("type") == "constructor" and item.get("inputs")
+                                     for item in json.loads((output / "ObservatoryWorkflow.abi.json").read_text())))
+
 
 if __name__ == "__main__":
     unittest.main()

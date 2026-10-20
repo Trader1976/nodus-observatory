@@ -40,7 +40,7 @@ const dateTime = value => {const d=new Date(value);return Number.isFinite(d.getT
 const compactDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat(locale(),{timeZone:'Europe/Helsinki',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d):'—';};
 const rawNodus = value => {if(value===null||value===undefined)return '—';try{const n=BigInt(value),abs=n<0n?-n:n;return decimalFi(`${n<0n?'-':''}${abs/100000000n}.${(abs%100000000n).toString().padStart(8,'0')}`);}catch{return '—';}};
 const state = {dashboard:null,history:{points:[]},network:null,rewards:null,events:null,mode:'loading',page:'overview',hours:24,year:2026,eventFilter:'all',rewardsYear:null,rewardsSnapshot:null,rewardMonth:null,rewardDay:null,rewardDailyMonth:null,rewardPeriod:'monthly',loading:false,loadedAt:null,failedSources:[],loadError:null};
-const PAGES = {overview:'Yleiskuva',storage:'Tallennustila',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat',contracts:'Sopimusstudio','contracts-escrow':'Escrow-esimerkki'};
+const PAGES = {overview:'Yleiskuva',storage:'Tallennustila',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat',contracts:'Sopimusstudio','contracts-escrow':'Escrow-esimerkki','contracts-editor':'Visuaalinen sopimuseditori'};
 let toastTimer,refreshTimer;
 const SOURCE_NAMES = {dashboard:'Seurantatiedot',history:'Historia',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat'};
 const BACKEND_TEXT_KEYS = {
@@ -81,7 +81,7 @@ const BACKEND_TEXT_KEYS = {
 };
 function dataText(value){return value===null||value===undefined?'':t(BACKEND_TEXT_KEYS[value]||value);}
 function renderLoadError(){
-  if(location.hash==='#contracts'||location.hash==='#contracts-escrow'){render();return;}
+  if(['#contracts','#contracts-escrow','#contracts-editor'].includes(location.hash)){render();return;}
   const banner=document.querySelector('#source-banner');banner.classList.remove('live');banner.style.color='var(--amber)';
   document.querySelector('#source-label').textContent=t('Tietojen lataus epäonnistui');
   document.querySelector('#source-detail').textContent=t('TIETOLÄHDE PUUTTUU');
@@ -355,16 +355,17 @@ function render(){
   const host=state.dashboard?.resources?.hostname||t('Oma node');
   document.querySelectorAll('[data-hostname]').forEach(el=>el.textContent=host);
   document.querySelector('#server-model').textContent=state.dashboard?.resources?.hardware_model||t('Storage node');
-  document.querySelectorAll('[data-page]').forEach(a=>{const active=a.dataset.page===state.page||(a.dataset.page==='contracts'&&state.page==='contracts-escrow');a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-  if(state.page==='contracts'||state.page==='contracts-escrow'){
+  document.querySelectorAll('[data-page]').forEach(a=>{const active=a.dataset.page===state.page||(a.dataset.page==='contracts'&&['contracts-escrow','contracts-editor'].includes(state.page));a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  if(['contracts','contracts-escrow','contracts-editor'].includes(state.page)){
     const escrow=state.page==='contracts-escrow';
+    const builder=state.page==='contracts-editor';
     document.querySelector('#source-banner').classList.remove('live');
     document.querySelector('#source-banner').style.color='';
-    document.querySelector('#source-label').textContent=t(escrow?'Selaimessa toimiva escrow-prototyyppi':'Asiakirjan tiiviste selaimessa, rekisteritieto omalta nodelta');
-    document.querySelector('#source-detail').textContent=t(escrow?'PAIKALLINEN LUONNOS · EI KETJUKUTSUJA':'LEIMAUS LOMPAKOSSA · TARKISTUS VAIN LUKU');
+    document.querySelector('#source-label').textContent=t(builder?'Selaimessa toimiva sopimuseditori':escrow?'Selaimessa toimiva escrow-prototyyppi':'Asiakirjan tiiviste selaimessa, rekisteritieto omalta nodelta');
+    document.querySelector('#source-detail').textContent=t(escrow||builder?'PAIKALLINEN LUONNOS · EI KETJUKUTSUJA':'LEIMAUS LOMPAKOSSA · TARKISTUS VAIN LUKU');
     const target=document.querySelector('#page-content');
-    const module=escrow?globalThis.NodusContractStudio:globalThis.NodusDocumentNotary;
-    if(module)module.mount(target,escrow?{route:'#contracts-escrow'}:undefined);
+    const module=builder?globalThis.NodusWorkflowStudio:escrow?globalThis.NodusContractStudio:globalThis.NodusDocumentNotary;
+    if(module)module.mount(target,builder?{route:'#contracts-editor'}:escrow?{route:'#contracts-escrow'}:undefined);
     else target.innerHTML=`<section class="panel panel-pad"><h1>${t('Sopimusstudio')}</h1><p>${t('Sopimusstudion tiedostot puuttuvat. Päivitä sivu tai asennus.')}</p></section>`;
     return;
   }

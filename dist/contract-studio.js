@@ -65,7 +65,9 @@
   }
   function writeProjects(next) {
     try {
-      globalThis.localStorage.setItem(projectsKey, JSON.stringify({schema:projectsSchema, projects:next}));
+      const json=JSON.stringify({schema:projectsSchema,projects:next});
+      if(json.length>4*1024*1024)throw Error('catalog_size');
+      globalThis.localStorage.setItem(projectsKey,json);
       projects = next;
       projectsStatus = 'ready';
       return true;
@@ -105,11 +107,13 @@
     if (!readProjects()) { render(); return; }
     const entry = projects.find(item => item.id === id);
     if (!entry) { projectMessage = 'Select a saved project to load.'; render(); return; }
+    if(core().importProject(entry.json).schema!==core().SCHEMA){projectMessage='Open this project in the visual editor. The current escrow draft is retained.';render();return;}
     requestReplace(() => {
       // The confirmation may have stayed open while another tab changed storage.
       if (!readProjects()) { replaceAction = null; render(); return; }
       const current = projects.find(item => item.id === id);
       if (!current) { replaceAction = null; projectMessage = 'Select a saved project to load.'; render(); return; }
+      if(core().importProject(current.json).schema!==core().SCHEMA){replaceAction=null;projectMessage='Open this project in the visual editor. The current escrow draft is retained.';render();return;}
       replaceDraft(core().importProject(current.json), 'Saved project loaded.');
       projectName = current.name; activeProjectId = id; activeRevision = JSON.stringify(current);
       selectedProjectId = id; projectMessage = 'Saved project loaded.'; render();
@@ -152,7 +156,7 @@
     try {
       const saved = globalThis.localStorage.getItem(storageKey);
       if (saved) {
-        try { value = core().importProject(saved); changed = true; }
+        try { const loaded=core().importProject(saved);if(loaded.schema!==core().SCHEMA)throw Error('schema');value=loaded;changed = true; }
         catch { storageStatus='unreadable';status = 'A saved draft could not be read. Start a new draft or import a project.'; }
       } else globalThis.localStorage.setItem(storageKey,core().exportProject(value));
     } catch { storageStatus = 'unavailable'; }
@@ -193,7 +197,7 @@
     }
     const check = validation();
     root.innerHTML = `<div class="studio" id="contract-studio">
-      <div class="studio-head"><div><a class="studio-example-back" href="#contracts">← ${escape(s('Back to document registry'))}</a><span class="eyebrow">${escape(s('CONTRACT STUDIO / EXPERIMENTAL'))}</span><h1>${escape(s('Draw the rules. Question every path.'))}</h1><p>${escape(s('A visual escrow workbench for Nodus. Build locally, inspect the source and test the unexpected.'))}</p></div><div class="studio-header-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="3" y="3" width="12" height="10" rx="2"/><rect x="25" y="27" width="12" height="10" rx="2"/><rect x="3" y="27" width="12" height="10" rx="2"/><path d="M9 13v14m0-8h22v8m-3-3 3 3 3-3"/></svg></div></div>
+      <div class="studio-head"><div><a class="studio-example-back" href="#contracts">← ${escape(s('Back to document registry'))}</a><a class="studio-example-back" href="#contracts-editor">${escape(s('Visual editor'))} ↗</a><span class="eyebrow">${escape(s('CONTRACT STUDIO / EXPERIMENTAL'))}</span><h1>${escape(s('Draw the rules. Question every path.'))}</h1><p>${escape(s('A visual escrow workbench for Nodus. Build locally, inspect the source and test the unexpected.'))}</p></div><div class="studio-header-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="3" y="3" width="12" height="10" rx="2"/><rect x="25" y="27" width="12" height="10" rx="2"/><rect x="3" y="27" width="12" height="10" rx="2"/><path d="M9 13v14m0-8h22v8m-3-3 3 3 3-3"/></svg></div></div>
       <div class="studio-notice"><span aria-hidden="true">⌁</span><div><strong>${escape(s('No wallet connection. No chain transactions.'))}</strong><p>${escape(s('This prototype produces Solidity source for the Nodus compiler. It does not compile, deploy or sign contracts. Keep keys and recovery phrases in your wallet.'))}</p></div></div>
       ${replaceAction?`<div class="studio-confirm" role="alert"><strong>${escape(s('Replace the current draft?'))}</strong><p>${escape(s('Changes to the open draft will be replaced. Save or export it first to keep them. Named saved projects are retained.'))}</p><div class="studio-confirm-actions">${button('Keep draft','keep-draft')}${button('Replace draft','replace-draft',{className:'danger'})}</div></div>`:''}
       <div class="studio-toolbar">${button('Export project','export-project')}${button('Import project','import-project')}${button('Reset draft','reset')}<input id="studio-import" type="file" accept="application/json,.json" hidden><span class="studio-save ${storageStatus!=='saved'?'warning':''}">${escape(s(storageStatus==='saved'?'Saved in this browser':storageStatus==='invalid'?'Invalid fields — the last saved draft is retained':storageStatus==='unreadable'?'Stored draft unreadable — this session uses a new draft':'Session only — browser storage unavailable'))}</span></div>
@@ -415,7 +419,7 @@
     const importInput=root.querySelector('#studio-import');if(importInput)importInput.onchange=async()=>{
       const file=importInput.files?.[0];if(!file)return;
       if(file.size>(core().MAX_PROJECT_LENGTH||65536)){notify('Choose a JSON project smaller than 64 KiB.');importInput.value='';return;}
-      try{const project=core().importProject(await file.text());requestReplace(()=>replaceDraft(project,'Project imported.'));}catch{notify('Invalid project file. Import only a Contract Studio project JSON file.');}finally{importInput.value='';}
+      try{const project=core().importProject(await file.text());if(project.schema!==core().SCHEMA){notify('Open this project in the visual editor. The current escrow draft is retained.');return;}requestReplace(()=>replaceDraft(project,'Project imported.'));}catch{notify('Invalid project file. Import only a Contract Studio project JSON file.');}finally{importInput.value='';}
     };
     const role=root.querySelector('#studio-actor');if(role)role.onchange=()=>{actor=role.value;};
     const fail=root.querySelector('#studio-fail-transfer');if(fail)fail.onchange=()=>{failTransfer=fail.checked;};
