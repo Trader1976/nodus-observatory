@@ -46,20 +46,30 @@ can serve multiple applications on different subdomains.
    validate the application's Access token before forwarding to the origin.
    The application AUD is not a policy ID or tunnel ID. Configure both the
    Access policy and token validation before enabling the route.
-6. Bypass Cloudflare caching for this entire hostname. The API already sends
+6. In the node server's `/etc/nodus-monitor/config.json`, add the exact public
+   origin to the administrator-owned `settings_allowed_origins` list, for example
+   `"settings_allowed_origins": ["https://node.example.com"]`. Preserve the other
+   JSON settings and use your own origin without a path or trailing slash.
+   Restart only `nodus-monitor.service` after this base-config change. This is
+   needed for Settings saves because the browser uses the public origin while
+   the tunnel forwards `Host: localhost`; forwarded headers are not trusted
+   automatically. The list is not authentication and does not change the listener.
+7. Bypass Cloudflare caching for this entire hostname. The API already sends
    `Cache-Control: no-store`; reward CSV exports must also be covered by Access
    and the cache bypass.
-7. Ensure that the `cloudflared` service starts automatically. The monitor
+8. Ensure that the `cloudflared` service starts automatically. The monitor
    stays on `127.0.0.1:8890`. No router port forwarding is needed for this page.
 
 ## Verify the setup
 
 - Open the address in a private browser window on your phone using mobile data.
   Before login, Access must show a login page or denial, not the dashboard.
-- Test `/api/dashboard` and `/api/rewards/export.csv?year=2026` in the same
-  unauthenticated session. Neither measurements nor a CSV file may be exposed.
+- Test `/api/dashboard`, `/api/settings` and `/api/rewards/export.csv?year=2026`
+  in the same unauthenticated session. Neither measurements nor a CSV file may be exposed.
 - An allowed user can view the dashboard and API and download the CSV. Check
   the measurement timestamp and wait for a new collection to confirm live data.
+  Open Settings and use Check settings; a rejected-origin error usually means
+  the public origin is missing from `settings_allowed_origins`.
 - Other users without access must remain blocked. The same Access application
   must cover the entire hostname, including all `/api/` paths.
 - Close the desktop SSH tunnel during the test. The public HTTPS address must
@@ -68,13 +78,16 @@ can serve multiple applications on different subdomains.
 
 In this setup, the application relies on Cloudflare Access and `cloudflared`
 token validation for authentication. It has no user database of its own.
-Reward records and server measurements are for authorized users only. The
+Everyone allowed through the proxy can change the editable monitor settings;
+the app has no separate viewer and administrator accounts. Reward records,
+settings and server measurements are for authorized users only. The
 public GitHub repository contains source code, not your monitoring data.
 
 ## Maintenance
 
-Remote access does not require changing the loopback default or application
-code. Keep tunnel credentials, keys, Access settings and actual email addresses
+Remote access keeps the loopback default and requires no application code
+change. A proxy that rewrites Host needs the explicit Settings origin described
+above. Keep tunnel credentials, keys, Access settings and actual email addresses
 in your server or Cloudflare configuration, outside the repository. To remove
 remote access, remove this hostname's route, DNS record and Access application
 in a controlled order. Preserve other applications using the same tunnel.

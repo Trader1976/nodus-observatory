@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import shutil
 
-from collector import load_config, parse_status, run_command
+from collector import DEFAULTS, load_config, parse_status, run_command
 
 
 def command(args):
@@ -19,11 +19,47 @@ def command(args):
     return result["output"]
 
 
+def discover_roles(text, status, defaults=None):
+    """Persist first-install observations; a stopped installed unit is still a role.
+
+    Only this initial discovery selects roles. Subsequent collection uses the
+    saved selection, including while a configured service is down.
+    """
+    observed = {}
+    for role in ("storage", "witness"):
+        match = re.search(r"^\s*nodus-" + role + r"(?:\.service)?:\s*(.*?)\s*$", text, re.M)
+        if match:
+            value = match.group(1).lower()
+            if re.search(r"\b(?:not-found|not installed|not found|missing)\b", value):
+                observed[role] = False
+            elif re.search(r"\b(?:active|inactive|failed|activating|deactivating|reloading|enabled|disabled|loaded|static|masked)\b", value):
+                observed[role] = True
+    if status["storage"].get("registered") is True:
+        observed["storage"] = True
+    if not observed:
+        # Older status output has no service/role evidence. Preserve the
+        # compatible template rather than guessing that a role disappeared.
+        return None
+    # Lack of a line is not evidence that the other installed role is absent.
+    # Older CLI versions may report only storage registration; preserve the
+    # template for every role without an explicit service observation.
+    roles = dict(DEFAULTS["roles"] if defaults is None else defaults)
+    roles.update(observed)
+    if not any(roles.values()):
+        raise ValueError("no installed Nodus role was discovered; supply --config with the roles to monitor")
+    return roles
+
+
 def discover(config):
     config = dict(config)
     cli = shutil.which("nodus-cli") or config["cli_path"]
     text = command([cli, "status"])
     status = parse_status(text)
+    roles = discover_roles(text, status, config["roles"])
+    if roles is not None:
+        config["roles"] = roles
+    if config.get("default_view") in config["roles"] and not config["roles"][config["default_view"]]:
+        config["default_view"] = "overview"
     fp = status["node"].get("fingerprint")
     if not isinstance(fp, str) or not re.fullmatch(r"[a-fA-F0-9]{128}", fp):
         raise ValueError("local nodus-cli status did not return a fingerprint; start Nodus or supply --config")

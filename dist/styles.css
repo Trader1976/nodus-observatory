@@ -44,3 +44,48 @@
 @media(max-width:600px){#about-dialog .about-content{min-height:0;padding:80px 28px 190px}#about-dialog h2{font-size:23px}#about-dialog .eyebrow{font-size:9px;letter-spacing:1.4px}}
 
 #about-dialog .about-signoff{color:#e3c48a;font-weight:600;margin-top:24px}
+
+/* Primary areas and role views share one responsive navigation shell. */
+[hidden]{display:none!important}
+.topbar{height:auto;display:block;padding-top:14px;padding-bottom:12px}
+.topbar-main,.topbar-context{display:flex;align-items:center;justify-content:space-between;gap:20px;min-width:0}
+.topbar-context{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.area-navigation{display:flex;flex-direction:row;align-items:center;margin-top:0;gap:5px;min-width:0}
+.area-navigation a{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:37px;padding:7px 12px;border:1px solid transparent;border-radius:7px;color:var(--muted);font-size:11px;white-space:nowrap}
+.area-navigation a:hover{background:var(--surface2);color:var(--text)}
+.area-navigation a.active{border-color:#315354;background:#173034;color:var(--cyan)}
+.area-navigation svg{width:14px;height:14px}
+.view-switch{display:flex;align-items:center;gap:11px;color:var(--muted);font-size:9px;flex-shrink:0}
+.view-switch select{min-width:145px;min-height:36px}
+.topbar .readonly{font-size:9px}
+.node-hero{min-height:0;margin-bottom:20px;padding:24px 28px}
+.node-hero .hero-title{margin-top:19px;font-size:28px}
+.node-hero .hero-bottom{margin-top:17px;padding-top:13px}
+.role-overview-grid{margin-bottom:24px}
+.role-overview-grid.single-role{grid-template-columns:1fr}
+.role-overview-grid .grace-panel{min-height:220px}
+.role-overview-grid .witness-summary{display:flex;flex-direction:column}
+.role-overview-grid .witness-summary .detail-list{flex:1}
+.role-summary-foot{padding:0 25px 20px}
+.role-overview-grid .grace-value{margin-top:18px;margin-bottom:7px}
+.role-overview-grid .grace-value strong{font-size:34px}
+.role-overview-grid .grace-panel p{margin-bottom:15px}
+@media(max-width:1100px){.topbar-actions .readonly{display:none}.area-navigation a{font-size:10px;padding:7px 10px}.topbar-main{gap:10px}.role-overview-grid .grace-panel{display:block}}
+@media(max-width:700px){
+  .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:10px;padding-top:10px;padding-bottom:10px}
+  .topbar-main{display:contents}
+  .area-navigation{grid-column:1/-1;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:9px}
+  .area-navigation a{font-size:11px;min-height:40px;padding:7px 10px}
+  .topbar-actions{grid-column:2;grid-row:2}
+  .topbar-context{grid-column:1;grid-row:2;margin:0;padding:0;border:0;justify-content:flex-start;gap:8px}
+  .topbar-context.is-observatory .breadcrumb-home,.topbar-context.is-observatory .breadcrumb .slash,.topbar-context.is-observatory #breadcrumb-page{display:none}
+  .topbar-context .breadcrumb{gap:4px}
+  .view-switch>span{display:none}
+  .view-switch select{min-width:0;width:117px;max-width:100%;min-height:40px;padding:8px;font-size:10px}
+  .node-hero{padding:22px;min-height:0}
+  .node-hero .hero-title{font-size:26px}
+  .role-overview-grid .grace-panel{min-height:0}
+  .role-overview-grid .grace-value{display:flex;align-items:baseline;flex-direction:row}
+  .role-summary-foot{padding:0 19px 20px}
+}
+@media(max-width:360px){.area-navigation a{font-size:10px;padding:7px 6px}.view-switch select{width:105px}.topbar-actions{gap:4px}.topbar{column-gap:5px}.language-switch button{min-width:32px;padding:5px}.topbar-actions .icon-button{padding:5px}}

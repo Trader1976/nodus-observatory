@@ -1,21 +1,47 @@
 #!/usr/bin/env python3
-"""Read-only loopback HTTP server for the Nodus monitor."""
+"""Loopback monitoring server with a narrowly scoped local preferences API."""
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 from functools import partial
 import importlib
+import hmac
 import json
 import math
 import mimetypes
 from pathlib import Path
 import sqlite3
+import secrets
+import socket
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from collector import load_config, read_json, utc_now
 from document_registry import lookup_record
+import settings as monitor_settings
+
+
+CSRF_TOKEN = secrets.token_urlsafe(32)
+
+
+def allowed_settings_origins(config):
+    values = config.get("settings_allowed_origins", [])
+    if not isinstance(values, list):
+        raise ValueError("settings_allowed_origins must be a list of exact HTTP(S) origins")
+    result = set()
+    for value in values:
+        if not isinstance(value, str):
+            raise ValueError("settings_allowed_origins entries must be HTTP(S) origins")
+        parsed = urlsplit(value)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username is not None or parsed.password is not None or parsed.path or parsed.query or parsed.fragment or any(ord(c) < 32 or ord(c) == 127 for c in value):
+            raise ValueError("settings_allowed_origins entries must be exact HTTP(S) origins without a path")
+        try:
+            parsed.port
+        except ValueError:
+            raise ValueError("settings_allowed_origins contains an invalid port") from None
+        result.add(value)
+    return result
 
 
 def readonly_connection(path):
@@ -72,6 +98,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "NodusMonitor/1"
 
     def __init__(self, *args, config, **kwargs):
+        self.base_config = config
         self.config = config
         self.state = Path(config["state_dir"])
         self.frontend = Path(config["frontend_dir"]).resolve()
@@ -131,6 +158,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(503, "monitoring data is temporarily unavailable")
 
     def api(self, route, query):
+        if route == "/api/settings":
+            return self.send_content(monitor_settings.document(self.base_config, CSRF_TOKEN))
         if route == "/api/documents/record":
             payload, status = lookup_record(self.config, query)
             return self.send_content(payload, status=status)
@@ -142,6 +171,14 @@ class Handler(BaseHTTPRequestHandler):
             if not snapshot:
                 return self.fail(503, "No measurements yet; the collector has not completed")
             snapshot["freshness"] = state
+            try:
+                effective = monitor_settings.effective_config(self.base_config)
+                snapshot["monitor"] = {**snapshot.get("monitor", {}), **{key: effective[key] for key in ("node_name", "default_view", "roles")}}
+                snapshot.setdefault("node", {})["display_name"] = effective.get("node_name") or snapshot.get("node", {}).get("hostname") or snapshot.get("resources", {}).get("hostname")
+            except (ValueError, OSError) as error:
+                # Last recorded monitoring data stays readable while the
+                # settings screen explains and repairs malformed preferences.
+                snapshot["settings_error"] = "Saved browser settings could not be loaded: " + str(error)
             # Recent events stay visible between collection ticks, without accessing system journals.
             try:
                 snapshot["events"] = events(self.state / "metrics.sqlite3", 12)["events"]
@@ -206,19 +243,62 @@ class Handler(BaseHTTPRequestHandler):
         self.send_content(path.read_bytes(), content_type)
 
     def do_POST(self):
-        self.fail(405, "This monitoring server is read-only")
+        route = urlsplit(self.path)
+        if route.path not in ("/api/settings", "/api/settings/check") or route.query:
+            return self.fail(405, "Only Observatory settings can be changed")
+        if not self.host_allowed():
+            return self.fail(403, "host is not allowed")
+        if self.headers.get("Transfer-Encoding"):
+            return self.fail(400, "transfer encoding is not supported")
+        try:
+            origins = allowed_settings_origins(self.base_config)
+        except ValueError as error:
+            return self.fail(503, str(error))
+        host = self.headers.get("Host", "")
+        origins.update(("http://" + host, "https://" + host))
+        if self.headers.get("Origin") not in origins:
+            return self.fail(403, "Settings origin is not allowed. The administrator can configure settings_allowed_origins for an authenticated reverse proxy.")
+        token = self.headers.get("X-CSRF-Token", "")
+        if not hmac.compare_digest(token.encode("utf-8"), CSRF_TOKEN.encode("ascii")):
+            return self.fail(403, "invalid settings token; reload settings")
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
+            return self.fail(415, "settings requests require application/json")
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            return self.fail(411, "a valid content length is required")
+        if not 0 < length <= monitor_settings.MAX_SETTINGS_BYTES:
+            return self.fail(413, "settings request exceeds size limit")
+        try:
+            self.connection.settimeout(5)
+            raw = self.rfile.read(length)
+            if len(raw) != length:
+                return self.fail(400, "incomplete settings request")
+            payload = monitor_settings.decode_json(raw)
+            result = monitor_settings.check(self.base_config, payload) if route.path.endswith("/check") else monitor_settings.save(self.base_config, payload, CSRF_TOKEN)
+            return self.send_content(result)
+        except monitor_settings.RevisionConflict as error:
+            return self.fail(409, str(error))
+        except (ValueError, TypeError, UnicodeError) as error:
+            return self.fail(400, str(error))
+        except (OSError, socket.timeout):
+            return self.fail(503, "Settings are temporarily unavailable. Check the monitor installation and permissions.")
 
-    do_PUT = do_POST
-    do_PATCH = do_POST
-    do_DELETE = do_POST
-    do_OPTIONS = do_POST
+    def unsupported_write(self):
+        self.fail(405, "Only Observatory settings can be changed with POST")
+
+    do_PUT = unsupported_write
+    do_PATCH = unsupported_write
+    do_DELETE = unsupported_write
+    do_OPTIONS = unsupported_write
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="/etc/nodus-monitor/config.json")
     args = parser.parse_args()
-    config = load_config(args.config)
+    config = load_config(args.config, include_overrides=False)
+    allowed_settings_origins(config)
     if config["bind_host"] not in ("127.0.0.1", "::1", "localhost"):
         raise ValueError("web server must bind to loopback; use SSH forwarding or an authenticated proxy")
     server = ThreadingHTTPServer((config["bind_host"], int(config["bind_port"])), partial(Handler, config=config))

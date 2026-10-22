@@ -49,20 +49,31 @@ alidomain. Sama tunneli voi palvella useita sovelluksia eri alidomaineilla.
    validoi sovelluksen Access-tokenin ennen paikalliseen palveluun
    välittämistä. AUD ei ole kirjautumissäännön ID eikä tunnelin ID. Määritä
    sekä Access-sääntö että tokenin validointi ennen reitin käyttöönottoa.
-6. Ohita Cloudflaren välimuisti koko tällä hostnamella. API lähettää jo
+6. Lisää node-palvelimen `/etc/nodus-monitor/config.json`-tiedostoon täsmällinen
+   julkinen origin ylläpitäjän `settings_allowed_origins`-listaan, esimerkiksi
+   `"settings_allowed_origins": ["https://node.example.com"]`. Säilytä muut
+   JSON-asetukset ja käytä omaa osoitettasi ilman polkua tai loppukauttaviivaa.
+   Käynnistä vain `nodus-monitor.service` uudelleen tämän perusasetuksen
+   muutoksen jälkeen. Asetusten tallennus tarvitsee lisäyksen, koska selaimen
+   origin on julkinen osoite, mutta tunneli välittää `Host: localhost`-otsakkeen.
+   Välitettyihin otsakkeisiin ei luoteta automaattisesti. Lista ei ole
+   kirjautumissuojaus eikä muuta kuunteluosoitetta.
+7. Ohita Cloudflaren välimuisti koko tällä hostnamella. API lähettää jo
    `Cache-Control: no-store`; myös palkkioiden CSV-viennit kuuluvat Accessin
    suojauksen ja välimuistin ohituksen piiriin.
-7. Varmista `cloudflared`-palvelun automaattinen käynnistys. Monitori pysyy
+8. Varmista `cloudflared`-palvelun automaattinen käynnistys. Monitori pysyy
    osoitteessa `127.0.0.1:8890`; tämän sivun vuoksi ei avata reitittimen porttia.
 
 ## Käyttöönoton tarkistus
 
 - Avaa puhelimella mobiilidatan kautta osoite yksityisessä selainikkunassa.
   Ennen kirjautumista näkyy Accessin kirjautuminen tai kielto, ei dashboard.
-- Tarkista myös `/api/dashboard` ja `/api/rewards/export.csv?year=2026` samassa
-  kirjautumattomassa istunnossa: mittauksia tai CSV-tiedostoa ei saa näkyä.
+- Tarkista myös `/api/dashboard`, `/api/settings` ja
+  `/api/rewards/export.csv?year=2026` samassa kirjautumattomassa istunnossa: mittauksia tai CSV-tiedostoa ei saa näkyä.
 - Sallitulla käyttäjällä näkyvät dashboard, API ja CSV-vienti. Tarkista
   mittauksen aika ja odota uutta keräystä varmistaaksesi tietojen päivittymisen.
+  Avaa Asetukset ja kokeile Tarkista asetukset -painiketta. Hylätty origin
+  tarkoittaa usein puuttuvaa julkista osoitetta `settings_allowed_origins`-listassa.
 - Muut käyttäjät eivät pääse sisään. Koko hostname kuuluu samaan
   Access-sovellukseen, myös kaikki `/api/`-reitit.
 - Sulje työpöytäkoneen SSH-tunneli kokeen ajaksi: julkinen HTTPS-osoite toimii
@@ -71,12 +82,16 @@ alidomain. Sama tunneli voi palvella useita sovelluksia eri alidomaineilla.
 
 Sovellus luottaa tässä mallissa kirjautumisen osalta Cloudflare Accessiin ja
 `cloudflared`-palvelun token-validointiin. Sillä ei ole omaa käyttäjätietokantaa.
-Palkkioaineisto ja palvelimen mittaukset kuuluvat vain sallittujen käyttäjien
-näkymään. Julkisessa GitHub-repossa on lähdekoodi, ei omia seurantatietojasi.
+Kaikki välityspalvelimesta läpi pääsevät voivat muuttaa seurannan muokattavia
+asetuksia; sovelluksessa ei ole erillisiä katselu- ja ylläpitäjätunnuksia.
+Palkkioaineisto, asetukset ja palvelimen mittaukset kuuluvat vain sallittujen
+käyttäjien näkymään. Julkisessa GitHub-repossa on lähdekoodi, ei omia seurantatietojasi.
 
 ## Ylläpito
 
-Paikallista oletusta tai sovelluskoodia ei tarvitse muuttaa etäkäyttöä varten.
+Etäkäyttö säilyttää paikallisen kuunteluosoitteen eikä vaadi sovelluskoodin
+muutosta. Host-otsakkeen muuttava välityspalvelin tarvitsee edellä kuvatun
+Asetukset-originin.
 Säilytä tunnelitunnukset, avaimet, Accessin asetukset ja oikeat sähköpostit
 palvelimen tai Cloudflaren omissa asetuksissa GitHub-repon ulkopuolella. Jos
 etäkäyttö poistetaan, poista vain tämän hostnamen reitti, DNS-tietue ja

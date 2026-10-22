@@ -8,7 +8,7 @@
     "kind": "synthetic",
     "description": "Illustrative demo data; not collected from a server or blockchain account."
   },
-  "source_label": "Synteettinen demo · ei palvelinmittauksia",
+  "source_label": "Synteettinen demo \u00b7 ei palvelinmittauksia",
   "node": {
     "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "p2p_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -42,7 +42,8 @@
     "eligible_segments": 0,
     "eligible_blocks": 0,
     "complete_segments": 1,
-    "segment_bytes": 1073741824
+    "segment_bytes": 1073741824,
+    "enabled": true
   },
   "resources": {
     "hostname": "demo-node",
@@ -66,7 +67,15 @@
   },
   "monitor": {
     "data_path": "/var/lib/nodus/data",
-    "mount_path": "/var/lib/nodus"
+    "mount_path": "/var/lib/nodus",
+    "roles": {
+      "storage": true,
+      "witness": true
+    },
+    "node_name": "",
+    "default_view": "overview",
+    "history_days": 30,
+    "collection_interval_seconds": 60
   },
   "services": [
     {
@@ -91,6 +100,30 @@
   "quality": {
     "partial": true,
     "errors": [],
-    "note": "Synteettiset esimerkkiarvot. Tämä esikatselu ei sisällä palvelimelta kerättyjä mittauksia."
+    "note": "Synteettiset esimerkkiarvot. T\u00e4m\u00e4 esikatselu ei sis\u00e4ll\u00e4 palvelimelta ker\u00e4ttyj\u00e4 mittauksia."
+  },
+  "roles": {
+    "storage": true,
+    "witness": true
+  },
+  "witness": {
+    "enabled": true,
+    "status": "active",
+    "service_status": "active",
+    "service": {
+      "name": "nodus-witness",
+      "active": "active",
+      "enabled": "enabled",
+      "load_state": "loaded"
+    },
+    "committee": {
+      "height": 120001,
+      "count": 7,
+      "is_member": true,
+      "stake_raw": "1000000000000",
+      "power": 1,
+      "commission_bps": 100
+    },
+    "source": "Synthetic demo committee; not collected from a server or blockchain account."
   }
 }

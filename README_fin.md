@@ -4,23 +4,29 @@
 
 ![Nodus Observatoryn yleiskuva](docs/observatory.png)
 
-Näyttävä paikallinen seurantasivu Nodus storage nodelle: ketjun synkronointi,
-arkistosegmentit, verkon tilanne, palvelimen resurssit, tapahtumat ja erillinen
-palkkiokirjanpito vuosikoosteineen ja CSV-vienteineen.
+Paikallinen seurantasivu Nodus-nodelle, jossa on witness, storage tai molemmat:
+ketjun synkronointi, roolikohtaiset havainnot, verkon tilanne, palvelimen
+resurssit, tapahtumat ja omistajalompakon erillinen palkkiokirjanpito
+vuosikoosteineen ja CSV-vienteineen.
 
 ## Nykytila
 
 - Versio **1.0.0**, tuettu Nodus 0.26.7 testnet -asennus Debian/Ubuntu-palvelimella.
-- Seurantanäkymät: **Yleiskuva, Tallennustila, Verkko, Palkkiot ja Tapahtumat**.
-- Tämä kokeiluhaara lisää **Sopimusstudion**: asiakirjan paikallisen tiivistyksen,
-  lompakossa tehtävän leimauksen ja rekisterin lukutarkistuksen. Visuaalinen
+- Pääalueet ovat **Observatory, Sopimusstudio ja Asetukset**.
+- Observatoryn **Yleiskuva-, Tallennustila- ja Witness-näkymistä** näytetään vain
+  seurantaan valitut roolit. Verkko, Palkkiot ja Tapahtumat säilyvät yhteisinä.
+- Asetuksissa valitaan seurattavat roolit ja tallennetaan tämän asennuksen
+  seuranta-asetukset. Katso [roolit ja asetukset](docs/settings_fin.md).
+- **Sopimusstudio** on oma kokeellinen alueensa, jossa on asiakirjan paikallinen
+  tiivistys, lompakossa tehtävä leimaus ja rekisterin lukutarkistus. Visuaalinen
   escrow-editori säilyy esimerkkinä. Uudessa editorissa voi muokata tiloja,
   toimintoja, ehtoja ja rooleja. Katso [asiakirjojen ohje](docs/document-notary_fin.md),
   [visuaalisen editorin ohje](docs/contract-studio-builder_fin.md) ja [escrow-ohje](docs/contract-studio_fin.md).
 - Yläreunan **FIN / ENG** vaihtaa koko käyttöliittymän suomeksi tai englanniksi.
   Valinta säilyy samassa selaimessa; oletuskieli on suomi.
 - Paikallinen kerääjä tallentaa mittauksia noin minuutin välein ja palvelee
-  käyttöliittymää oletuksena vain osoitteessa `127.0.0.1:8890`.
+  käyttöliittymää oletuksena vain osoitteessa `127.0.0.1:8890`. Nodus-kyselyt
+  ovat vain lukua; Asetukset tallentaa vain rajattuja Observatoryn asetuksia.
 - Kuvaajat perustuvat kerättyihin havaintoihin. Puuttuva tieto säilyy puuttuvana;
   vanhentuneet tiedot tai virheet eivät muutu terveeksi tilaksi.
 - Omistajalompakon staking-, storage- ja witness-palkkiot sekä vanhojen maksujen
@@ -47,10 +53,13 @@ Repon esimerkkidata on synteettistä.
 
 Käyttöliittymä ei vaadi käännösvaihetta. Node.js 22 tarvitaan vain kehitystesteihin.
 
-## Sopimusstudio-kokeilu — vain tässä haarassa
+## Erillinen Sopimusstudio-kokeilu
 
-`feature/contract-studio` on erillinen kokeilu, jota ei ole yhdistetty
-`main`-haaraan. Asiakirjatoiminto laskee tiedoston SHA-256-tiivisteen paikallisesti
+Avaa **Sopimusstudio** yläreunasta. Se on oma kokeellinen alueensa riippumatta
+seurattavista node-rooleista. Muutos säilyttää nykyiset editorit ja
+asiakirjatoiminnon eikä lisää Deploy to chain -toimintoa.
+
+Asiakirjatoiminto laskee tiedoston SHA-256-tiivisteen paikallisesti
 (enintään 64 MiB), valmistelee oikean rekisterin ABI:n, bytecoden ja lompakkokutsun
 tiedot sekä lukee kirjauksen omalta nodelta rajatun lukukyselyn avulla. Tiedostoja
 tai yksityisiä avaimia ei lähetetä. Tulos kertoo valitun rekisterin ja julkaisijan
@@ -81,12 +90,13 @@ käännetyt tiedostot. Sopimusten julkaisu ja rekisteröintikutsut tarkistetaan 
 allekirjoitetaan erikseen Nodus-lompakossa. Tiedoston valinta tai viite-JSONin
 lataaminen ei vielä kirjaa mitään ketjuun.
 
-Kokeiluhaaran voi asentaa erilliseen työhakemistoon:
+Roolit huomioivan Observatory-haaran voi kokeilla erillisessä
+työhakemistossa ennen sen yhdistämistä `main`-haaraan:
 
 ```bash
-git clone --branch feature/contract-studio \
-  https://github.com/Trader1976/nodus-observatory.git nodus-observatory-studio
-cd nodus-observatory-studio
+git clone --branch feature/role-aware-observatory \
+  https://github.com/Trader1976/nodus-observatory.git nodus-observatory-roles
+cd nodus-observatory-roles
 sudo bash backend/install.sh
 ```
 
@@ -105,8 +115,9 @@ sudo bash backend/install.sh
 
 Uusi asennus tunnistaa julkisen fingerprintin ja datahakemiston paikallisesta
 `nodus-cli status` -tulosteesta sekä tiedostojärjestelmän ja tavallisen levyn
-`findmnt`/`lsblk`-tiedoista. Myös käyttöjärjestelmän juurilevyllä oleva data on
-tuettu. Erillinen dataosio on valinnainen. Verkkoliitäntä seuraa oletusreittiä.
+`findmnt`/`lsblk`-tiedoista. Paikallisten palvelutietojen perusteella ehdotetaan
+myös seurattavia storage- ja witness-rooleja. Valinnan voi korjata Asetuksissa.
+Myös käyttöjärjestelmän juurilevyllä oleva data on tuettu. Erillinen dataosio on valinnainen. Verkkoliitäntä seuraa oletusreittiä.
 Nodus-palvelun pitää olla käynnissä, jotta tunnistus onnistuu. Yksityisiä avaimia
 tai Nodus-asetustiedostoa ei lueta. Tunnistuksen virhe pysäyttää asennuksen ennen
 palvelumuutoksia. LVM/RAID-laitteen SMART jää tuntemattomaksi automaattitilassa.
@@ -122,8 +133,11 @@ kotihakemistot pois. SMART tarvitsee `smartctl`-ohjelman (paketti `smartmontools
 puuttuvat levymittaukset jäävät tuntemattomiksi.
 
 Päivityksessä asennin säilyttää olemassa olevan
-`/etc/nodus-monitor/config.json`-tiedoston ja sen konekohtaiset arvot.
-`--config` on tarkoitettu vain ensimmäiseen asennukseen.
+`/etc/nodus-monitor/config.json`-tiedoston, Asetukset-sivun tallennukset ja
+konekohtaiset arvot. Jos vanhasta asetustiedostosta puuttuu `roles`, molempien
+roolien seuranta säilyy käytössä. Päivitys ei poista roolia seurannasta.
+`--config` on tarkoitettu vain ensimmäiseen asennukseen. Rajattuja seurannan
+asetuksia voi muuttaa [Asetukset-sivulla](docs/settings_fin.md).
 
 ## Asennetun sovelluksen päivittäminen
 
@@ -155,7 +169,8 @@ Päivitä käyttöliittymä selaimessa välimuistin ohittaen (yleensä Ctrl+Shif
 Asennuspolut:
 
 - Ohjelma: `/opt/nodus-monitor`
-- Asetukset: `/etc/nodus-monitor/config.json`
+- Ylläpitäjän omistamat perusasetukset: `/etc/nodus-monitor/config.json`
+- Asetukset-sivun tallennukset: `/var/lib/nodus-monitor/settings/settings.json`
 - Mittaukset, tapahtumat ja palkkiokirjanpito: `/var/lib/nodus-monitor`
 - HTTP: `127.0.0.1:8890`
 
@@ -178,6 +193,9 @@ Ylläpitäjä voi lisätä oman HTTPS-osoitteen Cloudflare Tunnelin ja Accessin 
 Katso [etäkäytön määritys ja kirjautumisen tarkistukset](docs/remote-access_fin.md).
 Pilvipalvelun tili, domain ja kirjautumissäännöt kuuluvat kyseiseen asennukseen.
 Sama käyttöliittymä ja API toimivat sekä localhostissa että suojatulla etäosoitteella.
+Kaikki asennukseen pääsevät käyttäjät voivat myös muuttaa sen muokattavia
+asetuksia. Suojaa koko osoite, myös Asetukset-API. Sovelluksessa ei ole erillisiä
+katselu- ja ylläpitäjätunnuksia.
 
 ## Käyttöliittymän kielet
 
@@ -199,8 +217,9 @@ molemmilla kielillä, jotta kirjanpidon jatkokäsittely on vakaa.
 Palkkiot-sivu kattaa **omistajalompakolle** maksetut staking-, storage- ja
 witness-palkkiot. Maksutositteessa eri roolien palkkiot yhdistyvät, joten sovellus
 ei keksi roolikohtaista erittelyä eikä kohdista koko lompakon tuottoa tälle
-storage-nodelle. Storagen grace-jakso estää vain storage-palkkiot, ei lompakon
-muista rooleista saamia palkkioita.
+node-roolille. Näkymän tai seurattavien roolien vaihto ei luo palkkioihin
+roolikohtaista erittelyä. Storagen grace-jakso estää vain storage-palkkiot, ei
+lompakon muista rooleista saamia palkkioita.
 
 Päivitetty monitori tarkistaa julkisen Scanin palkkiohistorian automaattisesti
 noin viiden minuutin välein ja tuo aiemmat maksut samaan kirjanpitoon paikallisten
@@ -220,7 +239,8 @@ ja pidetään erillään maksetuista palkkioista ja palautetusta pääomasta.
 
 `rewards_scan_enabled` on oletuksena `true`, myös jos avain puuttuu vanhasta
 asetustiedostosta. Pelkän Scan-tuonnin saa pois asettamalla arvoksi `false`
-tiedostossa `/etc/nodus-monitor/config.json`; paikallinen palkkiokeruu jatkuu.
+tiedostossa `/etc/nodus-monitor/config.json` tai Asetukset-sivulla; paikallinen
+palkkiokeruu jatkuu. Tallennettu sivuasetus ohittaa vastaavan perusasetuksen.
 `network_enabled: false` estää kaikki ulkoiset verkkokyselyt, myös Scanin
 palkkiotuonnin. `rewards_enabled: false` estää molemmat palkkiolähteet.
 
@@ -319,7 +339,8 @@ sudo systemctl stop nodus-monitor-collect.service
 ```
 
 Tämä pysäyttää vain seurannan. Säilytä kirjanpitotietokanta ja asetukset.
-Paketin poisto ei poista Nodus-dataa, muuta storage-rekisteröintiä tai vapauta bondia.
+Seurannan pysäytys tai roolin poisto seurannasta ei poista Nodus-dataa,
+muuta roolirekisteröintiä, pysäytä Nodus-palvelua tai vapauta bondia.
 
 ## Kehityksen tarkistukset
 
@@ -330,8 +351,12 @@ python3 -m unittest discover -s tests -v
 node --check dist/i18n.js
 node --check dist/app-translations.js
 node --check dist/app.js
+node --check dist/observatory-settings.js
+node --check dist/observatory-settings-i18n.js
 node tests/frontend-smoke.mjs dist
 node tests/frontend-i18n.mjs dist
+node tests/frontend-roles.mjs dist
+node tests/observatory-settings.mjs dist
 node tests/contract-studio-core.mjs
 node tests/contract-studio-integration.mjs
 node tests/document-notary-core.mjs

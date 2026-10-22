@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="contract-studio.css">
   <link rel="stylesheet" href="contract-studio-builder.css">
   <link rel="stylesheet" href="document-notary.css">
+  <link rel="stylesheet" href="observatory-settings.css">
   <script defer src="i18n.js"></script>
   <script defer src="app-translations.js"></script>
   <script defer src="contract-studio-core.js"></script>
@@ -20,6 +21,8 @@
   <script defer src="document-notary-core.js"></script>
   <script defer src="document-notary-i18n.js"></script>
   <script defer src="document-notary.js"></script>
+  <script defer src="observatory-settings-i18n.js"></script>
+  <script defer src="observatory-settings.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
@@ -34,11 +37,11 @@
       <div class="server-selector"><span class="server-avatar">N</span><div><strong data-hostname>Oma node</strong><span id="server-model">Storage node</span></div><span class="tiny-dot"></span></div>
       <nav id="navigation">
         <a href="#overview" data-page="overview"><span class="nav-icon" data-icon="grid"></span><span data-i18n="Yleiskuva">Yleiskuva</span></a>
-        <a href="#storage" data-page="storage"><span class="nav-icon" data-icon="database"></span><span data-i18n="Tallennustila">Tallennustila</span></a>
+        <a href="#storage" data-page="storage" data-role="storage"><span class="nav-icon" data-icon="database"></span><span data-i18n="Tallennustila">Tallennustila</span></a>
+        <a href="#witness" data-page="witness" data-role="witness"><span class="nav-icon" data-icon="shield"></span><span data-i18n="Todistaja">Todistaja</span></a>
         <a href="#network" data-page="network"><span class="nav-icon" data-icon="network"></span><span data-i18n="Verkko">Verkko</span></a>
         <a href="#rewards" data-page="rewards"><span class="nav-icon" data-icon="wallet"></span><span data-i18n="Palkkiot">Palkkiot</span><span class="nav-tag">CSV</span></a>
         <a href="#events" data-page="events"><span class="nav-icon" data-icon="activity"></span><span data-i18n="Tapahtumat">Tapahtumat</span></a>
-        <a href="#contracts" data-page="contracts"><span class="nav-icon" data-icon="layers"></span><span data-i18n="Sopimusstudio">Sopimusstudio</span><span class="nav-tag" data-i18n="KOKEILU">KOKEILU</span></a>
       </nav>
       <div class="sidebar-bottom">
         <div class="network-label"><span class="tiny-dot amber"></span>NODUS TESTNET</div>
@@ -49,8 +52,14 @@
     </aside>
     <div class="content-shell">
       <header class="topbar">
+        <div class="topbar-main">
+        <nav class="area-navigation" aria-label="Sovelluksen alue" data-i18n-aria-label="Sovelluksen alue"><a href="#overview" data-area="observatory">Observatory</a><a href="#contracts-editor" data-area="studio" data-i18n="Sopimusstudio">Sopimusstudio</a><a href="#settings" data-area="settings"><span data-icon="settings"></span><span data-i18n="Asetukset">Asetukset</span></a></nav>
+        <div class="topbar-actions"><span class="readonly" id="access-mode"><span data-icon="lock"></span><span data-i18n="Vain luku">Vain luku</span></span><div class="language-switch" role="group" aria-label="Kielivalinta" data-i18n-aria-label="Kielivalinta"><button type="button" data-language="fi" lang="fi" aria-label="Suomi" title="Suomi" aria-pressed="true">FIN</button><button type="button" data-language="en" lang="en" aria-label="English" title="English" aria-pressed="false">ENG</button></div><button class="icon-button" id="refresh" aria-label="Päivitä tiedot" data-i18n-aria-label="Päivitä tiedot"><span data-icon="refresh"></span></button></div>
+        </div>
+        <div class="topbar-context">
         <div class="breadcrumb"><button class="icon-button mobile-menu" id="menu" aria-label="Avaa valikko" data-i18n-aria-label="Avaa valikko" aria-expanded="false"><span data-icon="menu"></span></button><span class="breadcrumb-home" data-hostname>Oma node</span><span class="slash">/</span><span id="breadcrumb-page">Yleiskuva</span></div>
-        <div class="topbar-actions"><span class="readonly"><span data-icon="lock"></span><span data-i18n="Vain luku">Vain luku</span></span><div class="language-switch" role="group" aria-label="Kielivalinta" data-i18n-aria-label="Kielivalinta"><button type="button" data-language="fi" lang="fi" aria-label="Suomi" title="Suomi" aria-pressed="true">FIN</button><button type="button" data-language="en" lang="en" aria-label="English" title="English" aria-pressed="false">ENG</button></div><button class="icon-button" id="refresh" aria-label="Päivitä tiedot" data-i18n-aria-label="Päivitä tiedot"><span data-icon="refresh"></span></button><span class="avatar" aria-label="Nodus Observatory">NO</span></div>
+        <label class="view-switch" id="view-switch"><span data-i18n="Tarkastelunäkymä">Tarkastelunäkymä</span><select class="select" id="view-mode" aria-label="Tarkastelunäkymä" data-i18n-aria-label="Tarkastelunäkymä"></select></label>
+        </div>
       </header>
       <main id="main" tabindex="-1">
         <div id="source-banner" class="source-banner"><span class="source-indicator"></span><span id="source-label">Haetaan seurannan tietoja…</span><span class="source-detail" id="source-detail"></span></div>
