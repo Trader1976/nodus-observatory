@@ -42,6 +42,11 @@ jobs:
           node --check dist/document-notary-core.js
           node --check dist/document-notary-i18n.js
           node --check dist/document-notary.js
+          node --check dist/trade-core.js
+          node --check dist/trade-i18n.js
+          node --check dist/trade.js
+          node tests/trade/core.mjs
+          node tests/trade/integration.mjs
           node tests/frontend-smoke.mjs dist
           node tests/frontend-i18n.mjs dist
           node tests/frontend-roles.mjs dist
@@ -54,3 +59,39 @@ jobs:
           node tests/document-notary-integration.mjs
       - name: Installer syntax
         run: bash -n backend/install.sh
+
+  trade-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install contract test dependencies
+        run: npm ci --prefix tools/trade
+      - name: Fetch the pinned Nodus compiler
+        run: |
+          curl -fL --retry 3 https://nodusnetwork.io/downloads/nodus-solc-0.8.30-nodus.addr256-linux-x86_64.tar.gz -o "$RUNNER_TEMP/nodus-solc.tar.gz"
+          python3 - "$RUNNER_TEMP/nodus-solc.tar.gz" <<'PY'
+          import hashlib, pathlib, sys
+          assert hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest() == "a09d6486c944a795009f08dbc8210ce2eee2785248f9f5f7edc2aaa9c6934649"
+          PY
+          tar -xzf "$RUNNER_TEMP/nodus-solc.tar.gz" -C "$RUNNER_TEMP"
+          echo "NODUS_SOLC=$RUNNER_TEMP/nodus-solc-0.8.30-nodus.addr256-linux-x86_64/solc-nodus" >> "$GITHUB_ENV"
+      - name: Verify both compiler outputs and execute BNB bytecode
+        run: |
+          node tools/trade/build.mjs --check
+          node tests/trade/contracts.mjs
+      - name: Fetch the pinned Nodus execution engine
+        run: |
+          git init "$RUNNER_TEMP/nodus-engine"
+          git -C "$RUNNER_TEMP/nodus-engine" remote add origin https://github.com/nocdem/dna.git
+          git -C "$RUNNER_TEMP/nodus-engine" sparse-checkout set shared/evm shared/crypto/sign shared/crypto/hash shared/crypto/utils
+          git -C "$RUNNER_TEMP/nodus-engine" fetch --depth 1 origin 2e881cc6e6d7a5050cc10400afc2b883f8fb712a
+          git -C "$RUNNER_TEMP/nodus-engine" checkout FETCH_HEAD
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential libssl-dev m4 xxd
+          echo "NODUS_EVM_ROOT=$RUNNER_TEMP/nodus-engine" >> "$GITHUB_ENV"
+      - name: Execute Nodus bytecode with full 32-byte addresses
+        run: node tools/trade/test-nodus.mjs

@@ -397,3 +397,8 @@ and synthetic identities in all committed examples.
 Keep server databases, logs, accounting exports, backups, `.env` files, private
 identity material, real operator addresses and per-machine settings outside this
 repository. `.gitignore` covers common local data and credential paths.
+
+
+## Trade / Swap testnet workbench
+
+The `#trade` area prepares NODUS–tBNB buy/sell offers, keeps public terms locally, and rehearses two-chain locks, claims and refunds. Includes compiled Nodus and BSC-testnet contracts. Wallet connections and network submission are separate future work. [Guide](docs/trade-swap.md).

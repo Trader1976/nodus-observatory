@@ -41,7 +41,7 @@ const dateTime = value => {const d=new Date(value);return Number.isFinite(d.getT
 const compactDate = value => {const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat(locale(),{timeZone:'Europe/Helsinki',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d):'—';};
 const rawNodus = value => {if(value===null||value===undefined)return '—';try{const n=BigInt(value),abs=n<0n?-n:n;return decimalFi(`${n<0n?'-':''}${abs/100000000n}.${(abs%100000000n).toString().padStart(8,'0')}`);}catch{return '—';}};
 const state = {dashboard:null,history:{points:[]},network:null,rewards:null,events:null,mode:'loading',page:'overview',hours:24,year:2026,eventFilter:'all',rewardsYear:null,rewardsSnapshot:null,rewardMonth:null,rewardDay:null,rewardDailyMonth:null,rewardPeriod:'monthly',loading:false,loadedAt:null,failedSources:[],loadError:null,monitorSettings:null};
-const PAGES = {overview:'Yleiskuva',storage:'Tallennustila',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat',witness:'Todistaja',settings:'Asetukset',contracts:'Sopimusstudio','contracts-escrow':'Escrow-esimerkki','contracts-editor':'Visuaalinen sopimuseditori'};
+const PAGES = {trade:'Kaupankäynti',overview:'Yleiskuva',storage:'Tallennustila',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat',witness:'Todistaja',settings:'Asetukset',contracts:'Sopimusstudio','contracts-escrow':'Escrow-esimerkki','contracts-editor':'Visuaalinen sopimuseditori'};
 let toastTimer,refreshTimer;
 const SOURCE_NAMES = {dashboard:'Seurantatiedot',history:'Historia',network:'Verkko',rewards:'Palkkiot',events:'Tapahtumat'};
 const BACKEND_TEXT_KEYS = {
@@ -82,7 +82,7 @@ const BACKEND_TEXT_KEYS = {
 };
 function dataText(value){return value===null||value===undefined?'':t(BACKEND_TEXT_KEYS[value]||value);}
 function renderLoadError(){
-  if(['#contracts','#contracts-escrow','#contracts-editor','#settings'].includes(location.hash)){render();return;}
+  if(['#contracts','#contracts-escrow','#contracts-editor','#trade','#settings'].includes(location.hash)){render();return;}
   const banner=document.querySelector('#source-banner');banner.classList.remove('live');banner.style.color='var(--amber)';
   document.querySelector('#source-label').textContent=t('Tietojen lataus epäonnistui');
   document.querySelector('#source-detail').textContent=t('TIETOLÄHDE PUUTTUU');
@@ -373,21 +373,31 @@ function events(){const all=eventItems(),filtered=state.eventFilter==='all'?all:
 
 function render(){
   globalThis.NodusObservatorySettings?.capture();
+  globalThis.NodusTrade?.capture();
   const roles=configuredRoles(),requested=location.hash.slice(1)||state.dashboard?.monitor?.default_view||state.monitorSettings?.default_view||'overview';
   state.page=PAGES[requested]?requested:'overview';
   if(state.page==='storage'&&!roles.storage||state.page==='witness'&&!roles.witness)state.page='overview';
-  const studio=['contracts','contracts-escrow','contracts-editor'].includes(state.page),settings=state.page==='settings';
+  const studio=['contracts','contracts-escrow','contracts-editor'].includes(state.page),settings=state.page==='settings',trade=state.page==='trade';
   document.title=`${t(PAGES[state.page])} — Nodus Observatory`;
   document.querySelector('#breadcrumb-page').textContent=t(PAGES[state.page]);
   document.querySelectorAll('[data-hostname]').forEach(el=>el.textContent=nodeDisplayName());
   document.querySelector('#server-model').textContent=roleLabel();
   document.querySelectorAll('[data-page]').forEach(a=>{const active=a.dataset.page===state.page;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');if(a.dataset.role)a.hidden=!roles[a.dataset.role];});
-  document.querySelectorAll('[data-area]').forEach(a=>{const active=a.dataset.area===(studio?'studio':settings?'settings':'observatory');a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  document.querySelectorAll('[data-area]').forEach(a=>{const active=a.dataset.area===(studio?'studio':trade?'trade':settings?'settings':'observatory');a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   const views=document.querySelector('#view-mode');
-  if(views){const roleViews=[['overview','Yleiskuva'],...(roles.storage?[['storage','Tallennustila']]:[]),...(roles.witness?[['witness','Todistaja']]:[])];views.innerHTML=roleViews.map(([value,label])=>`<option value="${value}"${value===state.page?' selected':''}>${t(label)}</option>`).join('')+(!studio&&!settings&&!roleViews.some(([value])=>value===state.page)?`<option value="${state.page}" selected disabled>${t(PAGES[state.page])}</option>`:'');views.value=state.page;views.onchange=()=>{location.hash='#'+views.value;};}
-  document.querySelector('.topbar-context')?.classList.toggle('is-observatory',!studio&&!settings);
-  const viewSwitch=document.querySelector('#view-switch');if(viewSwitch)viewSwitch.hidden=studio||settings;
-  const access=document.querySelector('#access-mode');if(access)access.hidden=settings||studio;
+  if(views){const roleViews=[['overview','Yleiskuva'],...(roles.storage?[['storage','Tallennustila']]:[]),...(roles.witness?[['witness','Todistaja']]:[])];views.innerHTML=roleViews.map(([value,label])=>`<option value="${value}"${value===state.page?' selected':''}>${t(label)}</option>`).join('')+(!studio&&!settings&&!trade&&!roleViews.some(([value])=>value===state.page)?`<option value="${state.page}" selected disabled>${t(PAGES[state.page])}</option>`:'');views.value=state.page;views.onchange=()=>{location.hash='#'+views.value;};}
+  document.querySelector('.topbar-context')?.classList.toggle('is-observatory',!studio&&!settings&&!trade);
+  const viewSwitch=document.querySelector('#view-switch');if(viewSwitch)viewSwitch.hidden=studio||settings||trade;
+  const access=document.querySelector('#access-mode');if(access)access.hidden=settings||studio||trade;
+  if(trade){
+    const banner=document.querySelector('#source-banner');banner.classList.remove('live');banner.style.color='';
+    document.querySelector('#source-label').textContent=t('Selaimessa valmisteltava NODUS / BNB -kauppa');
+    document.querySelector('#source-detail').textContent=t('TESTIVERKOT · PAIKALLINEN SIMULAATIO');
+    const target=document.querySelector('#page-content');
+    if(globalThis.NodusTrade)globalThis.NodusTrade.mount(target);
+    else target.innerHTML=`<section class="panel panel-pad"><h1>Trade / Swap</h1><p>${t('Trade / Swap -tiedostot puuttuvat. Päivitä asennus.')}</p></section>`;
+    return;
+  }
   if(studio){
     const escrow=state.page==='contracts-escrow',builder=state.page==='contracts-editor';
     document.querySelector('#source-banner').classList.remove('live');

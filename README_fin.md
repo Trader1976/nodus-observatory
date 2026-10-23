@@ -394,3 +394,8 @@ Dokumentaatiota ylläpidetään pareittain: päivitä englanninkielinen sivu ja 
 Käytä esimerkeissä dokumentaatioon varattuja osoitteita, paikkamerkkejä ja keksittyjä
 tunnisteita. Frontend-testit eivät käytä oikeaa selainta; tarkista ulkoasumuutokset
 myös selaimessa, kun kehität käyttöliittymää.
+
+
+## Trade / Swap -testityöpöytä
+
+Uusi `#trade`-alue valmistelee NODUS–tBNB-osto- ja myyntitarjouksia, säilyttää julkiset tarjoukset paikallisesti ja simuloi kahden ketjun lukitukset, lunastukset ja palautukset. Sisältää käännetyt Nodus- ja BSC-testiverkkosopimukset. Lompakkoyhteydet ja verkkotapahtumien lähetys tulevat erikseen. [Ohje](docs/trade-swap_fin.md).

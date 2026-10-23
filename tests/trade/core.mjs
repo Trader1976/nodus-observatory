@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {webcrypto,createHash} from 'node:crypto';
+const context={crypto:webcrypto,TextEncoder,Uint8Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../../dist/trade-core.js',import.meta.url),'utf8'),context);const c=context.NodusTradeCore;
+const now=1800000000;
+const fields={name:'My trade',side:'sell_nodus',nodusAmount:'123456789012345.12345678',bnbAmount:'0.000000000000000001',maker:{nodus:'0x'+'ab'.repeat(32),bnb:'0x'+'12'.repeat(20)},taker:{nodus:'0x'+'cd'.repeat(32),bnb:'0x'+'34'.repeat(20)}};
+assert.equal(c.amount(fields.nodusAmount,'nodus').raw,'12345678901234512345678');assert.equal(c.amount(fields.bnbAmount,'bnb').wei,'1');
+for(const chain of ['nodus','bnb'])for(const invalid of ['-1','0','1e5',' 1','1,2','01','1.','Infinity','9'.repeat(79)])assert.throws(()=>c.amount(invalid,chain));
+assert.throws(()=>c.amount('0.000000001','nodus'));assert.throws(()=>c.amount('0.0000000000000000001','bnb'));
+for(const side of ['sell_nodus','buy_nodus']){
+ const {offer,secret}=await c.create({...fields,side},now);assert.equal(await c.hash(secret),'0x'+createHash('sha256').update(Buffer.from(secret.slice(2),'hex')).digest('hex'));
+ const pub=c.exportOffer(offer);assert(!pub.includes(secret));assert.equal(c.exportOffer(c.importOffer(pub)),pub);assert.equal((await c.importRecovery(await c.recovery(offer,secret))).secret,secret);
+ assert(!JSON.stringify(c.plan(offer)).includes(secret));assert.equal(c.legs(offer)[0].chain,side==='sell_nodus'?'nodus':'bnb');
+ let s=c.start(offer,now);await assert.rejects(c.step(offer,s,'lock:1',{actor:'taker'}));
+ s=await c.step(offer,s,'lock:0',{actor:'maker'});s=await c.step(offer,s,'lock:1',{actor:'taker'});const original=JSON.stringify(s);
+ for(const options of [{actor:'taker',secret},{actor:'maker',secret:'0x'+'99'.repeat(32)},{actor:'maker',secret,paymentSucceeds:false}])await assert.rejects(c.step(offer,s,'claim:1',options));
+ assert.equal(JSON.stringify(s),original,'rejected commands preserve prior state');
+ s=await c.step(offer,s,'claim:1',{actor:'maker',secret});s=await c.step(offer,s,'claim:0',{actor:'taker',secret});assert(s.legs.every(x=>x.status==='claimed'));
+ await assert.rejects(c.step(offer,s,'claim:0',{actor:'taker',secret}));
+ let r=c.start(offer,now);r=await c.step(offer,r,'lock:0',{actor:'maker'});r=await c.step(offer,r,'lock:1',{actor:'taker'});
+ await assert.rejects(c.step(offer,r,'refund:1',{actor:'taker',now:offer.takerRefundAt-1}));await assert.rejects(c.step(offer,r,'claim:1',{actor:'maker',secret,now:offer.takerRefundAt}));
+ r=await c.step(offer,r,'refund:1',{actor:'taker',now:offer.takerRefundAt});r=await c.step(offer,r,'refund:0',{actor:'maker',now:offer.makerRefundAt});assert(r.legs.every(x=>x.status==='refunded'));
+ const leg=c.legs(offer)[0],obs={chainId:String(leg.chainId),tradeId:offer.id,funder:leg.from,recipient:leg.to,amountWei:leg.amountWei,hashlock:offer.hashlock,refundAt:String(leg.refundAt),status:'locked',confirmed:true,runtimeVerified:true};assert(c.verifyLock(offer,0,obs,now).valid);
+ for(const key of Object.keys(obs))assert(!c.verifyLock(offer,0,{...obs,[key]:'wrong'},now).valid,key);
+ assert(!c.verifyLock(offer,0,obs,offer.makerRefundAt).valid);
+ for(const modification of [{secret},{bnbChainId:56},{schema:'other'},{maker:{...offer.maker,nodus:fields.maker.bnb}},{taker:offer.maker},{makerRefundAt:offer.takerRefundAt+1}])assert.throws(()=>c.validate({...offer,...modification}));
+ assert.throws(()=>c.readiness(offer,offer.takerRefundAt));
+}
+assert.throws(()=>c.importOffer('{"__proto__":{"polluted":true}}'));assert.throws(()=>c.importOffer('x'.repeat(16385)));
+console.log('Trade core: exact units, both directions, independent lock checks, secret isolation, claim/refund boundaries and hostile inputs PASS.');

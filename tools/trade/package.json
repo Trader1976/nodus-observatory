@@ -1,0 +1,1 @@
+{"name":"nodus-observatory-trade-checks","private":true,"type":"module","scripts":{"build":"node build.mjs","verify":"node build.mjs --check","test":"node ../../tests/trade/contracts.mjs"},"devDependencies":{"ethers":"6.15.0","ganache":"7.9.2","solc":"0.8.30"}}
