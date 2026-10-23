@@ -196,7 +196,7 @@ def read_local_storage(config, snapshot, anchor=None):
         db.close()
 
 
-def _nodes(committee, storage, stamp, locations):
+def _nodes(committee, storage, stamp, locations, local_node=None):
     nodes = {}
     for seat in committee.get("seats", [])[:256]:
         if not isinstance(seat, dict):
@@ -224,6 +224,19 @@ def _nodes(committee, storage, stamp, locations):
             old["roles"].append("storage")
         else:
             nodes[node_id] = dict(item)
+    # The peer list has no identity binding. Only the local status response can
+    # bind our external IP to the matching public identity; never infer it from
+    # a shared address or from the order of peer endpoints.
+    local = local_node if isinstance(local_node, dict) else {}
+    fp, node_id = local.get("fingerprint"), local.get("p2p_id")
+    if (isinstance(fp, str) and re.fullmatch(r"[0-9a-fA-F]{128}", fp)
+            and isinstance(node_id, str) and node_id.lower() == fp[:64].lower()):
+        own = nodes.get(node_id.lower())
+        if own is not None and own.get("fingerprint") in (None, fp.lower()):
+            own["local"] = True
+            ip = address_ip(local.get("external_ip"))
+            if own.get("address") is None and ip is not None and ip.is_global:
+                own.update(address=str(ip), address_source="local_status_external_ip")
     for item in nodes.values():
         item.update(last_seen=stamp, location=locate(item.get("address"), locations))
     return list(nodes.values())
@@ -355,7 +368,7 @@ def collect_statistics(state_dir, config, snapshot):
                 storage = read_local_storage(config, snapshot, anchor)
             except (OSError, ValueError, TypeError, sqlite3.Error, URLError, TimeoutError, HTTPException) as exc:
                 status["errors"].append({"source": "storage_registry", "message": type(exc).__name__})
-        nodes = _nodes(committee, storage, source_stamp, locations)
+        nodes = _nodes(committee, storage, source_stamp, locations, snapshot.get("node"))
         peers = {"available": False, "observed_at": None, "items": []}
         try:
             peers = read_peer_endpoints(config, deadline, locations)
@@ -365,6 +378,8 @@ def collect_statistics(state_dir, config, snapshot):
             set_meta(db, "peer_observation", peers)
             set_meta(db, "geolocation", {**locations.info, "resolved_at": utcnow(),
                      "locations": [{"id": node["id"], "address": node.get("address"),
+                                    "fingerprint": node.get("fingerprint"), "local": node.get("local", False),
+                                    "address_source": node.get("address_source"),
                                     "location": node.get("location")} for node in nodes]})
         status["errors"].extend(locations.errors)
         observation = {"timestamp": timestamp(source_stamp), "chain_id": chain,

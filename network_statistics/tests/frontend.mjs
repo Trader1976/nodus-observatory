@@ -36,8 +36,15 @@ await control('#statistics-tab-nodes').click();
 assert.match(html(),/world-map\.svg/,'map uses bundled land outlines');
 assert.match(html(),/ilman sijaintia/,'unlocated nodes are reported');
 assert.match(html(),/Helsinki/);
+payload.peer_endpoints[0].location={country:'Example Country',country_code:'EX',city:'Example Endpoint City',latitude:66,longitude:25,source:'dbip_city_lite'};
+payload.nodes[0].local=true;
 payload.geolocation={configured:true,available:true,status:'ready',provider:'DB-IP',database_date:'2026-10-01',auto_update:true,database_stale:false};
 await control('#statistics-refresh').click();await flush();
+assert.equal(app.document.querySelectorAll('.stats-map-endpoint').length,1,'located peer endpoints appear on the map');
+assert.match(html(),/Identiteettiä ei vahvistettu/);
+assert.match(html(),/Oma node/);
+assert.match(html(),/1 verkkopäätepistettä kartalla/,'endpoint map counts remain separate from node counts');
+assert.equal(app.document.querySelector('.stats-map-endpoint').getAttribute('data-select-node'),null,'endpoint markers never impersonate node identities');
 assert.match(html(),/href="https:\/\/db-ip\.com"[^>]*>IP Geolocation by DB-IP<\/a>/,'DB-IP data receives linked attribution');
 assert.match(html(),/creativecommons\.org\/licenses\/by\/4\.0\//);
 assert.match(html(),/2026-10-01/);assert.match(html(),/Automaattinen kuukausipäivitys/);
@@ -45,6 +52,7 @@ const search=control('#statistics-node-search');search.value='Finland';await sea
 assert.match(html(),/Helsinki/);assert(!html().includes('Frankfurt'),'search filters results');
 control('#statistics-node-search').value='';await control('#statistics-node-search').fire('input');
 const role=control('#statistics-role-filter');role.value='storage';await role.fire('change');
+assert.equal(app.document.querySelectorAll('.stats-map-endpoint').length,0,'a storage-role filter excludes unconfirmed endpoints');
 assert(!html().includes('Helsinki, Finland'),'role filter excludes witness-only nodes');assert.match(html(),/Singapore/);
 const select=app.document.querySelector('[data-select-node]');assert(select);await select.click();
 assert(control('#statistics-node-details'),'selecting a marker or table row opens node details');
@@ -101,6 +109,13 @@ assert(!html().includes('Synthetic preview'),'changing mode discards preview dat
 payload=live();payload.coverage.network_sample_stride=1;payload.series.network=[{timestamp:'2026-10-23T00:00:00Z',self_stake_raw:'100000000',delegated_raw:'200000000'},{timestamp:'2026-10-23T00:05:00Z',self_stake_raw:'100000000',delegated_raw:'200000000'},{timestamp:'2026-10-23T01:00:00Z',self_stake_raw:'100000000',delegated_raw:'200000000'}];
 await control('#statistics-refresh').click();await flush();await control('#statistics-tab-staking').click();
 const pathData=html().match(/<path class="stats-line" d="([^"]+)"/)[1];assert.equal((pathData.match(/M/g)||[]).length,2,'outage breaks the line rather than interpolating it');
+
+// A peer with a location must remain visible even without a known node identity.
+payload=live();payload.nodes=[];payload.peer_endpoints[0].location={country:'Example Country',city:'Example City',latitude:66,longitude:25};
+await control('#statistics-refresh').click();await flush();await control('#statistics-tab-nodes').click();
+assert.equal(app.document.querySelectorAll('.stats-map-endpoint').length,1);
+assert(!html().includes('No location data yet'),'a mapped endpoint is not hidden by the no-node empty state');
+assert.match(html(),/network endpoints on map/);
 
 // No-node report preserves the map and honest empty states.
 payload=live();payload.nodes=[];payload.summary.observed_nodes=0;payload.series={activity:[],network:[],tps:[]};

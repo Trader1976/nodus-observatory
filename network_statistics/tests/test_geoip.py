@@ -267,6 +267,26 @@ class RealDatabaseTests(unittest.TestCase):
         with patch("network_statistics.geoip_common.open_database", side_effect=AssertionError("HTTP must not open MMDB")):
             self.assertTrue(report(self.root / "statistics.sqlite3")["available"])
 
+    def test_local_storage_address_enrichment_survives_a_reused_network_observation(self):
+        data = snapshot(False)
+        data["node"] = {"fingerprint": "b" * 128, "p2p_id": "b" * 64, "external_ip": None}
+        source = self.root / "source.db"
+        source.touch()
+        storage = {"nodes": [{"id": "b" * 64, "fingerprint": "b" * 128,
+                             "address": None, "roles": ["storage"], "status": "active", "storage": {}}]}
+        config = {"rewards_source_db": str(source)}
+        with patch("network_statistics.collector.read_local_storage", return_value=storage):
+            collect_statistics(self.root, config, data)
+            data["node"]["external_ip"] = "198.51.100.99"
+            with patch("ipaddress.IPv4Address.is_global", new_callable=PropertyMock, return_value=True):
+                collect_statistics(self.root, config, data)
+        result = report(self.root / "statistics.sqlite3")
+        own = next(n for n in result["nodes"] if n["id"] == "b" * 64)
+        self.assertTrue(own["local"])
+        self.assertEqual(own["address"], "198.51.100.99")
+        self.assertEqual(own["location"]["city"], "Example City")
+        self.assertEqual(result["coverage"]["network_samples"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -72,6 +72,15 @@ sijaintia olevat nodet säilyvät listassa, ja niiden määrä näytetään erik
 IP-sijainti on likimääräinen ja kuvaa tavallisesti palveluntarjoajan verkkoa tai
 palvelinkeskusta, ei ihmisen sijaintia. Usea node voi käyttää samaa IP-osoitetta.
 
+Paikannetut verkkopäätepisteet näkyvät kartalla vinoneliöinä, joiden
+nodeidentiteetti on **vahvistamatta**. Niiden karttalukumäärä ilmoitetaan
+erillään tunnistetuista nodeista. Roolisuodatin piilottaa päätepisteet, joiden
+rooli on tuntematon; osoite- ja maahaku koskevat myös niitä. **Oma node**
+-merkin saa node, jonka tilatietojen fingerprint ja P2P ID vastaavat havaittua
+rekisteri-identiteettiä. Paikallisen tilatiedon julkinen `external_ip` täydentää
+puuttuvan rekisteriosoitteen; komiteasta saatua osoitetta ei korvata.
+Pelkkä yhteinen IP tai päätepistelistan järjestys ei yhdistä osoitetta identiteettiin.
+
 Ota automaattinen paikallinen sijaintihaku käyttöön asennuksessa tai päivityksessä:
 
 ```bash

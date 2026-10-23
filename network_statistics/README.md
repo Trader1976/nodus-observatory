@@ -72,6 +72,14 @@ in the node list and are counted as unlocated. IP location is approximate and
 usually describes a hosting network or data centre, not a person's location.
 Several nodes may share one IP address.
 
+Located peer endpoints are also plotted, as diamonds labelled **identity
+unconfirmed**. Their map count is separate from identified nodes. Role filters
+hide endpoints whose roles are unknown; address/country search applies to them.
+The local node is labelled **This node** when the status fingerprint/P2P ID
+matches an observed registry identity. Its reported public `external_ip` can
+fill a missing registry address; an existing committee endpoint takes priority.
+Peer-list ordering or a shared IP never establishes an identity binding.
+
 Enable automatic local geolocation when installing or upgrading the monitor:
 
 ```bash

@@ -145,10 +145,19 @@ def report(path, range_key="24h"):
         geo = get_meta(db, "geolocation", {})
         resolved = {(item.get("id"), item.get("address")): item.get("location")
                     for item in geo.get("locations", []) if isinstance(item, dict)}
+        local = {item.get("id"): item for item in geo.get("locations", [])
+                 if isinstance(item, dict) and item.get("local") is True}
         for node in nodes:
+            own = local.get(node.get("id"))
+            if (own and own.get("fingerprint") is not None
+                    and own["fingerprint"] == node.get("fingerprint")
+                    and (node.get("address") is None or node.get("address_source") == "local_status_external_ip")):
+                node.update(address=own.get("address"), address_source=own.get("address_source"), local=True)
             identity = node.get("id"), node.get("address")
             if identity in resolved:
                 node["location"] = resolved[identity]
+                if own:
+                    node["local"] = True
         located = sum(1 for node in nodes if node.get("location") is not None)
         stats = latest.get("stats") or {}
         treasury = stats.get("treasury")

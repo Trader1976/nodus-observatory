@@ -196,6 +196,36 @@ class PeerTests(unittest.TestCase):
 
 
 class GeoTests(unittest.TestCase):
+    def test_local_status_binds_only_the_matching_registered_identity(self):
+        row = {"id": "b" * 64, "fingerprint": "b" * 128, "roles": ["storage"],
+               "address": None, "status": "active", "storage": {}}
+        local = {"fingerprint": "b" * 128, "p2p_id": "b" * 64, "external_ip": "198.51.100.8"}
+        with patch("ipaddress.IPv4Address.is_global", new_callable=PropertyMock, return_value=True):
+            nodes = _nodes({}, {"nodes": [row]}, utcnow(), [], local)
+        self.assertEqual(len(nodes), 1)
+        self.assertTrue(nodes[0]["local"])
+        self.assertEqual(nodes[0]["address"], "198.51.100.8")
+        self.assertEqual(nodes[0]["address_source"], "local_status_external_ip")
+        for bad in ({**local, "p2p_id": "c" * 64},
+                    {**local, "fingerprint": "b" * 64 + "c" * 64},
+                    {**local, "fingerprint": None}):
+            result = _nodes({}, {"nodes": [row]}, utcnow(), [], bad)[0]
+            self.assertIsNone(result["address"])
+            self.assertFalse(result.get("local", False))
+        self.assertEqual(_nodes({}, None, utcnow(), [], local), [])
+
+    def test_local_address_does_not_replace_committee_endpoint_or_use_private_ip(self):
+        local = {"fingerprint": "a" * 128, "p2p_id": "a" * 64, "external_ip": "198.51.100.99"}
+        committee = snapshot(False)["network"]["committee"]
+        with patch("ipaddress.IPv4Address.is_global", new_callable=PropertyMock, return_value=True):
+            result = _nodes(committee, None, utcnow(), [], local)[0]
+        self.assertEqual(result["address"], "198.51.100.8:4004")
+        self.assertTrue(result["local"])
+        row = {"id": "a" * 64, "fingerprint": "a" * 128, "roles": ["storage"], "address": None}
+        for address in ("127.0.0.1", "not-a-host.example", "192.0.2.8", None):
+            result = _nodes({}, {"nodes": [row]}, utcnow(), [], {**local, "external_ip": address})[0]
+            self.assertIsNone(result["address"])
+
     def test_ip_parsing_never_resolves_names(self):
         self.assertEqual(str(address_ip("198.51.100.8:4004")), "198.51.100.8")
         self.assertEqual(str(address_ip("[2001:db8::8]:4004")), "2001:db8::8")
