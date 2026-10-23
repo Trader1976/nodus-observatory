@@ -4,17 +4,28 @@
 
 ![Nodus Observatory overview dashboard](docs/observatory.png)
 
-A local dashboard for a Nodus storage node: chain synchronisation, archive
-segments, network status, server resources, events and a separate reward ledger
-with annual summaries and CSV exports.
+A local dashboard for a Nodus witness node, storage node or both: chain
+synchronisation, role-specific observations, network status, server resources,
+events and a separate owner-wallet reward ledger with annual summaries and CSV
+exports.
 
 ## Features and compatibility
 
-- Five pages: **Overview, Storage, Network, Rewards and Events**.
+- Three main areas: **Observatory, Contract Studio and Settings**.
+- Observatory has **Overview, Storage and Witness** views, with only configured
+  roles shown. Network, Rewards and Events remain available for shared monitoring.
+- Settings selects the roles to monitor and saves this installation's monitor
+  preferences. See [roles and settings](docs/settings.md).
+- **Contract Studio** is a separate experimental area: local document hashing,
+  wallet-based registration and read-only registry lookup. The visual escrow
+  editor remains available as an example, alongside a configurable state/action/
+  condition/role editor. See the [document guide](docs/document-notary.md),
+  [visual editor guide](docs/contract-studio-builder.md) and [escrow guide](docs/contract-studio.md).
 - **FIN / ENG** controls for the complete interface, including charts, tooltips,
   dialogs, accessibility labels and errors. The browser remembers your choice.
-- A systemd collector that normally samples once a minute, with a read-only web
-  server bound to **127.0.0.1:8890** by default.
+- A systemd collector that normally samples once a minute, with a web server
+  bound to **127.0.0.1:8890** by default. Nodus queries are read-only; Settings
+  writes only an allowlisted set of Observatory preferences.
 - Charts based on recorded observations. Missing measurements remain missing;
   stale data and collection failures are shown explicitly.
 - Owner-wallet reward accounting for staking, storage and witness payouts,
@@ -32,6 +43,55 @@ output or database schemas; unknown fields are left unknown.
 This is the monitoring application, not the Nodus node source repository. It
 contains no private identity keys or wallet credentials. Each installation
 discovers its own public node identity and uses its own local configuration.
+
+## Separate Contract Studio experiment
+
+Open **Contract Studio** in the header. It is independent of the monitored node
+roles and remains its own experimental area. This change preserves the current
+editors and document workflow; it adds no Deploy to chain action.
+
+The document workflow hashes files locally (SHA-256, up to 64 MiB),
+prepares actual registry ABI/bytecode and wallet inputs, and looks up records
+through a bounded read-only local-node query. Files and private keys are never
+uploaded. A result reports a record in a chosen publisher's registry namespace;
+it does not establish authorship, truth or independently verified chain inclusion.
+The deployed contract code is not automatically authenticated by the current CLI.
+See [document registration and verification](docs/document-notary.md).
+
+The **Escrow example** preserves the earlier bounded state machine: buyer deposit,
+buyer approval, seller withdrawal, expiry refund and cancellation before funding.
+Dragging states changes the layout; editing connections changes the graph that
+is checked before code can be exported. Unsupported or incomplete graphs are
+reported instead of silently producing a different contract.
+
+The **Visual editor** (`#contracts-editor`) adds configurable states, callable
+actions, roles and AND/OR conditions. Its v2 generator and local simulator support
+exact deposits and transfers, one-round approval quorums and authorized hash
+recording. Earlier v1 saves keep their meaning and can be explicitly converted
+to a separate editable copy. Both editors share the named save list. See the
+[visual editor guide](docs/contract-studio-builder.md) for supported operations,
+compiler selection and limits.
+
+The editor and simulator run locally in the browser. They do not read keys,
+sign transactions, move coins or add write endpoints to the monitoring server.
+The simulation is a model, not execution by a chain node. The separate offline
+compiler helper produces ABI and bytecode only when an actual Nodus compiler is
+provided. The document template also ships reproducibly compiled artifacts.
+Review and publish contracts and registration calls in the Nodus wallet separately.
+Selecting a file or downloading a reference JSON does not register anything.
+
+To try the role-aware Observatory branch in a separate checkout before it is
+merged into `main`:
+
+```bash
+git clone --branch feature/role-aware-observatory \
+  https://github.com/Trader1976/nodus-observatory.git nodus-observatory-roles
+cd nodus-observatory-roles
+sudo bash backend/install.sh
+```
+
+This updates the installed monitor to the experiment. Follow the
+[studio guide](docs/contract-studio.md) for the editor, compiler, tests and limits.
 
 ## Requirements
 
@@ -56,8 +116,10 @@ sudo bash backend/install.sh
 
 A fresh install reads public information from `nodus-cli status` and filesystem
 information from `findmnt` / `lsblk`. It discovers the local fingerprint, data
-directory, mount and a directly identifiable physical disk. Data on the root
-filesystem is supported; a dedicated partition or particular disk capacity is
+directory, mount and a directly identifiable physical disk. It also uses local
+service evidence to suggest the monitored storage and witness roles; Settings
+lets the operator correct that selection. Data on the root filesystem is
+supported; a dedicated partition or particular disk capacity is
 optional. Network measurements follow the default route unless configured
 otherwise. Automatic SMART discovery for LVM/RAID or ambiguous devices remains
 unknown.
@@ -69,7 +131,8 @@ directories. The collector does not read private node identity files.
 | Purpose | Path |
 | --- | --- |
 | Application and frontend | `/opt/nodus-monitor` |
-| Local configuration | `/etc/nodus-monitor/config.json` |
+| Administrator-owned base configuration | `/etc/nodus-monitor/config.json` |
+| Settings page preferences | `/var/lib/nodus-monitor/settings/settings.json` |
 | Measurements, events and reward ledger | `/var/lib/nodus-monitor` |
 | Default HTTP listener | `127.0.0.1:8890` |
 
@@ -99,10 +162,13 @@ git pull --ff-only origin main
 sudo bash backend/install.sh
 ```
 
-The installer preserves `/etc/nodus-monitor/config.json` and collected history.
-It restarts only its own monitor services; the node and other server applications
-keep running. `--config` is for the first install. Edit an existing installation's
-configuration explicitly when needed.
+The installer preserves `/etc/nodus-monitor/config.json`, saved Settings
+preferences and collected history. Existing configurations without `roles` keep
+both storage and witness monitoring enabled; an upgrade does not silently drop
+a role. It restarts only its own monitor services; the node and other server
+applications keep running. `--config` is for the first install. Edit an existing installation's
+base configuration explicitly when needed. Safe monitor preferences can be
+changed through Settings; see [roles and settings](docs/settings.md).
 
 If an earlier installation came from an archive, clone this repository into a
 new directory and run the installer. It uses the existing monitor settings.
@@ -138,11 +204,14 @@ This default needs no router port forwarding for the dashboard. For an optional
 HTTPS address usable from a phone or another network, follow the
 [Cloudflare Tunnel + Access guide](docs/remote-access.md). Each operator supplies
 their own domain, tunnel and access policy. The app has no built-in user login;
-remote access must use an authenticated proxy.
+remote access must use an authenticated proxy. Everyone granted access to this
+installation can also change its editable Settings. Protect the entire hostname,
+including Settings API requests; the UI does not provide separate viewer and
+administrator accounts.
 
 ## Interface languages
 
-The header's **FIN / ENG** controls switch all five pages immediately. The
+The header's **FIN / ENG** controls switch all pages and examples immediately. The
 current page, chart range, event filter and reward year are retained. Finnish is
 the default. The preference is stored per browser and website; if storage is
 blocked, switching still works for the current page.
@@ -157,8 +226,9 @@ stable. Token amounts retain their exact integer/decimal precision.
 The Rewards page covers payments to the **owner wallet**, including staking,
 storage and witness rewards paid to that owner. The available payout evidence
 combines these roles; the app does not invent a role breakdown or attribute the
-whole wallet's income to this storage node. A storage grace period stops storage
-rewards only; it does not stop the wallet's other rewards.
+whole wallet's income to the selected node role. Changing the view or
+monitored roles does not create a role breakdown. A storage grace period stops
+storage rewards only; it does not stop the wallet's other rewards.
 
 After updating the monitor, it automatically checks the public Scan reward
 history about every five minutes and imports earlier payments into the same
@@ -178,7 +248,8 @@ received payments and returned principal.
 
 `rewards_scan_enabled` defaults to `true`, including when the key is absent from
 an existing configuration. To disable Scan imports only, set it to `false` in
-`/etc/nodus-monitor/config.json`; local reward collection continues.
+`/etc/nodus-monitor/config.json` or use Settings; local reward collection
+continues. Saved Settings preferences take precedence over matching base keys.
 `network_enabled: false` disables all external network queries, including Scan
 reward imports. `rewards_enabled: false` disables both reward sources.
 
@@ -217,7 +288,9 @@ manual valuation imports and audit history.
 
 ## Collected data and retention
 
-- Public CLI status and local storage-status queries, without private identity keys.
+- Public CLI status and configured role queries, without private identity keys.
+  Storage-specific probes are skipped when storage monitoring is disabled;
+  witness observations use the local service and committee query.
 - Local/network block heights, lag, grace, `fail_streak`, segments and services.
 - CPU, memory, filesystem usage, network and disk rates; SMART about every 15 minutes.
 - Up to 300 categorised journal observations per collection, not a full log archive.
@@ -275,7 +348,8 @@ sudo systemctl stop nodus-monitor-collect.service
 ```
 
 Keep the accounting database and local configuration if you need them later.
-Stopping the monitor does not leave the Nodus storage role or release its bond.
+Stopping the monitor or disabling a monitored role does not change Nodus role
+registration, stop a Nodus service or release a bond.
 
 ## Development checks
 
@@ -286,8 +360,16 @@ python3 -m unittest discover -s tests -v
 node --check dist/i18n.js
 node --check dist/app-translations.js
 node --check dist/app.js
+node --check dist/observatory-settings.js
+node --check dist/observatory-settings-i18n.js
 node tests/frontend-smoke.mjs dist
 node tests/frontend-i18n.mjs dist
+node tests/frontend-roles.mjs dist
+node tests/observatory-settings.mjs dist
+node tests/contract-studio-core.mjs
+node tests/contract-studio-integration.mjs
+node tests/document-notary-core.mjs
+node tests/document-notary-integration.mjs
 bash -n backend/install.sh
 ```
 
@@ -315,3 +397,8 @@ and synthetic identities in all committed examples.
 Keep server databases, logs, accounting exports, backups, `.env` files, private
 identity material, real operator addresses and per-machine settings outside this
 repository. `.gitignore` covers common local data and credential paths.
+
+
+## Trade / Swap testnet workbench
+
+The `#trade` area prepares NODUS–tBNB buy/sell offers, keeps public terms locally, and rehearses two-chain locks, claims and refunds. Includes compiled Nodus and BSC-testnet contracts. Wallet connections and network submission are separate future work. [Guide](docs/trade-swap.md).

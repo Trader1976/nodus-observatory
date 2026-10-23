@@ -1,5 +1,8 @@
 {
   "state_dir": "/var/lib/nodus-monitor",
+  "node_name": "",
+  "roles": {"storage": true, "witness": true},
+  "default_view": "overview",
   "data_path": "/var/lib/nodus/data",
   "mount_path": "/var/lib/nodus",
   "fingerprint": null,
@@ -10,6 +13,7 @@
   "bind_host": "127.0.0.1",
   "bind_port": 8890,
   "allowed_hosts": ["127.0.0.1", "localhost", "::1"],
+  "settings_allowed_origins": [],
   "frontend_dir": "/opt/nodus-monitor/frontend",
   "network_enabled": true,
   "rewards_enabled": true,

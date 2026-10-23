@@ -37,6 +37,9 @@ DEFAULTS = {
     "rewards_enabled": True,
     "rewards_scan_enabled": True,
     "rewards_source_db": "/var/lib/nodus/data/witness_a48d1a785500a1cdecd739ecd53ef0e9.db",
+    "roles": {"storage": True, "witness": True},
+    "node_name": "",
+    "default_view": "overview",
 }
 SERVICES = ("nodus-core", "nodus-storage", "nodus-witness", "pqnas", "cloudflared")
 
@@ -45,12 +48,31 @@ def utc_now():
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
 
-def load_config(path):
+def load_config(path, *, include_overrides=True):
     config = dict(DEFAULTS)
+    config["roles"] = dict(DEFAULTS["roles"])
     supplied = json.loads(Path(path).read_text()) if path and Path(path).exists() else {}
     if not isinstance(supplied, dict):
         raise ValueError("configuration must be an object")
     config.update(supplied)
+    # The HTTP server may write only this validated, allowlisted monitor overlay.
+    # Trusted executable/data paths remain in the administrator-owned base file.
+    if include_overrides:
+        from settings import load_overrides
+        config.update(load_overrides(config))
+    roles = config["roles"]
+    if (not isinstance(roles, dict) or set(roles) != {"storage", "witness"}
+            or any(type(value) is not bool for value in roles.values()) or not any(roles.values())):
+        raise ValueError("roles must enable storage, witness or both")
+    config["roles"] = dict(roles)
+    if (not isinstance(config["node_name"], str) or len(config["node_name"]) > 80
+            or any(ord(char) < 32 or ord(char) == 127 for char in config["node_name"])):
+        raise ValueError("node_name must be at most 80 printable characters")
+    config["node_name"] = config["node_name"].strip()
+    if config["default_view"] not in ("overview", "storage", "witness"):
+        raise ValueError("default_view must be overview, storage or witness")
+    if config["default_view"] in roles and not roles[config["default_view"]]:
+        config["default_view"] = "overview"
     for key in ("network_enabled", "rewards_enabled", "rewards_scan_enabled"):
         if type(config[key]) is not bool:
             raise ValueError(f"{key} must be a boolean")
@@ -304,15 +326,43 @@ def rates(resources, current, previous):
         resources["cpu_percent"] = round(100 * (1 - idle / total), 2)
 
 
-def parse_services(output):
+def parse_services(output, names=SERVICES):
     result = []
     for block in output.strip().split("\n\n"):
         fields = dict(line.split("=", 1) for line in block.splitlines() if "=" in line)
         if fields.get("Id"):
             result.append({"name": fields["Id"].removesuffix(".service"),
-                           "active": fields.get("ActiveState"), "enabled": fields.get("UnitFileState")})
+                           "active": fields.get("ActiveState"), "enabled": fields.get("UnitFileState"),
+                           "load_state": fields.get("LoadState")})
     indexed = {entry["name"]: entry for entry in result}
-    return [indexed.get(name, {"name": name, "active": None, "enabled": None}) for name in SERVICES]
+    return [indexed.get(name, {"name": name, "active": None, "enabled": None, "load_state": None}) for name in names]
+
+
+def role_service_status(service):
+    """Do not confuse an unavailable observation with an active role."""
+    if service.get("load_state") == "not-found" or service.get("active") is None:
+        return "unavailable"
+    if service["active"] == "active":
+        return "active"
+    if service["active"] == "failed":
+        return "failed"
+    return "inactive"
+
+
+def witness_committee(text, node):
+    """A public committee seat is an observation, not proof of block production."""
+    from network import parse_committee
+    committee = parse_committee(text)
+    result = {"height": committee["height"], "count": committee["count"],
+              "is_member": None, "stake_raw": None, "power": None, "commission_bps": None}
+    identity = node.get("p2p_id")
+    if committee["height"] is not None and identity:
+        seat = next((seat for seat in committee["seats"] if seat.get("id") == identity), None)
+        result["is_member"] = seat is not None
+        if seat:
+            for key in ("stake_raw", "power", "commission_bps"):
+                result[key] = seat.get(key)
+    return result
 
 
 def parse_events(output):
@@ -414,11 +464,16 @@ def collect(config):
     previous = read_json(state / "collection-state.json", {})
     errors = []
 
-    def probe(source, args, timeout=12, max_bytes=512_000, accept_smart=False):
+    def probe(source, args, timeout=12, max_bytes=512_000, accept_smart=False, accept_service_output=False):
         try:
             result = run_command(args, timeout, max_bytes)
             # smartctl uses a bitmask: device health flags are data, bits 0-2 are probe errors.
             failure = result["error"] or (result["returncode"] & 7 if accept_smart else result["returncode"])
+            # systemctl show can return 1 for an absent optional unit while
+            # still reporting all units. LoadState identifies missing required
+            # roles below; optional applications are never required for health.
+            if accept_service_output and not result["error"] and "Id=" in result["output"]:
+                failure = False
             if failure:
                 errors.append({"source": source, "message": result["error"] or f"probe exited with code {result['returncode']}"})
                 return None
@@ -430,6 +485,12 @@ def collect(config):
     status = probe("nodus-status", [config["cli_path"], "status"], 35)
     snapshot = parse_status(status or "")
     snapshot.update(schema_version=1, generated_at=utc_now(), stale_after_seconds=180, events=[])
+    roles = dict(config.get("roles", DEFAULTS["roles"]))
+    snapshot["roles"] = roles
+    snapshot["node"]["display_name"] = config.get("node_name", "")
+    if not roles["storage"]:
+        snapshot["storage"] = {key: None for key in snapshot["storage"]}
+    snapshot["storage"]["enabled"] = roles["storage"]
     if not snapshot["node"]["fingerprint"]:
         snapshot["node"]["fingerprint"] = config["fingerprint"]
     if status is not None and snapshot["chain"]["height"] is None:
@@ -438,16 +499,40 @@ def collect(config):
     configured_fp = config.get("fingerprint")
     identity_matches = not configured_fp or not local_fp or configured_fp.lower() == local_fp.lower()
     extra = None
-    if not identity_matches:
+    if roles["storage"] and not identity_matches:
         errors.append({"source": "storage-status", "message": "configured fingerprint differs from the local node"})
-    elif isinstance(local_fp, str) and re.fullmatch(r"[a-fA-F0-9]{128}", local_fp):
+    elif roles["storage"] and isinstance(local_fp, str) and re.fullmatch(r"[a-fA-F0-9]{128}", local_fp):
         extra = probe("storage-status", [config["cli_path"], "-s", "127.0.0.1", "storage", "status", "--fp", local_fp], 15)
-    else:
+    elif roles["storage"]:
         errors.append({"source": "storage-status", "message": "local node fingerprint unavailable"})
     if extra:
         parse_storage(extra, snapshot)
-    services = probe("services", ["/usr/bin/systemctl", "show", *[name + ".service" for name in SERVICES], "--property=Id,ActiveState,UnitFileState", "--no-pager"])
-    snapshot["services"] = parse_services(services or "")
+    monitored_services = [name for name in SERVICES
+                          if name not in ("nodus-storage", "nodus-witness") or roles[name.removeprefix("nodus-")]]
+    services = probe("services", ["/usr/bin/systemctl", "show", *[name + ".service" for name in monitored_services],
+                     "--property=Id,ActiveState,UnitFileState,LoadState", "--no-pager"], accept_service_output=True)
+    snapshot["services"] = parse_services(services or "", monitored_services)
+    indexed_services = {service["name"]: service for service in snapshot["services"]}
+    snapshot["witness"] = {"enabled": roles["witness"], "status": "disabled", "service": None,
+                           "committee": witness_committee("", snapshot["node"]),
+                           "source": "local nodus-cli witness"}
+    for role in ("storage", "witness"):
+        if not roles[role]:
+            continue
+        service = indexed_services["nodus-" + role]
+        service_status = role_service_status(service)
+        snapshot[role]["service"] = service
+        snapshot[role]["service_status"] = service_status
+        if role == "witness":
+            snapshot[role]["status"] = service_status
+        if service_status != "active":
+            errors.append({"source": role + "-service", "message": "configured role service is " + service_status})
+    if roles["witness"]:
+        committee = probe("witness-committee", [config["cli_path"], "-s", "127.0.0.1", "witness"], 12, 1_000_000)
+        if committee is not None:
+            snapshot["witness"]["committee"] = witness_committee(committee, snapshot["node"])
+            if snapshot["witness"]["committee"]["height"] is None:
+                errors.append({"source": "witness-committee", "message": "committee output did not contain a parseable height"})
     ntp = probe("clock", ["/usr/bin/timedatectl", "show", "-p", "NTPSynchronized", "--value"], 5)
     if ntp and ntp.strip() in ("yes", "no"):
         snapshot["clock"]["ntp_synchronized"] = ntp.strip() == "yes"
@@ -493,7 +578,9 @@ def collect(config):
         # Guard accidental future or ancient state files; bounded collection is intentional.
         start = max(start, dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=10))
         journal_until = utc_now()
-        journal = probe("journal", ["/usr/bin/journalctl", "--system", "-u", "nodus-witness", "-u", "nodus-storage", "-u", "nodus-core", "--since", start.isoformat(), "--until", journal_until, "--no-pager", "-o", "json", "-n", "300"], 8, 1_000_000)
+        journal_units = ["nodus-core"] + ["nodus-" + role for role in ("storage", "witness") if roles[role]]
+        journal_args = [argument for unit in journal_units for argument in ("-u", unit)]
+        journal = probe("journal", ["/usr/bin/journalctl", "--system", *journal_args, "--since", start.isoformat(), "--until", journal_until, "--no-pager", "-o", "json", "-n", "300"], 8, 1_000_000)
         if journal:
             snapshot["events"] = parse_events(journal)
     except (ValueError, TypeError):
@@ -502,7 +589,9 @@ def collect(config):
     snapshot["quality"] = {"partial": bool(errors), "errors": errors}
     snapshot["monitor"] = {"history_days": config["history_days"], "collection_interval_seconds": 60,
                            "event_sampling_limit": 300, "event_window_seconds": 600,
-                           "data_path": config["data_path"], "mount_path": config["mount_path"]}
+                           "data_path": config["data_path"], "mount_path": config["mount_path"],
+                           "node_name": config.get("node_name", ""), "default_view": config.get("default_view", "overview"),
+                           "roles": roles}
     if config.get("network_enabled", True):
         try:
             network = importlib.import_module("network")
