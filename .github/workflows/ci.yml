@@ -45,8 +45,13 @@ jobs:
           node --check dist/trade-core.js
           node --check dist/trade-i18n.js
           node --check dist/trade.js
+          node --check dist/trade-session.js
+          node --check dist/trade-wallet.js
+          node --check dist/trade-live.js
           node tests/trade/core.mjs
           node tests/trade/integration.mjs
+          node tests/trade/session.mjs
+          node tests/trade/wallet.mjs
           node tests/frontend-smoke.mjs dist
           node tests/frontend-i18n.mjs dist
           node tests/frontend-roles.mjs dist
@@ -79,7 +84,7 @@ jobs:
           PY
           tar -xzf "$RUNNER_TEMP/nodus-solc.tar.gz" -C "$RUNNER_TEMP"
           echo "NODUS_SOLC=$RUNNER_TEMP/nodus-solc-0.8.30-nodus.addr256-linux-x86_64/solc-nodus" >> "$GITHUB_ENV"
-      - name: Verify both compiler outputs and execute BNB bytecode
+      - name: Verify compiler outputs and execute BSC token bytecode
         run: |
           node tools/trade/build.mjs --check
           node tests/trade/contracts.mjs

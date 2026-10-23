@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
     at_time(&c,deadline);call_rev(&c,S_B,contract,0,claim,E(C,U(1),secret),"ClaimExpired()",NULL,0,"claim at deadline refused");
     call_ok(&c,S_C,contract,0,refund,E(U(1)),NULL,"refund at boundary");
     view(&c,contract,"lockedTotal()",E0(),out,"locked accounting");ck_u64(&c,out,0,"no locked funds left");
+    view(&c,contract,"currentBlockTime()",E0(),out,"contract block clock");
+    ck_u64(&c,out,deadline,"block clock matches execution timestamp");
     post_code(&c);
     printf("Trade Nodus bytecode: %u checks passed, %u failed (32-byte Prague/Nodus profile).\n",c.pass,c.fail);
     unsigned failed=c.fail;ctx_close(&c);return failed?1:0;

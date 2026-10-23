@@ -401,4 +401,4 @@ repository. `.gitignore` covers common local data and credential paths.
 
 ## Trade / Swap testnet workbench
 
-The `#trade` area prepares NODUS–tBNB buy/sell offers, keeps public terms locally, and rehearses two-chain locks, claims and refunds. Includes compiled Nodus and BSC-testnet contracts. Wallet connections and network submission are separate future work. [Guide](docs/trade-swap.md).
+The `#trade` area prepares NODUS offers priced in Binance-Peg USDT on BNB Smart Chain. Development uses chain 97 and freely minted TEST-USDT, with BNB for network fees. It includes public P2P preparation, reservations, local recovery, wallet requests, read-only observations and the two-chain simulator. Missing Nodus code verification keeps funding and secret revelation blocked; mainnet USDT is information only. [Guide](docs/trade-swap.md) · [Wallet integration](docs/trade-wallet-request.md).

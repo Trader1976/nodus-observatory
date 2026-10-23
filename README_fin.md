@@ -398,4 +398,4 @@ myös selaimessa, kun kehität käyttöliittymää.
 
 ## Trade / Swap -testityöpöytä
 
-Uusi `#trade`-alue valmistelee NODUS–tBNB-osto- ja myyntitarjouksia, säilyttää julkiset tarjoukset paikallisesti ja simuloi kahden ketjun lukitukset, lunastukset ja palautukset. Sisältää käännetyt Nodus- ja BSC-testiverkkosopimukset. Lompakkoyhteydet ja verkkotapahtumien lähetys tulevat erikseen. [Ohje](docs/trade-swap_fin.md).
+`#trade`-alue valmistelee NODUS-kauppoja Binance-Peg USDT -hinnoin BNB Smart Chainissa. Kehitys käyttää verkkoa 97 ja vapaasti luotavaa TEST-USDT:tä; verkkokulut maksetaan BNB:nä. Mukana ovat P2P-valmistelu, varaukset, palautustiedostot, lompakkopyynnöt, ketjun lukeminen ja kahden ketjun simulaatio. Puuttuva Nodus-koodin todentaminen pitää varojen lukituksen ja salaisuuden paljastamisen estettyinä. Pääverkon USDT on vain vertailutietoa. [Ohje](docs/trade-swap_fin.md).
