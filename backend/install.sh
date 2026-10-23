@@ -6,15 +6,19 @@ set -euo pipefail
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 project_dir=$(dirname -- "$source_dir")
 provided_config=""
-case "${1:-}" in
-  --config)
-    [ "$#" -eq 2 ] || { echo "Usage: sudo bash backend/install.sh [--config FILE]" >&2; exit 1; }
-    provided_config=$(realpath -- "$2")
-    [ -f "$provided_config" ] || { echo "Configuration file not found." >&2; exit 1; }
-    ;;
-  "") ;;
-  *) echo "Usage: sudo bash backend/install.sh [--config FILE]" >&2; exit 1 ;;
-esac
+enable_geoip=false
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --config)
+      [ "$#" -ge 2 ] && [ -z "$provided_config" ] || { echo "Supply --config FILE once." >&2; exit 1; }
+      provided_config=$(realpath -- "$2")
+      [ -f "$provided_config" ] || { echo "Configuration file not found." >&2; exit 1; }
+      shift 2
+      ;;
+    --enable-geoip) enable_geoip=true; shift ;;
+    *) echo "Usage: sudo bash backend/install.sh [--config FILE] [--enable-geoip]" >&2; exit 1 ;;
+  esac
+done
 frontend_source=""
 for candidate in "$project_dir/frontend/dist" "$project_dir/dist" "$project_dir/frontend"; do
   if [ -f "$candidate/index.html" ]; then frontend_source=$candidate; break; fi
@@ -26,7 +30,7 @@ for filename in collector.py configure.py server.py settings.py document_registr
   [ -f "$source_dir/$filename" ] || { echo "Missing backend file: $filename" >&2; exit 1; }
 done
 
-for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py; do
+for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py geoip_common.py geoip_update.py enable_geoip.sh nodus-monitor-geoip-update.service nodus-monitor-geoip-update.timer; do
   [ -f "$project_dir/network_statistics/$filename" ] || { echo "Missing Statistics file: $filename" >&2; exit 1; }
 done
 python3 "$project_dir/network_statistics/sync_frontend.py" --check
@@ -99,9 +103,14 @@ for filename in network.py rewards.py enable-reward-history.py; do
 done
 # Frontend assets were checked before any service changes.
 install -d -m 0755 -o root -g root /opt/nodus-monitor/network_statistics
-for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py; do
+for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py geoip_common.py geoip_update.py enable_geoip.sh; do
   install -m 0644 -o root -g root "$project_dir/network_statistics/$filename" "/opt/nodus-monitor/network_statistics/$filename"
 done
+if [ "$enable_geoip" = true ] || systemctl is-enabled --quiet nodus-monitor-geoip-update.timer 2>/dev/null; then
+  for unit in nodus-monitor-geoip-update.service nodus-monitor-geoip-update.timer; do
+    install -m 0644 -o root -g root "$project_dir/network_statistics/$unit" "/etc/systemd/system/$unit"
+  done
+fi
 cp -a "$frontend_source/." /opt/nodus-monitor/frontend/
 # Frozen preview files are never installed in the live monitoring application.
 for filename in snapshot.json history.json events.json network.json rewards.json; do
@@ -151,3 +160,6 @@ print('Then open http://127.0.0.1:8890 in the desktop browser.')
 print('Optional remote browser access: see docs/remote-access.md in the repository.')
 PY
 echo "Nodus and PQ-NAS were left running."
+if [ "$enable_geoip" = true ]; then
+  bash /opt/nodus-monitor/network_statistics/enable_geoip.sh
+fi

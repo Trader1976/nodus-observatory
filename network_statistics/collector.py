@@ -6,7 +6,6 @@ feature database, never the node, CLI, private identities or arbitrary URLs.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import csv
 import grp
 import hashlib
 from http.client import HTTPException
@@ -22,7 +21,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from . import SCAN_CHAIN_ID
-from .geolocation import load_locations, locate, address_ip
+from .geolocation import GeoLocator, locate, address_ip
 from .store import writer, set_meta, get_meta, save_observation, timestamp, utcnow
 
 API = "https://scan.nodusnetwork.io/api/"
@@ -296,6 +295,7 @@ def collect_statistics(state_dir, config, snapshot):
         return {"available": False, "status": "disabled", "collected_at": stamp}
     db = writer(path)
     status = {"available": False, "status": "disabled" if not enabled else "unavailable", "collected_at": stamp, "errors": []}
+    locations = None
     try:
         if not enabled:
             with db:
@@ -337,11 +337,8 @@ def collect_statistics(state_dir, config, snapshot):
             committee = {"height": None, "count": None, "seats": []}
         if stats is None and committee.get("height") is None:
             raise ValueError("No fresh chain statistics or committee observation")
-        storage, locations = None, []
-        try:
-            locations = load_locations(config.get("statistics_geoip_file"))
-        except (OSError, ValueError, TypeError, csv.Error) as exc:
-            status["errors"].append({"source": "geolocation", "message": type(exc).__name__})
+        storage = None
+        locations = GeoLocator(state_dir, config)
         source_db = Path(config.get("rewards_source_db", ""))
         if source_db.is_file():
             try:
@@ -366,13 +363,17 @@ def collect_statistics(state_dir, config, snapshot):
             status["errors"].append({"source": "peer_endpoints", "message": type(exc).__name__})
         with db:
             set_meta(db, "peer_observation", peers)
+            set_meta(db, "geolocation", {**locations.info, "resolved_at": utcnow(),
+                     "locations": [{"id": node["id"], "address": node.get("address"),
+                                    "location": node.get("location")} for node in nodes]})
+        status["errors"].extend(locations.errors)
         observation = {"timestamp": timestamp(source_stamp), "chain_id": chain,
                        "local_height": snapshot.get("chain", {}).get("height"),
                        "stats": stats, "tps": tps, "committee": committee,
                        "storage": storage, "nodes": nodes,
                        "peers_available": peers["available"], "peer_endpoints": peers["items"],
                        "source": "Nodus Scan + local committed observations",
-                       "geo_configured": config.get("statistics_geoip_file") is not None,
+                       "geo_configured": locations.info["configured"],
                        "errors": status["errors"] + errors}
         history_days = config.get("statistics_history_days", 366)
         if type(history_days) is not int or not 1 <= history_days <= 3660:
@@ -397,6 +398,12 @@ def collect_statistics(state_dir, config, snapshot):
         status.update(status="error", errors=status["errors"] + [{"source": "statistics", "message": str(exc)[:200]}])
     finally:
         try:
+            if locations is not None:
+                previous_errors = len(locations.errors)
+                locations.close()
+                status["errors"].extend(locations.errors[previous_errors:])
+                if status["status"] == "ok" and status["errors"]:
+                    status["status"] = "partial"
             with db:
                 set_meta(db, "collection", status)
         finally:

@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for the monthly DB-IP City Lite release
+
+[Timer]
+OnCalendar=*-*-* 03:20:00 UTC
+RandomizedDelaySec=1h
+Persistent=true
+Unit=nodus-monitor-geoip-update.service
+
+[Install]
+WantedBy=timers.target

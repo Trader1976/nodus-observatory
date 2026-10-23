@@ -64,6 +64,7 @@ class StatisticsIntegrationTests(unittest.TestCase):
         invalid = ({"statistics_max_blocks": True}, {"statistics_max_blocks": 257},
                    {"statistics_backfill_blocks": -1}, {"statistics_collection_seconds": 61},
                    {"statistics_history_days": 0}, {"statistics_enabled": "true"},
+                   {"statistics_geoip_enabled": "true"}, {"statistics_geoip_auto_update": 1},
                    {"statistics_geoip_file": "relative.csv"})
         config_path = self.root / "config.json"
         for values in invalid:
@@ -73,6 +74,8 @@ class StatisticsIntegrationTests(unittest.TestCase):
                     load_config(config_path, include_overrides=False)
         config_path.write_text("{}")
         self.assertTrue(load_config(config_path, include_overrides=False)["statistics_enabled"])
+        self.assertTrue(load_config(config_path, include_overrides=False)["statistics_geoip_enabled"])
+        self.assertFalse(load_config(config_path, include_overrides=False)["statistics_geoip_auto_update"])
 
 
 if __name__ == "__main__":

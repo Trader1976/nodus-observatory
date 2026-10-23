@@ -100,7 +100,7 @@ address counts, node lists and a map, staking/storage trends and contract
 activity. Choose 24 hours, 7/30 days, one year or all available history.
 The bounded collector records its own history and indexes recent Scan blocks
 first, then extends the range backwards. Source coverage, gaps and stale data
-remain visible. Map locations require an optional local IP-location CSV.
+remain visible. Map locations use an optional local DB-IP City Lite database with automatic monthly updates (`sudo bash backend/install.sh --enable-geoip`), with CSV overrides.
 
 The feature's canonical source, tests and bilingual documentation are in
 [`network_statistics/`](network_statistics/README.md). `dist/statistics/`
@@ -111,7 +111,7 @@ restarts only Observatory services.
 ## Requirements
 
 - Debian/Ubuntu with systemd and an existing, running Nodus node.
-- Python 3.10 or newer, standard library only. Ubuntu 24.04 is a tested platform.
+- Python 3.10 or newer; the optional GeoIP installer adds `python3-maxminddb`, otherwise standard library only. Ubuntu 24.04 is a tested platform.
 - Git and administrative access for installation and updates.
 - `nodus-cli`, `findmnt` and `lsblk` for automatic node/filesystem discovery.
 - Optional `smartctl` (`smartmontools`) for supported physical-disk health data.

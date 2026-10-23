@@ -72,17 +72,63 @@ in the node list and are counted as unlocated. IP location is approximate and
 usually describes a hosting network or data centre, not a person's location.
 Several nodes may share one IP address.
 
-Location lookup uses an optional administrator-managed local CSV file. There
-is no automatic external geolocation request. The bundled
-[geoip.example.csv](geoip.example.csv) contains reserved documentation addresses
-and illustrative locations only; it is not a GeoIP database and must not be
-used to locate real nodes.
+Enable automatic local geolocation when installing or upgrading the monitor:
 
-Set `statistics_geoip_file` to the absolute path of your real local mapping file
-in `/etc/nodus-monitor/config.json`. Keep it outside the repository. This is a
-trusted installation path, not a browser-editable setting. An IP in the
-validator committee can be mapped directly; a storage registry fingerprint
-alone supplies no IP address.
+```bash
+sudo bash backend/install.sh --enable-geoip
+```
+
+This explicit opt-in installs Debian/Ubuntu's `python3-maxminddb` reader,
+backs up the installed monitor configuration, enables geolocation and starts
+an unprivileged updater in the background. It does not change Nodus settings.
+The first download is approximately 60 MB compressed / 127 MB on disk for the
+October 2026 release; allow about 400 MB of free disk space during replacement.
+
+The updater downloads the monthly [DB-IP City Lite MMDB](https://db-ip.com/db/download/ip-to-city-lite)
+over HTTPS into `/var/lib/nodus-monitor/geoip/dbip-city-lite.mmdb`. Its timer
+checks daily, retries failed releases and skips the download when a valid
+current-month database is installed. A replacement is size/time limited,
+validated and published atomically. A failed download or invalid candidate
+preserves the previous file. The free database has reduced coverage and
+accuracy. The map displays the database date and the required
+**IP Geolocation by DB-IP** attribution, with its **CC BY 4.0** license link.
+
+Only the full database is downloaded. Node addresses are never sent to DB-IP
+or another geolocation API. Public IPv4 and IPv6 lookups use a memory-mapped
+local file and a bounded cache (`/var/lib/nodus-monitor/geoip-cache.json`).
+The cache is invalidated after a database replacement. Private, reserved and
+unresolved addresses stay unknown. A storage registry fingerprint without an
+IP address cannot be placed on the map. The collector refreshes derived
+locations on the next collection even if the source network observation has
+not changed. HTTP requests only read the monitor's stored report.
+
+Check the background download and the resulting coverage:
+
+```bash
+systemctl status nodus-monitor-geoip-update.service --no-pager
+systemctl is-active nodus-monitor-geoip-update.timer
+journalctl -u nodus-monitor-geoip-update.service -n 20 --no-pager
+curl -fsS 'http://127.0.0.1:8890/api/statistics?range=24h' \
+  | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["geolocation"], indent=2))'
+```
+
+A successful oneshot update service becomes `inactive (dead)` after exit;
+its timer stays active. Locations appear after the download and the next
+collector run. To retry immediately, run
+`sudo systemctl start nodus-monitor-geoip-update.service`.
+
+To disable downloads, stop/disable `nodus-monitor-geoip-update.timer` and set
+`statistics_geoip_auto_update: false` in the installed monitor configuration.
+Set `statistics_geoip_enabled: false` as well to stop local lookups. The updater
+also honours `network_enabled` and `statistics_enabled`; disabling network
+collection prevents external downloads. No DB-IP account or API key is needed.
+
+An optional administrator-managed CSV provides manual overrides ahead of the
+MMDB. Set `statistics_geoip_file` to its absolute path in
+`/etc/nodus-monitor/config.json`. Keep this file outside the repository. The
+path is a trusted installation setting, not a browser-editable setting.
+[geoip.example.csv](geoip.example.csv) contains reserved documentation addresses
+and illustrative locations only; it is not a real GeoIP database.
 
 The required CSV header is
 `network,country,country_code,city,latitude,longitude`. `network` accepts an
@@ -104,7 +150,9 @@ Nodus configuration.
 | `statistics_collection_seconds` | `20` | Integer, 2–60; collection time budget. |
 | `statistics_max_blocks` | `32` | Integer, 1–256; forward indexing bound per collection. |
 | `statistics_backfill_blocks` | `16` | Integer, 0–256; older-block indexing bound per collection. |
-| `statistics_geoip_file` | `null` | Absolute local CSV path, or `null`. |
+| `statistics_geoip_enabled` | `true` | Boolean. Allows local MMDB / CSV lookup when data exists. |
+| `statistics_geoip_auto_update` | `false` | Boolean. Downloads require explicit installer opt-in and its timer. |
+| `statistics_geoip_file` | `null` | Absolute local CSV override path, or `null`. |
 | `statistics_history_days` | `366` | Integer, 1–3660; retained network-observation history. |
 
 `network_enabled: false` disables external collection. A slow or failed source
@@ -138,7 +186,8 @@ this feature branch alone does not update a running server.
 | --- | --- |
 | `collector.py`, `store.py`, `api.py` | Bounded collection, persistent observations and read-only reports. |
 | `indexer.py` | Incremental block index and activity aggregation. |
-| `geolocation.py` | Local IP-location lookup. |
+| `geolocation.py`, `geoip_common.py` | Local MMDB / CSV lookup, cache and file contracts. |
+| `geoip_update.py`, `enable_geoip.sh`, `nodus-monitor-geoip-update.*` | Validated monthly downloads and opt-in systemd setup. |
 | `frontend/` | Canonical interface, styles, bundled map and explicit synthetic preview. |
 | `tests/` | Synthetic backend and frontend checks. |
 
@@ -152,7 +201,9 @@ After editing browser sources, run these from the repository root:
 ```bash
 python3 network_statistics/sync_frontend.py
 python3 network_statistics/sync_frontend.py --check
+python3 -m pip install maxminddb==3.2.0  # optional reader, required for MMDB tests
 python3 -m unittest discover -s network_statistics/tests -v
+node network_statistics/tests/frontend.mjs
 ```
 
 The bundled land outline and its public-domain source are documented in

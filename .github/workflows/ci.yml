@@ -28,6 +28,7 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Network statistics tests and distributable assets
         run: |
+          python3 -m pip install maxminddb==3.2.0
           python3 network_statistics/sync_frontend.py --check
           python3 -m unittest discover -s network_statistics/tests -v
           node --check dist/statistics/statistics.js
@@ -64,7 +65,7 @@ jobs:
           node tests/document-notary-core.mjs
           node tests/document-notary-integration.mjs
       - name: Installer syntax
-        run: bash -n backend/install.sh
+        run: bash -n backend/install.sh network_statistics/enable_geoip.sh
 
   trade-contracts:
     runs-on: ubuntu-latest

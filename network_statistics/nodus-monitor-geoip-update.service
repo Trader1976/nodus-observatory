@@ -1,0 +1,28 @@
+[Unit]
+Description=Update the local DB-IP City Lite database for Nodus Observatory
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nodus-monitor
+Group=nodus-monitor
+WorkingDirectory=/opt/nodus-monitor
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m network_statistics.geoip_update --config /etc/nodus-monitor/config.json
+TimeoutStartSec=11min
+UMask=0027
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/nodus-monitor/geoip
+InaccessiblePaths=-/var/lib/nodus -/etc/nodus.conf -/etc/pqnas -/srv/pqnas

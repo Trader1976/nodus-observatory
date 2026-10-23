@@ -72,17 +72,65 @@ sijaintia olevat nodet säilyvät listassa, ja niiden määrä näytetään erik
 IP-sijainti on likimääräinen ja kuvaa tavallisesti palveluntarjoajan verkkoa tai
 palvelinkeskusta, ei ihmisen sijaintia. Usea node voi käyttää samaa IP-osoitetta.
 
-Sijaintihaku käyttää valinnaista ylläpitäjän hallitsemaa paikallista
-CSV-tiedostoa. Automaattisia ulkoisia sijaintikyselyjä ei tehdä. Mukana oleva
-[geoip.example.csv](geoip.example.csv) sisältää vain dokumentointiin varattuja
-osoitteita ja havainnollisia sijainteja. Se ei ole GeoIP-tietokanta eikä sitä
-pidä käyttää oikeiden nodejen paikantamiseen.
+Ota automaattinen paikallinen sijaintihaku käyttöön asennuksessa tai päivityksessä:
 
-Aseta oman sijaintitiedostosi absoluuttinen polku avaimelle
-`statistics_geoip_file` tiedostossa `/etc/nodus-monitor/config.json`. Säilytä
-tiedosto repon ulkopuolella. Polku on ylläpitäjän asennusasetus eikä selaimesta
-muokattava asetus. Komitean IP-osoitteen voi yhdistää sijaintiin suoraan;
-storage-rekisterin fingerprint ei yksin sisällä IP-osoitetta.
+```bash
+sudo bash backend/install.sh --enable-geoip
+```
+
+Valinta asentaa Debian/Ubuntun `python3-maxminddb`-lukijan, varmuuskopioi
+seurannan asetustiedoston, ottaa sijaintihaun käyttöön ja käynnistää tavallisena
+käyttäjänä toimivan latauspalvelun taustalle. Se ei muuta Nodus-asetuksia.
+Lokakuun 2026 aineiston lataus on noin 60 Mt ja purettu tiedosto noin 127 Mt.
+Varaa päivityksen ajaksi noin 400 Mt vapaata levytilaa.
+
+Päivityspalvelu lataa kuukausittaisen [DB-IP City Lite MMDB -aineiston](https://db-ip.com/db/download/ip-to-city-lite)
+HTTPS-yhteydellä tiedostoon `/var/lib/nodus-monitor/geoip/dbip-city-lite.mmdb`.
+Ajastin tarkistaa tilanteen päivittäin ja yrittää epäonnistunutta latausta
+uudelleen. Voimassa olevaa kuluvan kuun aineistoa ei ladata uudestaan.
+Uuden tiedoston koko ja latausaika rajataan, sisältö tarkistetaan ja tiedosto
+vaihdetaan atomisesti. Epäonnistunut lataus tai virheellinen ehdokas säilyttää
+edellisen tiedoston. Ilmaisaineiston kattavuus ja tarkkuus ovat rajallisia.
+Kartalla näkyvät aineiston päiväys, **IP Geolocation by DB-IP** -lähdelinkki
+ja **CC BY 4.0** -lisenssi.
+
+Vain koko tietokanta ladataan. Nodejen osoitteita ei lähetetä DB-IP:lle eikä
+muulle sijaintipalvelulle. Julkiset IPv4- ja IPv6-osoitteet haetaan paikallisesta
+muistikartoitetusta tiedostosta. Rajattu välimuisti on tiedostossa
+`/var/lib/nodus-monitor/geoip-cache.json`, ja aineiston vaihto mitätöi sen.
+Yksityiset, varatut ja ratkaisemattomat osoitteet jäävät tuntemattomiksi.
+Storage-fingerprint ilman IP-osoitetta ei anna karttapistettä. Kerääjä
+päivittää johdetut sijainnit seuraavalla keruukerralla, vaikka verkon
+lähdehavainto olisi sama. HTTP-pyynnöt lukevat vain tallennetun raportin.
+
+Tarkista latauspalvelu ja kartan kattavuus:
+
+```bash
+systemctl status nodus-monitor-geoip-update.service --no-pager
+systemctl is-active nodus-monitor-geoip-update.timer
+journalctl -u nodus-monitor-geoip-update.service -n 20 --no-pager
+curl -fsS 'http://127.0.0.1:8890/api/statistics?range=24h' \
+  | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["geolocation"], indent=2))'
+```
+
+Onnistunut kertaluonteinen latauspalvelu päätyy tilaan `inactive (dead)`;
+ajastin jää aktiiviseksi. Sijainnit ilmestyvät latauksen ja seuraavan
+keruukerran jälkeen. Välittömän uuden yrityksen saa komennolla
+`sudo systemctl start nodus-monitor-geoip-update.service`.
+
+Estä lataukset pysäyttämällä ja poistamalla käytöstä
+`nodus-monitor-geoip-update.timer` sekä asettamalla seurannan asetuksiin
+`statistics_geoip_auto_update: false`. Myös paikallinen sijaintihaku poistuu
+käytöstä asetuksella `statistics_geoip_enabled: false`. Päivittäjä noudattaa
+lisäksi asetuksia `network_enabled` ja `statistics_enabled`; verkkokeruun
+poistaminen käytöstä estää ulkoiset lataukset. DB-IP-tiliä tai API-avainta ei tarvita.
+
+Valinnainen ylläpitäjän hallitsema CSV antaa käsin asetettavat ohitukset ennen
+MMDB-hakua. Aseta sen absoluuttinen polku avaimelle `statistics_geoip_file`
+tiedostossa `/etc/nodus-monitor/config.json`. Säilytä aineisto repon ulkopuolella.
+Polku on ylläpitäjän asennusasetus eikä selaimesta muokattava asetus.
+[geoip.example.csv](geoip.example.csv) sisältää vain dokumentointiin varattuja
+osoitteita ja havainnollisia sijainteja; se ei ole oikea GeoIP-tietokanta.
 
 CSV:n pakollinen otsikkorivi on
 `network,country,country_code,city,latitude,longitude`. `network` hyväksyy
@@ -104,7 +152,9 @@ eivät Nodus-asetuksiin.
 | `statistics_collection_seconds` | `20` | Kokonaisluku 2–60; keruun aikaraja sekunteina. |
 | `statistics_max_blocks` | `32` | Kokonaisluku 1–256; uusien lohkojen keruuraja kerralla. |
 | `statistics_backfill_blocks` | `16` | Kokonaisluku 0–256; vanhempien lohkojen keruuraja kerralla. |
-| `statistics_geoip_file` | `null` | Paikallisen CSV-tiedoston absoluuttinen polku tai `null`. |
+| `statistics_geoip_enabled` | `true` | Totuusarvo. Sallii paikallisen MMDB-/CSV-haun, kun aineisto on saatavilla. |
+| `statistics_geoip_auto_update` | `false` | Totuusarvo. Lataukset vaativat asennusvalinnan ja ajastimen. |
+| `statistics_geoip_file` | `null` | Paikallisen CSV-ohitustiedoston absoluuttinen polku tai `null`. |
 | `statistics_history_days` | `366` | Kokonaisluku 1–3660; verkkohavaintojen säilytysaika päivinä. |
 
 `network_enabled: false` estää ulkoisen keruun. Hidas tai vastaamaton lähde voi
@@ -138,7 +188,8 @@ tämän kehityshaaran hakeminen ei yksin päivitä käynnissä olevaa palvelinta
 | --- | --- |
 | `collector.py`, `store.py`, `api.py` | Rajattu keruu, havaintojen tallennus ja raporttien lukurajapinta. |
 | `indexer.py` | Vähitellen täydentyvä lohkoindeksi ja aktiivisuuskoosteet. |
-| `geolocation.py` | Paikallinen IP-sijaintihaku. |
+| `geolocation.py`, `geoip_common.py` | Paikallinen MMDB-/CSV-haku, välimuisti ja tiedostomuotojen tarkistus. |
+| `geoip_update.py`, `enable_geoip.sh`, `nodus-monitor-geoip-update.*` | Tarkistetut kuukausilataukset ja systemd-asennusvalinta. |
 | `frontend/` | Varsinainen käyttöliittymälähde, tyylit, mukana tuleva kartta ja erikseen tunnistettu synteettinen esikatselu. |
 | `tests/` | Synteettiset taustaosan ja käyttöliittymän tarkistukset. |
 
@@ -152,7 +203,9 @@ Käyttöliittymän lähteiden muokkauksen jälkeen aja repon juuressa:
 ```bash
 python3 network_statistics/sync_frontend.py
 python3 network_statistics/sync_frontend.py --check
+python3 -m pip install maxminddb==3.2.0  # valinnainen lukija, tarvitaan MMDB-testeihin
 python3 -m unittest discover -s network_statistics/tests -v
+node network_statistics/tests/frontend.mjs
 ```
 
 Mukana tulevan maa-alueiden ääriviivakartan tekijätiedot ja public domain

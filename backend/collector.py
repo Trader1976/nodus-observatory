@@ -52,6 +52,8 @@ DEFAULTS = {
     "statistics_max_blocks": 32,
     "statistics_backfill_blocks": 16,
     "statistics_geoip_file": None,
+    "statistics_geoip_enabled": True,
+    "statistics_geoip_auto_update": False,
     "statistics_history_days": 366,
 }
 SERVICES = ("nodus-core", "nodus-storage", "nodus-witness", "pqnas", "cloudflared")
@@ -86,7 +88,8 @@ def load_config(path, *, include_overrides=True):
         raise ValueError("default_view must be overview, storage or witness")
     if config["default_view"] in roles and not roles[config["default_view"]]:
         config["default_view"] = "overview"
-    for key in ("network_enabled", "rewards_enabled", "rewards_scan_enabled", "statistics_enabled"):
+    for key in ("network_enabled", "rewards_enabled", "rewards_scan_enabled", "statistics_enabled",
+                "statistics_geoip_enabled", "statistics_geoip_auto_update"):
         if type(config[key]) is not bool:
             raise ValueError(f"{key} must be a boolean")
     for key, minimum, maximum in (

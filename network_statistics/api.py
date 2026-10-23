@@ -141,7 +141,14 @@ def report(path, range_key="24h"):
         points = [{"timestamp": item["timestamp"], **_summary(item)} for item in network]
         peers = get_meta(db, "peer_observation", {"available": False, "items": []})
         summary["observed_endpoints"] = len(peers.get("items", [])) if peers.get("available") else None
-        nodes = latest.get("nodes") or []
+        nodes = [dict(node) for node in (latest.get("nodes") or [])]
+        geo = get_meta(db, "geolocation", {})
+        resolved = {(item.get("id"), item.get("address")): item.get("location")
+                    for item in geo.get("locations", []) if isinstance(item, dict)}
+        for node in nodes:
+            identity = node.get("id"), node.get("address")
+            if identity in resolved:
+                node["location"] = resolved[identity]
         located = sum(1 for node in nodes if node.get("location") is not None)
         stats = latest.get("stats") or {}
         treasury = stats.get("treasury")
@@ -160,8 +167,9 @@ def report(path, range_key="24h"):
                 "nodes": nodes, "peer_endpoints": peers.get("items", []), "breakdown": {"operations": indexed.get("operations", []),
                                               "proposers": indexed.get("proposers", []), "treasury": treasury},
                 "contracts": indexed.get("contracts", []), "errors": errors,
-                "geolocation": {"configured": latest.get("geo_configured", False), "located_nodes": located,
-                                "unlocated_nodes": len(nodes) - located},
+                "geolocation": {**{key: value for key, value in geo.items() if key != "locations"},
+                                "configured": geo.get("configured", latest.get("geo_configured", False)),
+                                "located_nodes": located, "unlocated_nodes": len(nodes) - located},
                 "collection": {"status": collection.get("status"), "collected_at": collection.get("collected_at")},
                 "index_progress": {key: collection.get("index", {}).get(key) for key in ("status", "blocks_added")},
                 "peer_observation": {"available": peers.get("available", False), "observed_at": peers.get("observed_at"),
@@ -169,7 +177,7 @@ def report(path, range_key="24h"):
                 "definitions": {"nodes": "Known committee and storage identities, not a complete network census or an online count",
                                 "addresses": "Observed native and EVM addresses are separate; they are not unique people or all created wallets",
                                 "first_seen": "First occurrence within the indexed block range",
-                                "map": "Approximate operator-provided IP locations; missing locations stay unknown",
+                                "map": "Approximate local DB-IP City Lite or operator CSV IP locations; missing locations stay unknown",
                                 "transfer_raw": "Native spend outputs to known non-sender addresses, excluding change; unresolved senders stay unknown",
                                 "tps": "Applied envelopes; claims and refused items excluded; UTC hour buckets include a partial current hour"}}
     except (OSError, ValueError, TypeError, sqlite3.Error, json.JSONDecodeError, ImportError):

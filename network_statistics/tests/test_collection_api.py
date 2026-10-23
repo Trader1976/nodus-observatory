@@ -221,7 +221,7 @@ class GeoTests(unittest.TestCase):
             data = snapshot(False)
             result = collect_statistics(directory, {"statistics_geoip_file": "/nonexistent/test.csv"}, data)
             self.assertTrue(result["available"])
-            self.assertEqual(result["errors"][0]["source"], "geolocation")
+            self.assertEqual(result["errors"][0]["source"], "geolocation_csv")
 
 
 class StorageTests(unittest.TestCase):
