@@ -65,7 +65,9 @@ jobs:
           node tests/document-notary-core.mjs
           node tests/document-notary-integration.mjs
       - name: Installer syntax
-        run: bash -n backend/install.sh network_statistics/enable_geoip.sh
+        run: |
+          bash -n backend/install.sh
+          bash -n network_statistics/enable_geoip.sh
 
   trade-contracts:
     runs-on: ubuntu-latest
