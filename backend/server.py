@@ -148,7 +148,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(414, "request target too long")
         try:
             query = parse_qs(parsed.query, max_num_fields=10,
-                             keep_blank_values=parsed.path == "/api/documents/record")
+                             keep_blank_values=parsed.path in ("/api/documents/record", "/api/statistics", "/api/statistics/export.csv"))
             if parsed.path.startswith("/api/"):
                 return self.api(parsed.path, query)
             return self.static(parsed.path)
@@ -158,6 +158,22 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(503, "monitoring data is temporarily unavailable")
 
     def api(self, route, query):
+        if route in ("/api/statistics", "/api/statistics/export.csv"):
+            if set(query) - {"range"} or len(query.get("range", [])) > 1:
+                return self.fail(400, "statistics accepts one range parameter")
+            range_key = query.get("range", ["24h"])[0]
+            if range_key not in ("24h", "7d", "30d", "1y", "all"):
+                return self.fail(400, "range must be 24h, 7d, 30d, 1y or all")
+            from network_statistics import api as statistics_api
+            database = self.state / "statistics.sqlite3"
+            if route.endswith(".csv"):
+                try:
+                    content = statistics_api.export_csv(database, range_key)
+                except ValueError:
+                    return self.fail(503, "Statistics export is temporarily unavailable")
+                return self.send_content(content.encode("utf-8"), "text/csv; charset=utf-8",
+                                         attachment=f"nodus-statistics-{range_key}.csv")
+            return self.send_content(statistics_api.report(database, range_key))
         if route == "/api/settings":
             return self.send_content(monitor_settings.document(self.base_config, CSRF_TOKEN))
         if route == "/api/documents/record":

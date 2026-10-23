@@ -26,6 +26,12 @@ jobs:
         run: python3 -m unittest discover -s rewards -p 'test_*.py' -v
       - name: Network adapter tests
         run: python3 -m unittest discover -s tests -v
+      - name: Network statistics tests and distributable assets
+        run: |
+          python3 network_statistics/sync_frontend.py --check
+          python3 -m unittest discover -s network_statistics/tests -v
+          node --check dist/statistics/statistics.js
+          node network_statistics/tests/frontend.mjs
       - name: Frontend syntax and smoke test
         run: |
           node --check dist/i18n.js

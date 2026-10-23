@@ -26,6 +26,11 @@ for filename in collector.py configure.py server.py settings.py document_registr
   [ -f "$source_dir/$filename" ] || { echo "Missing backend file: $filename" >&2; exit 1; }
 done
 
+for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py; do
+  [ -f "$project_dir/network_statistics/$filename" ] || { echo "Missing Statistics file: $filename" >&2; exit 1; }
+done
+python3 "$project_dir/network_statistics/sync_frontend.py" --check
+
 # Prepare and validate machine-local settings before changing users or services.
 # Updates always preserve installed settings; --config is for the first install.
 temporary_config_dir=$(mktemp -d)
@@ -93,11 +98,16 @@ for filename in network.py rewards.py enable-reward-history.py; do
   fi
 done
 # Frontend assets were checked before any service changes.
+install -d -m 0755 -o root -g root /opt/nodus-monitor/network_statistics
+for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py; do
+  install -m 0644 -o root -g root "$project_dir/network_statistics/$filename" "/opt/nodus-monitor/network_statistics/$filename"
+done
 cp -a "$frontend_source/." /opt/nodus-monitor/frontend/
 # Frozen preview files are never installed in the live monitoring application.
 for filename in snapshot.json history.json events.json network.json rewards.json; do
   rm -f -- "/opt/nodus-monitor/frontend/$filename"
 done
+rm -f -- /opt/nodus-monitor/frontend/statistics/preview.json
 chown -R root:root /opt/nodus-monitor/frontend
 find /opt/nodus-monitor/frontend -type d -exec chmod 0755 {} +
 find /opt/nodus-monitor/frontend -type f -exec chmod 0644 {} +

@@ -18,5 +18,11 @@
   "network_enabled": true,
   "rewards_enabled": true,
   "rewards_scan_enabled": true,
+  "statistics_enabled": true,
+  "statistics_collection_seconds": 20,
+  "statistics_max_blocks": 32,
+  "statistics_backfill_blocks": 16,
+  "statistics_geoip_file": null,
+  "statistics_history_days": 366,
   "rewards_source_db": "/var/lib/nodus/data/witness_a48d1a785500a1cdecd739ecd53ef0e9.db"
 }
