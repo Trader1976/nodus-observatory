@@ -22,7 +22,7 @@ done
 [ -n "$frontend_source" ] || { echo "Built frontend/index.html or dist/index.html is missing." >&2; exit 1; }
 command -v python3 >/dev/null
 command -v systemctl >/dev/null
-for filename in collector.py configure.py server.py settings.py document_registry.py config.example.json nodus-monitor.service nodus-monitor-collect.service nodus-monitor-collect.timer; do
+for filename in collector.py configure.py server.py settings.py document_registry.py trade_board.py trade_network.py config.example.json nodus-monitor.service nodus-monitor-collect.service nodus-monitor-collect.timer; do
   [ -f "$source_dir/$filename" ] || { echo "Missing backend file: $filename" >&2; exit 1; }
 done
 
@@ -67,7 +67,7 @@ if ! getent passwd nodus-monitor >/dev/null; then
   useradd --system --user-group --home-dir /nonexistent --shell /usr/sbin/nologin nodus-monitor
 fi
 getent group nodus-monitor >/dev/null
-for dir in /opt/nodus-monitor /opt/nodus-monitor/frontend /var/lib/nodus-monitor /var/lib/nodus-monitor/settings /var/lib/nodus-monitor/settings/settings.json /var/lib/nodus-monitor/settings/settings.previous.json /etc/nodus-monitor /etc/nodus-monitor/config.json; do
+for dir in /opt/nodus-monitor /opt/nodus-monitor/frontend /var/lib/nodus-monitor /var/lib/nodus-monitor/settings /var/lib/nodus-monitor/settings/settings.json /var/lib/nodus-monitor/settings/settings.previous.json /var/lib/nodus-monitor/trade /var/lib/nodus-monitor/trade/board.sqlite3 /etc/nodus-monitor /etc/nodus-monitor/config.json; do
   if [ -L "$dir" ]; then echo "STOP: unexpected symbolic link: $dir" >&2; exit 1; fi
 done
 
@@ -81,8 +81,9 @@ systemctl stop nodus-monitor-collect.timer nodus-monitor.service nodus-monitor-c
 install -d -m 0755 -o root -g root /opt/nodus-monitor /opt/nodus-monitor/frontend
 install -d -m 2750 -o root -g nodus-monitor /var/lib/nodus-monitor
 install -d -m 2750 -o nodus-monitor -g nodus-monitor /var/lib/nodus-monitor/settings
+install -d -m 2750 -o nodus-monitor -g nodus-monitor /var/lib/nodus-monitor/trade
 install -d -m 0750 -o root -g nodus-monitor /etc/nodus-monitor
-for filename in collector.py server.py settings.py document_registry.py; do
+for filename in collector.py server.py settings.py document_registry.py trade_board.py trade_network.py; do
   install -m 0644 -o root -g root "$source_dir/$filename" "/opt/nodus-monitor/$filename"
 done
 for filename in network.py rewards.py enable-reward-history.py; do

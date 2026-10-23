@@ -391,8 +391,8 @@ function render(){
   const access=document.querySelector('#access-mode');if(access)access.hidden=settings||studio||trade;
   if(trade){
     const banner=document.querySelector('#source-banner');banner.classList.remove('live');banner.style.color='';
-    document.querySelector('#source-label').textContent=t('Selaimessa valmisteltava NODUS / BNB -kauppa');
-    document.querySelector('#source-detail').textContent=t('TESTIVERKOT · PAIKALLINEN SIMULAATIO');
+    document.querySelector('#source-label').textContent=t('NODUS / USDT -kaupan kehitysnäkymä');
+    document.querySelector('#source-detail').textContent=t('TESTIVERKOT · KAUPPAPAIKAN PROTOTYYPPI');
     const target=document.querySelector('#page-content');
     if(globalThis.NodusTrade)globalThis.NodusTrade.mount(target);
     else target.innerHTML=`<section class="panel panel-pad"><h1>Trade / Swap</h1><p>${t('Trade / Swap -tiedostot puuttuvat. Päivitä asennus.')}</p></section>`;

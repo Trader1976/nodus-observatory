@@ -20,6 +20,8 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from collector import load_config, read_json, utc_now
 from document_registry import lookup_record
 import settings as monitor_settings
+import trade_board
+import trade_network
 
 
 CSRF_TOKEN = secrets.token_urlsafe(32)
@@ -158,6 +160,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(503, "monitoring data is temporarily unavailable")
 
     def api(self, route, query):
+        if route == "/api/trade/board":
+            if query:
+                return self.fail(400, "trade board takes no query parameters")
+            try:
+                return self.send_content({**trade_board.board(self.base_config), "csrfToken": CSRF_TOKEN})
+            except trade_board.BoardError as error:
+                return self.send_content({"error": str(error), "code": error.code}, status=error.status)
+        if route == "/api/trade/observe":
+            payload, status = trade_network.lookup(self.base_config, query)
+            return self.send_content(payload, status=status)
         if route == "/api/settings":
             return self.send_content(monitor_settings.document(self.base_config, CSRF_TOKEN))
         if route == "/api/documents/record":
@@ -244,7 +256,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         route = urlsplit(self.path)
-        if route.path not in ("/api/settings", "/api/settings/check") or route.query:
+        board_actions = {"/api/trade/listings": trade_board.create, "/api/trade/reserve": trade_board.reserve, "/api/trade/cancel": trade_board.cancel}
+        if route.path not in ("/api/settings", "/api/settings/check", *board_actions) or route.query:
             return self.fail(405, "Only Observatory settings can be changed")
         if not self.host_allowed():
             return self.fail(403, "host is not allowed")
@@ -267,7 +280,8 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", ""))
         except ValueError:
             return self.fail(411, "a valid content length is required")
-        if not 0 < length <= monitor_settings.MAX_SETTINGS_BYTES:
+        limit = trade_board.MAX_BYTES if route.path in board_actions else monitor_settings.MAX_SETTINGS_BYTES
+        if not 0 < length <= limit:
             return self.fail(413, "settings request exceeds size limit")
         try:
             self.connection.settimeout(5)
@@ -275,8 +289,13 @@ class Handler(BaseHTTPRequestHandler):
             if len(raw) != length:
                 return self.fail(400, "incomplete settings request")
             payload = monitor_settings.decode_json(raw)
-            result = monitor_settings.check(self.base_config, payload) if route.path.endswith("/check") else monitor_settings.save(self.base_config, payload, CSRF_TOKEN)
+            if route.path in board_actions:
+                result = board_actions[route.path](self.base_config, payload)
+            else:
+                result = monitor_settings.check(self.base_config, payload) if route.path.endswith("/check") else monitor_settings.save(self.base_config, payload, CSRF_TOKEN)
             return self.send_content(result)
+        except trade_board.BoardError as error:
+            return self.send_content({"error": str(error), "code": error.code}, status=error.status)
         except monitor_settings.RevisionConflict as error:
             return self.fail(409, str(error))
         except (ValueError, TypeError, UnicodeError) as error:

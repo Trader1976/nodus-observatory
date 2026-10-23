@@ -16,7 +16,10 @@ assert.equal(scripts.at(-1),'app.js','all feature modules load before app routin
 for(const script of ['app-translations.js','contract-studio-core.js','contract-studio-i18n.js','contract-studio.js',
   'contract-studio-workflow-core.js','contract-studio-builder-i18n.js','contract-studio-builder.js',
   'document-notary-core.js','document-notary-i18n.js','document-notary.js'])assert(scripts.includes(script),`shipped shell loads ${script}`);
-assert(scripts.every(script=>/^[a-z0-9-]+\.js$/.test(script)),'no external script dependency');
+assert(scripts.every(script=>/^[a-z0-9-]+\.js$/.test(script)||script==='vendor/ethers-6.15.0.umd.min.js'),'no external script dependency');
+for(const script of ['trade-core.js','trade-contracts.js','trade-session.js','trade-wallet.js','trade.js','trade-live.js'])assert(scripts.includes(script));
+assert(scripts.indexOf('vendor/ethers-6.15.0.umd.min.js')<scripts.indexOf('trade-session.js'));
+assert(scripts.indexOf('trade-session.js')<scripts.indexOf('trade-live.js'));
 assert(scripts.indexOf('contract-studio-core.js')<scripts.indexOf('contract-studio.js'));
 assert(scripts.indexOf('contract-studio-core.js')<scripts.indexOf('contract-studio-workflow-core.js'));
 assert(scripts.indexOf('contract-studio-workflow-core.js')<scripts.indexOf('contract-studio-builder.js'));
