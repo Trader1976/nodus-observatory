@@ -93,10 +93,26 @@ sudo bash backend/install.sh
 This updates the installed monitor to the experiment. Follow the
 [studio guide](docs/contract-studio.md) for the editor, compiler, tests and limits.
 
+## Network statistics
+
+Open **Statistics** in the header for network activity, separate native/EVM
+address counts, node lists and a map, staking/storage trends and contract
+activity. Choose 24 hours, 7/30 days, one year or all available history.
+The bounded collector records its own history and indexes recent Scan blocks
+first, then extends the range backwards. Source coverage, gaps and stale data
+remain visible. Map locations use an optional local DB-IP City Lite database with automatic monthly updates (`sudo bash backend/install.sh --enable-geoip`), with CSV overrides.
+Statistics omits node IP addresses from its interface and JSON reports. Click a witness for its current local-chain delegation breakdown, wallet fingerprints and amount charts.
+
+The feature's canonical source, tests and bilingual documentation are in
+[`network_statistics/`](network_statistics/README.md). `dist/statistics/`
+is generated from that directory's browser sources. Existing configurations
+receive the feature defaults; the installer preserves monitoring history and
+restarts only Observatory services.
+
 ## Requirements
 
 - Debian/Ubuntu with systemd and an existing, running Nodus node.
-- Python 3.10 or newer, standard library only. Ubuntu 24.04 is a tested platform.
+- Python 3.10 or newer; the optional GeoIP installer adds `python3-maxminddb`, otherwise standard library only. Ubuntu 24.04 is a tested platform.
 - Git and administrative access for installation and updates.
 - `nodus-cli`, `findmnt` and `lsblk` for automatic node/filesystem discovery.
 - Optional `smartctl` (`smartmontools`) for supported physical-disk health data.

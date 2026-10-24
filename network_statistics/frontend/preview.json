@@ -1,0 +1,1122 @@
+{
+  "schema_version": 1,
+  "preview": true,
+  "available": true,
+  "stale": false,
+  "generated_at": "2026-10-23T08:10:00+00:00",
+  "network": "testnet",
+  "chain_id": "synthetic-demo-chain-not-a-real-network",
+  "coverage": {
+    "observations_from": "2026-10-22T08:10:00+00:00",
+    "indexed_from_height": 300000,
+    "indexed_to_height": 301750,
+    "tip_height": 301750,
+    "complete": false,
+    "network_sample_stride": 12,
+    "network_samples": 288,
+    "range_complete": false,
+    "complete_from_genesis": false,
+    "caught_up": true,
+    "addresses_complete": true
+  },
+  "summary": {
+    "tx_24h": 622,
+    "tps_1m": "0.03",
+    "tps_1h": "0.02",
+    "active_validators": 7,
+    "bonded_validators": 9,
+    "storage_nodes": 16,
+    "observed_nodes": 26,
+    "active_native_addresses": 146,
+    "active_evm_addresses": 27,
+    "self_stake_raw": "7000000000000000",
+    "delegated_raw": "518400000000",
+    "circulating_raw": "3700329491000000",
+    "reward_pool_raw": "19299996090000000",
+    "storage_in_grace": 2,
+    "storage_failing": 1,
+    "storage_exiting": 0,
+    "transactions": 552,
+    "spends": 361,
+    "avg_block_ms": 48800,
+    "transfer_raw": "1200345000000",
+    "storage_active": 17,
+    "observed_endpoints": 2
+  },
+  "series": {
+    "activity": [
+      {
+        "timestamp": "2026-10-22T09:00:00+00:00",
+        "transactions": 22,
+        "spends": 15,
+        "claims": 0,
+        "evm_calls": 5,
+        "evm_creates": 1,
+        "evm_failed": 1,
+        "refused": 1,
+        "fee_raw": "2750000",
+        "blocks": 66,
+        "active_native_addresses": 23,
+        "active_evm_addresses": 2,
+        "first_seen_native_addresses": 0,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 47000
+      },
+      {
+        "timestamp": "2026-10-22T10:00:00+00:00",
+        "transactions": 30,
+        "spends": 20,
+        "claims": 1,
+        "evm_calls": 6,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "3750000",
+        "blocks": 67,
+        "active_native_addresses": 27,
+        "active_evm_addresses": 3,
+        "first_seen_native_addresses": 1,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 47115
+      },
+      {
+        "timestamp": "2026-10-22T11:00:00+00:00",
+        "transactions": 36,
+        "spends": 24,
+        "claims": 2,
+        "evm_calls": 8,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "4500000",
+        "blocks": 68,
+        "active_native_addresses": 30,
+        "active_evm_addresses": 4,
+        "first_seen_native_addresses": 2,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 47230
+      },
+      {
+        "timestamp": "2026-10-22T12:00:00+00:00",
+        "transactions": 40,
+        "spends": 27,
+        "claims": 0,
+        "evm_calls": 8,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "5000000",
+        "blocks": 69,
+        "active_native_addresses": 32,
+        "active_evm_addresses": 5,
+        "first_seen_native_addresses": 3,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 47345
+      },
+      {
+        "timestamp": "2026-10-22T13:00:00+00:00",
+        "transactions": 41,
+        "spends": 28,
+        "claims": 1,
+        "evm_calls": 9,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "5125000",
+        "blocks": 70,
+        "active_native_addresses": 32,
+        "active_evm_addresses": 6,
+        "first_seen_native_addresses": 4,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 47460
+      },
+      {
+        "timestamp": "2026-10-22T14:00:00+00:00",
+        "transactions": 34,
+        "spends": 23,
+        "claims": 2,
+        "evm_calls": 7,
+        "evm_creates": 1,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "4250000",
+        "blocks": 71,
+        "active_native_addresses": 29,
+        "active_evm_addresses": 7,
+        "first_seen_native_addresses": 5,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 47575
+      },
+      {
+        "timestamp": "2026-10-22T15:00:00+00:00",
+        "transactions": 29,
+        "spends": 20,
+        "claims": 0,
+        "evm_calls": 6,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "3625000",
+        "blocks": 72,
+        "active_native_addresses": 26,
+        "active_evm_addresses": 8,
+        "first_seen_native_addresses": 0,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 47690
+      },
+      {
+        "timestamp": "2026-10-22T16:00:00+00:00",
+        "transactions": 24,
+        "spends": 16,
+        "claims": 1,
+        "evm_calls": 5,
+        "evm_creates": 0,
+        "evm_failed": 1,
+        "refused": 0,
+        "fee_raw": "3000000",
+        "blocks": 73,
+        "active_native_addresses": 24,
+        "active_evm_addresses": 9,
+        "first_seen_native_addresses": 1,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 47805
+      },
+      {
+        "timestamp": "2026-10-22T17:00:00+00:00",
+        "transactions": 18,
+        "spends": 12,
+        "claims": 2,
+        "evm_calls": 4,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 1,
+        "fee_raw": "2250000",
+        "blocks": 74,
+        "active_native_addresses": 21,
+        "active_evm_addresses": 2,
+        "first_seen_native_addresses": 2,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 47920
+      },
+      {
+        "timestamp": "2026-10-22T18:00:00+00:00",
+        "transactions": 14,
+        "spends": 10,
+        "claims": 0,
+        "evm_calls": 3,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "1750000",
+        "blocks": 66,
+        "active_native_addresses": 19,
+        "active_evm_addresses": 3,
+        "first_seen_native_addresses": 3,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 48035
+      },
+      {
+        "timestamp": "2026-10-22T19:00:00+00:00",
+        "transactions": 7,
+        "spends": 5,
+        "claims": 1,
+        "evm_calls": 1,
+        "evm_creates": 1,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "875000",
+        "blocks": 67,
+        "active_native_addresses": 16,
+        "active_evm_addresses": 4,
+        "first_seen_native_addresses": 4,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 48150
+      },
+      {
+        "timestamp": "2026-10-22T20:00:00+00:00",
+        "transactions": 8,
+        "spends": 5,
+        "claims": 2,
+        "evm_calls": 2,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "1000000",
+        "blocks": 68,
+        "active_native_addresses": 16,
+        "active_evm_addresses": 5,
+        "first_seen_native_addresses": 5,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 48265
+      },
+      {
+        "timestamp": "2026-10-22T21:00:00+00:00",
+        "transactions": 12,
+        "spends": 8,
+        "claims": 0,
+        "evm_calls": 3,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "1500000",
+        "blocks": 69,
+        "active_native_addresses": 18,
+        "active_evm_addresses": 6,
+        "first_seen_native_addresses": 0,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 48380
+      },
+      {
+        "timestamp": "2026-10-22T22:00:00+00:00",
+        "transactions": 19,
+        "spends": 13,
+        "claims": 1,
+        "evm_calls": 4,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "2375000",
+        "blocks": 70,
+        "active_native_addresses": 22,
+        "active_evm_addresses": 7,
+        "first_seen_native_addresses": 1,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 48495
+      },
+      {
+        "timestamp": "2026-10-22T23:00:00+00:00",
+        "transactions": 26,
+        "spends": 18,
+        "claims": 2,
+        "evm_calls": 5,
+        "evm_creates": 0,
+        "evm_failed": 1,
+        "refused": 0,
+        "fee_raw": "3250000",
+        "blocks": 71,
+        "active_native_addresses": 25,
+        "active_evm_addresses": 8,
+        "first_seen_native_addresses": 2,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 48610
+      },
+      {
+        "timestamp": "2026-10-23T00:00:00+00:00",
+        "transactions": 29,
+        "spends": 20,
+        "claims": 0,
+        "evm_calls": 6,
+        "evm_creates": 1,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "3625000",
+        "blocks": 72,
+        "active_native_addresses": 26,
+        "active_evm_addresses": 9,
+        "first_seen_native_addresses": 3,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 48725
+      },
+      {
+        "timestamp": "2026-10-23T01:00:00+00:00",
+        "transactions": 35,
+        "spends": 24,
+        "claims": 1,
+        "evm_calls": 7,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 1,
+        "fee_raw": "4375000",
+        "blocks": 73,
+        "active_native_addresses": 30,
+        "active_evm_addresses": 2,
+        "first_seen_native_addresses": 4,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 48840
+      },
+      {
+        "timestamp": "2026-10-23T02:00:00+00:00",
+        "transactions": 39,
+        "spends": 27,
+        "claims": 2,
+        "evm_calls": 8,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "4875000",
+        "blocks": 74,
+        "active_native_addresses": 32,
+        "active_evm_addresses": 3,
+        "first_seen_native_addresses": 5,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 48955
+      },
+      {
+        "timestamp": "2026-10-23T03:00:00+00:00",
+        "transactions": 40,
+        "spends": 27,
+        "claims": 0,
+        "evm_calls": 8,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "5000000",
+        "blocks": 66,
+        "active_native_addresses": 32,
+        "active_evm_addresses": 4,
+        "first_seen_native_addresses": 0,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 49070
+      },
+      {
+        "timestamp": "2026-10-23T04:00:00+00:00",
+        "transactions": 38,
+        "spends": 26,
+        "claims": 1,
+        "evm_calls": 8,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "4750000",
+        "blocks": 67,
+        "active_native_addresses": 31,
+        "active_evm_addresses": 5,
+        "first_seen_native_addresses": 1,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 49185
+      },
+      {
+        "timestamp": "2026-10-23T05:00:00+00:00",
+        "transactions": 28,
+        "spends": 19,
+        "claims": 2,
+        "evm_calls": 6,
+        "evm_creates": 1,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "3500000",
+        "blocks": 68,
+        "active_native_addresses": 26,
+        "active_evm_addresses": 6,
+        "first_seen_native_addresses": 2,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 49300
+      },
+      {
+        "timestamp": "2026-10-23T06:00:00+00:00",
+        "transactions": 23,
+        "spends": 16,
+        "claims": 0,
+        "evm_calls": 5,
+        "evm_creates": 0,
+        "evm_failed": 1,
+        "refused": 0,
+        "fee_raw": "2875000",
+        "blocks": 69,
+        "active_native_addresses": 24,
+        "active_evm_addresses": 7,
+        "first_seen_native_addresses": 3,
+        "first_seen_evm_addresses": 0,
+        "avg_block_ms": 49415
+      },
+      {
+        "timestamp": "2026-10-23T07:00:00+00:00",
+        "transactions": 17,
+        "spends": 12,
+        "claims": 1,
+        "evm_calls": 4,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "2125000",
+        "blocks": 70,
+        "active_native_addresses": 20,
+        "active_evm_addresses": 8,
+        "first_seen_native_addresses": 4,
+        "first_seen_evm_addresses": 1,
+        "avg_block_ms": 49530
+      },
+      {
+        "timestamp": "2026-10-23T08:00:00+00:00",
+        "transactions": 13,
+        "spends": 9,
+        "claims": 2,
+        "evm_calls": 3,
+        "evm_creates": 0,
+        "evm_failed": 0,
+        "refused": 0,
+        "fee_raw": "1625000",
+        "blocks": 71,
+        "active_native_addresses": 18,
+        "active_evm_addresses": 9,
+        "first_seen_native_addresses": 5,
+        "first_seen_evm_addresses": 2,
+        "avg_block_ms": 49645
+      }
+    ],
+    "network": [
+      {
+        "timestamp": "2026-10-22T09:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 23,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "500000000000",
+        "reward_pool_raw": "19300000000000000"
+      },
+      {
+        "timestamp": "2026-10-22T10:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 23,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "500800000000",
+        "reward_pool_raw": "19299999830000000"
+      },
+      {
+        "timestamp": "2026-10-22T11:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 23,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "501600000000",
+        "reward_pool_raw": "19299999660000000"
+      },
+      {
+        "timestamp": "2026-10-22T12:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 23,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "502400000000",
+        "reward_pool_raw": "19299999490000000"
+      },
+      {
+        "timestamp": "2026-10-22T13:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 23,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "503200000000",
+        "reward_pool_raw": "19299999320000000"
+      },
+      {
+        "timestamp": "2026-10-22T14:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 23,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "504000000000",
+        "reward_pool_raw": "19299999150000000"
+      },
+      {
+        "timestamp": "2026-10-22T15:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 24,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "504800000000",
+        "reward_pool_raw": "19299998980000000"
+      },
+      {
+        "timestamp": "2026-10-22T16:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 14,
+        "observed_nodes": 24,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "505600000000",
+        "reward_pool_raw": "19299998810000000"
+      },
+      {
+        "timestamp": "2026-10-22T17:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 24,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "506400000000",
+        "reward_pool_raw": "19299998640000000"
+      },
+      {
+        "timestamp": "2026-10-22T18:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 24,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "507200000000",
+        "reward_pool_raw": "19299998470000000"
+      },
+      {
+        "timestamp": "2026-10-22T19:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 24,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "508000000000",
+        "reward_pool_raw": "19299998300000000"
+      },
+      {
+        "timestamp": "2026-10-22T20:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 24,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "508800000000",
+        "reward_pool_raw": "19299998130000000"
+      },
+      {
+        "timestamp": "2026-10-22T21:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 25,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "509600000000",
+        "reward_pool_raw": "19299997960000000"
+      },
+      {
+        "timestamp": "2026-10-22T22:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 25,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "510400000000",
+        "reward_pool_raw": "19299997790000000"
+      },
+      {
+        "timestamp": "2026-10-22T23:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 25,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "511200000000",
+        "reward_pool_raw": "19299997620000000"
+      },
+      {
+        "timestamp": "2026-10-23T00:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 15,
+        "observed_nodes": 25,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "512000000000",
+        "reward_pool_raw": "19299997450000000"
+      },
+      {
+        "timestamp": "2026-10-23T01:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 25,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "512800000000",
+        "reward_pool_raw": "19299997280000000"
+      },
+      {
+        "timestamp": "2026-10-23T02:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 25,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "513600000000",
+        "reward_pool_raw": "19299997110000000"
+      },
+      {
+        "timestamp": "2026-10-23T03:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 26,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "514400000000",
+        "reward_pool_raw": "19299996940000000"
+      },
+      {
+        "timestamp": "2026-10-23T04:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 26,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "515200000000",
+        "reward_pool_raw": "19299996770000000"
+      },
+      {
+        "timestamp": "2026-10-23T05:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 26,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "516000000000",
+        "reward_pool_raw": "19299996600000000"
+      },
+      {
+        "timestamp": "2026-10-23T06:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 26,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "516800000000",
+        "reward_pool_raw": "19299996430000000"
+      },
+      {
+        "timestamp": "2026-10-23T07:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 26,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "517600000000",
+        "reward_pool_raw": "19299996260000000"
+      },
+      {
+        "timestamp": "2026-10-23T08:00:00+00:00",
+        "active_validators": 7,
+        "storage_nodes": 16,
+        "observed_nodes": 26,
+        "self_stake_raw": "7000000000000000",
+        "delegated_raw": "518400000000",
+        "reward_pool_raw": "19299996090000000"
+      }
+    ],
+    "tps": [
+      {
+        "timestamp": "2026-10-22T09:00:00+00:00",
+        "transactions": 22,
+        "blocks": 66,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T10:00:00+00:00",
+        "transactions": 30,
+        "blocks": 67,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T11:00:00+00:00",
+        "transactions": 36,
+        "blocks": 68,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T12:00:00+00:00",
+        "transactions": 40,
+        "blocks": 69,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T13:00:00+00:00",
+        "transactions": 41,
+        "blocks": 70,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T14:00:00+00:00",
+        "transactions": 34,
+        "blocks": 71,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T15:00:00+00:00",
+        "transactions": 29,
+        "blocks": 72,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T16:00:00+00:00",
+        "transactions": 24,
+        "blocks": 73,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T17:00:00+00:00",
+        "transactions": 18,
+        "blocks": 74,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T18:00:00+00:00",
+        "transactions": 14,
+        "blocks": 66,
+        "tps": "0.0"
+      },
+      {
+        "timestamp": "2026-10-22T19:00:00+00:00",
+        "transactions": 7,
+        "blocks": 67,
+        "tps": "0.0"
+      },
+      {
+        "timestamp": "2026-10-22T20:00:00+00:00",
+        "transactions": 8,
+        "blocks": 68,
+        "tps": "0.0"
+      },
+      {
+        "timestamp": "2026-10-22T21:00:00+00:00",
+        "transactions": 12,
+        "blocks": 69,
+        "tps": "0.0"
+      },
+      {
+        "timestamp": "2026-10-22T22:00:00+00:00",
+        "transactions": 19,
+        "blocks": 70,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-22T23:00:00+00:00",
+        "transactions": 26,
+        "blocks": 71,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T00:00:00+00:00",
+        "transactions": 29,
+        "blocks": 72,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T01:00:00+00:00",
+        "transactions": 35,
+        "blocks": 73,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T02:00:00+00:00",
+        "transactions": 39,
+        "blocks": 74,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T03:00:00+00:00",
+        "transactions": 40,
+        "blocks": 66,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T04:00:00+00:00",
+        "transactions": 38,
+        "blocks": 67,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T05:00:00+00:00",
+        "transactions": 28,
+        "blocks": 68,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T06:00:00+00:00",
+        "transactions": 23,
+        "blocks": 69,
+        "tps": "0.01"
+      },
+      {
+        "timestamp": "2026-10-23T07:00:00+00:00",
+        "transactions": 17,
+        "blocks": 70,
+        "tps": "0.0"
+      },
+      {
+        "timestamp": "2026-10-23T08:00:00+00:00",
+        "transactions": 13,
+        "blocks": 71,
+        "tps": "0.0"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "roles": [
+        "witness"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": "1000000000000000",
+      "power": 10000000,
+      "commission_bps": 500,
+      "storage": null,
+      "location": {
+        "country": "Finland",
+        "country_code": "FI",
+        "city": "Helsinki",
+        "latitude": 60.17,
+        "longitude": 24.94,
+        "source": "synthetic-preview"
+      },
+      "delegation": {
+        "available": true,
+        "at_height": 301750,
+        "observed_at": "2026-10-23T08:10:00+00:00",
+        "source": "local_committed_delegations",
+        "validator_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "owner_fp": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "self_stake_raw": "200000000000000",
+        "delegated_raw": "1000000000000000",
+        "owner_delegated_raw": "300000000000000",
+        "external_delegated_raw": "700000000000000",
+        "total_stake_raw": "1200000000000000",
+        "delegator_count": 3,
+        "commission_bps": 500,
+        "status": "active",
+        "delegations": [
+          {
+            "owner_fp": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "amount_raw": "300000000000000",
+            "is_owner": true
+          },
+          {
+            "owner_fp": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "amount_raw": "600000000000000",
+            "is_owner": false
+          },
+          {
+            "owner_fp": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "amount_raw": "100000000000000",
+            "is_owner": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "roles": [
+        "witness"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": "1000000000000000",
+      "power": 10000000,
+      "commission_bps": 500,
+      "storage": null,
+      "location": {
+        "country": "Germany",
+        "country_code": "DE",
+        "city": "Frankfurt",
+        "latitude": 50.11,
+        "longitude": 8.68,
+        "source": "synthetic-preview"
+      }
+    },
+    {
+      "id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "roles": [
+        "storage"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": null,
+      "power": null,
+      "commission_bps": null,
+      "storage": {
+        "fail_streak": 0,
+        "grace_until": 300000,
+        "segments": 19
+      },
+      "location": {
+        "country": "Singapore",
+        "country_code": "SG",
+        "city": "Singapore",
+        "latitude": 1.35,
+        "longitude": 103.82,
+        "source": "synthetic-preview"
+      }
+    },
+    {
+      "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "roles": [
+        "witness"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": "1000000000000000",
+      "power": 10000000,
+      "commission_bps": 500,
+      "storage": null,
+      "location": {
+        "country": "Canada",
+        "country_code": "CA",
+        "city": "Toronto",
+        "latitude": 43.65,
+        "longitude": -79.38,
+        "source": "synthetic-preview"
+      }
+    },
+    {
+      "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "roles": [
+        "storage"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": null,
+      "power": null,
+      "commission_bps": null,
+      "storage": {
+        "fail_streak": 0,
+        "grace_until": 300000,
+        "segments": 19
+      },
+      "location": {
+        "country": "Brazil",
+        "country_code": "BR",
+        "city": "São Paulo",
+        "latitude": -23.55,
+        "longitude": -46.63,
+        "source": "synthetic-preview"
+      }
+    },
+    {
+      "id": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "roles": [
+        "storage"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": null,
+      "power": null,
+      "commission_bps": null,
+      "storage": {
+        "fail_streak": 0,
+        "grace_until": 300000,
+        "segments": 19
+      },
+      "location": {
+        "country": "Australia",
+        "country_code": "AU",
+        "city": "Sydney",
+        "latitude": -33.87,
+        "longitude": 151.21,
+        "source": "synthetic-preview"
+      }
+    },
+    {
+      "id": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+      "roles": [
+        "witness"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": "1000000000000000",
+      "power": 10000000,
+      "commission_bps": 500,
+      "storage": null,
+      "location": {
+        "country": "Japan",
+        "country_code": "JP",
+        "city": "Tokyo",
+        "latitude": 35.68,
+        "longitude": 139.69,
+        "source": "synthetic-preview"
+      }
+    },
+    {
+      "id": "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222",
+      "roles": [
+        "storage"
+      ],
+      "status": "active",
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "stake_raw": null,
+      "power": null,
+      "commission_bps": null,
+      "storage": {
+        "fail_streak": 0,
+        "grace_until": 300000,
+        "segments": 19
+      },
+      "location": null
+    }
+  ],
+  "breakdown": {
+    "operations": [
+      {
+        "name": "spend",
+        "count": 361
+      },
+      {
+        "name": "evm_call",
+        "count": 122
+      },
+      {
+        "name": "delegate",
+        "count": 41
+      },
+      {
+        "name": "claim",
+        "count": 24
+      },
+      {
+        "name": "evm_create",
+        "count": 5
+      }
+    ],
+    "proposers": [],
+    "treasury": [
+      {
+        "name": "storage",
+        "label": "Storage",
+        "amount_raw": "8000000000000000"
+      },
+      {
+        "name": "compute",
+        "label": "Compute",
+        "amount_raw": "4000000000000000"
+      },
+      {
+        "name": "bandwidth",
+        "label": "Bandwidth",
+        "amount_raw": "4000000000000000"
+      }
+    ]
+  },
+  "contracts": [
+    {
+      "address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "calls": 41,
+      "gas_used": 3110000,
+      "failed": 0
+    },
+    {
+      "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "calls": 33,
+      "gas_used": 2880000,
+      "failed": 1
+    },
+    {
+      "address": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "calls": 25,
+      "gas_used": 2650000,
+      "failed": 0
+    },
+    {
+      "address": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "calls": 17,
+      "gas_used": 2420000,
+      "failed": 1
+    }
+  ],
+  "errors": [],
+  "observed_at": "2026-10-23T08:10:00+00:00",
+  "peer_endpoints": [
+    {
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "identity": null,
+      "location": null,
+      "source": "synthetic-preview",
+      "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "last_seen": "2026-10-23T08:10:00+00:00",
+      "identity": null,
+      "location": null,
+      "source": "synthetic-preview",
+      "id": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "peer_observation": {
+    "available": true,
+    "observed_at": "2026-10-23T08:10:00+00:00",
+    "truncated": false
+  },
+  "demo": true,
+  "provenance": {
+    "kind": "synthetic",
+    "description": "Invented examples, not collected from any real node or network."
+  }
+}

@@ -19,7 +19,14 @@ import select
 import signal
 import sqlite3
 import subprocess
+import sys
 import time
+
+# The feature is a sibling package in a source checkout and a sibling directory
+# of collector.py after installation. Keep its source in its own repository area.
+_source_root = Path(__file__).resolve().parent.parent
+if (_source_root / "network_statistics" / "__init__.py").is_file():
+    sys.path.insert(0, str(_source_root))
 
 DEFAULTS = {
     "state_dir": "/var/lib/nodus-monitor",
@@ -40,6 +47,14 @@ DEFAULTS = {
     "roles": {"storage": True, "witness": True},
     "node_name": "",
     "default_view": "overview",
+    "statistics_enabled": True,
+    "statistics_collection_seconds": 20,
+    "statistics_max_blocks": 32,
+    "statistics_backfill_blocks": 16,
+    "statistics_geoip_file": None,
+    "statistics_geoip_enabled": True,
+    "statistics_geoip_auto_update": False,
+    "statistics_history_days": 366,
 }
 SERVICES = ("nodus-core", "nodus-storage", "nodus-witness", "pqnas", "cloudflared")
 
@@ -73,9 +88,22 @@ def load_config(path, *, include_overrides=True):
         raise ValueError("default_view must be overview, storage or witness")
     if config["default_view"] in roles and not roles[config["default_view"]]:
         config["default_view"] = "overview"
-    for key in ("network_enabled", "rewards_enabled", "rewards_scan_enabled"):
+    for key in ("network_enabled", "rewards_enabled", "rewards_scan_enabled", "statistics_enabled",
+                "statistics_geoip_enabled", "statistics_geoip_auto_update"):
         if type(config[key]) is not bool:
             raise ValueError(f"{key} must be a boolean")
+    for key, minimum, maximum in (
+        ("statistics_collection_seconds", 2, 60),
+        ("statistics_max_blocks", 1, 256),
+        ("statistics_backfill_blocks", 0, 256),
+        ("statistics_history_days", 1, 3660),
+    ):
+        if type(config[key]) is not int or not minimum <= config[key] <= maximum:
+            raise ValueError(f"{key} must be an integer between {minimum} and {maximum}")
+    geoip = config["statistics_geoip_file"]
+    if geoip is not None and (not isinstance(geoip, str) or not geoip.startswith("/")
+            or any(ord(char) < 32 for char in geoip)):
+        raise ValueError("statistics_geoip_file must be null or an absolute path")
     if config["fingerprint"] is not None and not re.fullmatch(r"[a-fA-F0-9]{128}", config["fingerprint"]):
         raise ValueError("fingerprint must contain 128 hexadecimal characters")
     if config["disk_device"] is not None and not re.fullmatch(r"[a-zA-Z0-9_.-]+", config["disk_device"]):
@@ -626,6 +654,15 @@ def collect(config):
                 share_file(reporting_db)
         except (ImportError, OSError, ValueError, sqlite3.Error) as exc:
             snapshot["reward_collection"] = {"available": False, "status": "unavailable", "reason": type(exc).__name__}
+    try:
+        from network_statistics.collector import collect_statistics
+        snapshot["statistics_collection"] = collect_statistics(state, config, snapshot)
+        for filename in ("statistics.sqlite3", "statistics.json"):
+            if (state / filename).is_file():
+                share_file(state / filename)
+    except (ImportError, OSError, ValueError, sqlite3.Error) as exc:
+        # Network analytics must never stop the node's existing monitoring.
+        snapshot["statistics_collection"] = {"available": False, "status": "unavailable", "reason": type(exc).__name__}
     store_sample(state / "metrics.sqlite3", snapshot, config["history_days"])
     atomic_json(state / "snapshot.json", snapshot)
     atomic_json(state / "collection-state.json", {"counters": counters, "smart": smart, "journal_until": journal_until})

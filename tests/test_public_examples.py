@@ -22,7 +22,7 @@ def public_text_files():
     """Read source directories only; never inspect git history or user state."""
     suffixes = {".md", ".json", ".py", ".mjs", ".js", ".html", ".sh", ".service", ".timer", ".yml"}
     yield from ROOT.glob("*.md")
-    for directory in ("backend", "dist", "docs", "rewards", "tests", ".github/workflows"):
+    for directory in ("backend", "dist", "docs", "rewards", "tests", "network_statistics", ".github/workflows"):
         yield from (path for path in (ROOT / directory).rglob("*") if path.is_file() and path.suffix in suffixes)
 
 
@@ -89,6 +89,7 @@ class PublicExamplesTests(unittest.TestCase):
             ("README.md", "README_fin.md"),
             ("docs/remote-access.md", "docs/remote-access_fin.md"),
             ("rewards/README.md", "rewards/README_fin.md"),
+            ("network_statistics/README.md", "network_statistics/README_fin.md"),
         ):
             for source, target in ((english, finnish), (finnish, english)):
                 with self.subTest(document=source):
@@ -100,7 +101,7 @@ class PublicExamplesTests(unittest.TestCase):
                     self.assertIn(ROOT / target, resolved, "Each language version links to its counterpart")
 
     def test_relative_documentation_links_resolve_inside_the_repository(self):
-        documents = list(ROOT.glob("*.md")) + list((ROOT / "docs").rglob("*.md")) + list((ROOT / "rewards").rglob("*.md"))
+        documents = list(ROOT.glob("*.md")) + list((ROOT / "docs").rglob("*.md")) + list((ROOT / "rewards").rglob("*.md")) + list((ROOT / "network_statistics").rglob("*.md"))
         for path in documents:
             text = path.read_text(encoding="utf-8")
             for match in re.finditer(r"\[[^\]]*\]\(([^\s)]+)(?:\s+[\"'][^)]*)?\)", text):

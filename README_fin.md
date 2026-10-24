@@ -44,10 +44,30 @@ Repon mukana ei ole yksityisiä identiteettiavaimia tai lompakon tunnuksia.
 Jokainen asennus tunnistaa oman nodensa ja käyttää omia paikallisia asetuksiaan.
 Repon esimerkkidata on synteettistä.
 
+## Verkon tilastot
+
+Avaa ylävalikosta **Tilastot**: verkon aktiivisuus, erilliset native- ja
+EVM-osoitteiden määrät, nodelista ja kartta, staking/storage-käyrät sekä
+älysopimusten käyttö. Aikavalinnat ovat 24 tuntia, 7/30 vuorokautta, vuosi ja
+kaikki saatavilla oleva historia. Rajattu taustakeruu tallentaa oman historiansa
+ja indeksoi ensin tuoreet Scan-lohkot, sitten vanhempaa aineistoa. Lähdekattavuus,
+aukot ja vanhentunut tieto näkyvät käyttöliittymässä. Kartan sijainnit saadaan valinnaisesta paikallisesta DB-IP City Lite -aineistosta,
+jonka kuukausipäivitys otetaan käyttöön komennolla
+`sudo bash backend/install.sh --enable-geoip`. CSV-ohitukset ovat myös mahdollisia.
+Tilastot piilottaa nodejen IP-osoitteet käyttöliittymästä ja JSON-raporteista.
+Witnessiä klikkaamalla näet paikallisen ketjutilan delegoijien lompakkotunnisteet,
+summat ja jakaumakuviot.
+
+Osion varsinainen lähdekoodi, testit ja kaksikielinen ohje ovat hakemistossa
+[`network_statistics/`](network_statistics/README_fin.md). `dist/statistics/`
+muodostetaan sen selainlähteistä. Vanhoihin asetuksiin sovelletaan oletusarvoja;
+asennus säilyttää seurantahistorian ja käynnistää vain Observatoryn palvelut
+uudelleen.
+
 ## Vaatimukset
 
 - Debian/Ubuntu, systemd ja käynnissä oleva Nodus-node.
-- Python 3.10 tai uudempi; palvelimella riittää vakiokirjasto. Ubuntu 24.04 on testattu.
+- Python 3.10 tai uudempi; valinnainen GeoIP-asennus lisää `python3-maxminddb`-lukijan, muuten vakiokirjasto riittää. Ubuntu 24.04 on testattu.
 - Git, asennukseen ylläpitäjän oikeudet sekä `nodus-cli`, `findmnt` ja `lsblk`.
 - Valinnainen `smartctl` (`smartmontools`) tuetun fyysisen levyn kuntotietoihin.
 
