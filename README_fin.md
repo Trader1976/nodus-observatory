@@ -54,6 +54,9 @@ ja indeksoi ensin tuoreet Scan-lohkot, sitten vanhempaa aineistoa. Lähdekattavu
 aukot ja vanhentunut tieto näkyvät käyttöliittymässä. Kartan sijainnit saadaan valinnaisesta paikallisesta DB-IP City Lite -aineistosta,
 jonka kuukausipäivitys otetaan käyttöön komennolla
 `sudo bash backend/install.sh --enable-geoip`. CSV-ohitukset ovat myös mahdollisia.
+Tilastot piilottaa nodejen IP-osoitteet käyttöliittymästä ja JSON-raporteista.
+Witnessiä klikkaamalla näet paikallisen ketjutilan delegoijien lompakkotunnisteet,
+summat ja jakaumakuviot.
 
 Osion varsinainen lähdekoodi, testit ja kaksikielinen ohje ovat hakemistossa
 [`network_statistics/`](network_statistics/README_fin.md). `dist/statistics/`

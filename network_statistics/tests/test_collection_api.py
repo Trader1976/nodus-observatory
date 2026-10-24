@@ -79,6 +79,40 @@ class CollectionTests(unittest.TestCase):
         with sqlite3.connect(self.path) as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM observations").fetchone()[0], 1)
 
+    def test_public_report_redacts_legacy_ips_without_recollection(self):
+        self.collect(snapshot(False))
+        with sqlite3.connect(self.path) as db:
+            old = json.loads(db.execute("SELECT payload FROM observations").fetchone()[0])
+            old["nodes"][0].update(address="198.51.100.8:4004", external_ip="192.0.2.1",
+                                     storage={"status": "active", "owner": "b" * 128, "address": "192.0.2.2"},
+                                     location={"city": "Example", "latitude": 60, "longitude": 20, "ip": "192.0.2.3"})
+            old["errors"] = [{"source": "peer_endpoints", "message": "Failed connecting to 192.0.2.4"}]
+            db.execute("UPDATE observations SET payload=?", (json.dumps(old),))
+            set_meta(db, "peer_observation", {"available": True, "items": [{"address": "[2001:db8::8]:4001", "identity": None,
+                              "location": {"city": "Example", "latitude": 60, "longitude": 20}}]})
+            set_meta(db, "geolocation", {"configured": True, "internal_ip": "192.0.2.5"})
+            db.execute("DELETE FROM statistics_meta WHERE key='endpoint_privacy_key'")
+        result = report(self.path)
+        self.assertTrue(result["available"])
+        encoded = json.dumps(result)
+        for address in ("198.51.100.8", "192.0.2.", "2001:db8::8"):
+            self.assertNotIn(address, encoded)
+        self.assertNotIn("address", result["nodes"][0])
+        self.assertEqual(result["peer_endpoints"][0]["location"]["city"], "Example")
+        self.assertNotIn("id", result["peer_endpoints"][0])
+
+    def test_endpoint_ids_are_private_stable_and_installation_specific(self):
+        self.collect(snapshot(False))
+        with sqlite3.connect(self.path) as db:
+            set_meta(db, "peer_observation", {"available": True, "items": [{"address": "198.51.100.8:4001", "identity": None}]})
+        first = report(self.path)["peer_endpoints"][0]["id"]
+        self.assertRegex(first, r"^[0-9a-f]{64}$")
+        self.assertEqual(first, report(self.path)["peer_endpoints"][0]["id"])
+        self.assertNotEqual(first, hashlib.sha256(b"198.51.100.8:4001").hexdigest())
+        with sqlite3.connect(self.path) as db:
+            set_meta(db, "endpoint_privacy_key", "ab" * 32)
+        self.assertNotEqual(first, report(self.path)["peer_endpoints"][0]["id"])
+
     def test_wrong_chain_cannot_replace_prior_history(self):
         self.collect()
         data = snapshot()
@@ -148,6 +182,45 @@ class CollectionTests(unittest.TestCase):
              patch("network_statistics.collector.read_local_storage", side_effect=AssertionError):
             self.assertTrue(report(self.path)["available"])
             self.assertIn("indexed_from_height", export_csv(self.path))
+
+    def test_committed_delegations_update_without_new_network_sample_and_fail_honestly(self):
+        from network_statistics.tests.test_delegations import DelegationTests
+        source = DelegationTests()
+        source.setUp()
+        try:
+            data = snapshot(False)
+            fingerprint = hashlib.sha3_512(source.public_key).hexdigest()
+            data["network"]["committee"]["seats"][0]["id"] = fingerprint[:64]
+            self.collect(data, rewards_source_db=str(source.path))
+            current = report(self.path)["nodes"][0]["delegation"]
+            self.assertTrue(current["available"])
+            self.assertEqual(current["at_height"], 10)
+            self.assertEqual(current["owner_delegated_raw"], str(source.owner_amount))
+            self.assertEqual(current["external_delegated_raw"], str(source.other_amount))
+            self.assertNotIn("198.51.100.8", json.dumps(report(self.path)))
+            with sqlite3.connect(self.path) as db:
+                old = json.loads(db.execute("SELECT payload FROM observations").fetchone()[0])
+                old["stats"] = {"tip_height": 20}
+                db.execute("UPDATE observations SET payload=?", (json.dumps(old),))
+                set_meta(db, "collection", {"status": "disabled"})
+            current = report(self.path)["nodes"][0]["delegation"]
+            self.assertTrue(current["stale"])
+            self.assertEqual(current["lag_blocks"], 10)
+            source.db.execute("DELETE FROM delegations")
+            source.db.execute("UPDATE validators SET total_delegated=0,external_delegated=0")
+            source.db.commit()
+            self.collect(data, rewards_source_db=str(source.path))
+            current = report(self.path)["nodes"][0]["delegation"]
+            self.assertTrue(current["available"])
+            self.assertEqual(current["delegator_count"], 0)
+            self.assertEqual(current["delegated_raw"], "0")
+            self.assertEqual(report(self.path)["coverage"]["network_samples"], 1)
+            source.db.execute("UPDATE validators SET total_delegated=1,external_delegated=1")
+            source.db.commit()
+            self.collect(data, rewards_source_db=str(source.path))
+            self.assertFalse(report(self.path)["nodes"][0]["delegation"]["available"])
+        finally:
+            source.tearDown()
 
     def test_scan_lag_target_remains_local_chain_tip(self):
         data = snapshot()

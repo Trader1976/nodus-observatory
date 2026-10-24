@@ -75,11 +75,21 @@ palvelinkeskusta, ei ihmisen sijaintia. Usea node voi käyttää samaa IP-osoite
 Paikannetut verkkopäätepisteet näkyvät kartalla vinoneliöinä, joiden
 nodeidentiteetti on **vahvistamatta**. Niiden karttalukumäärä ilmoitetaan
 erillään tunnistetuista nodeista. Roolisuodatin piilottaa päätepisteet, joiden
-rooli on tuntematon; osoite- ja maahaku koskevat myös niitä. **Oma node**
+rooli on tuntematon; tunniste- ja sijaintihaku koskevat myös niitä. **Oma node**
 -merkin saa node, jonka tilatietojen fingerprint ja P2P ID vastaavat havaittua
 rekisteri-identiteettiä. Paikallisen tilatiedon julkinen `external_ip` täydentää
 puuttuvan rekisteriosoitteen; komiteasta saatua osoitetta ei korvata.
 Pelkkä yhteinen IP tai päätepistelistan järjestys ei yhdistä osoitetta identiteettiin.
+
+Tilastot piilottaa nodejen ja päätepisteiden IP-osoitteet luetteloista,
+lisätiedoista, kartan teksteistä, hausta ja `/api/statistics`-JSONista.
+Raportointivaiheen suodatus koskee myös ennen päivitystä tallennettuja havaintoja.
+Kerääjä käyttää osoitteita edelleen yksityisesti paikalliseen GeoIP-hakuun;
+maa, kaupunki ja likimääräiset karttakoordinaatit näkyvät. Nimeämättömällä
+päätepisteellä on asennuskohtaisella salaisella avaimella muodostettu tunniste,
+ei IP:stä suoraan laskettu hajautusarvo. CSV-vienti sisältää vain aktiivisuusmittareita.
+Tämä rajaus koskee Tilastot-osiota ja sen raportti-/vientirajapintoja. Erillinen
+ylläpitäjän seuranta, kuten `/api/dashboard`, säilyttää aiemman toimintansa.
 
 Ota automaattinen paikallinen sijaintihaku käyttöön asennuksessa tai päivityksessä:
 
@@ -149,6 +159,30 @@ lukuja: leveysaste −90…90 ja pituusaste −180…180. Maakoodi on valinnaine
 annettuna kaksikirjaiminen. Lukuraja on 100 000 riviä ja 16 MB. Yksityisiä ja
 varattuja osoitteita ei sijoiteta kartalle; tämä koskee myös esimerkin osoitteita.
 
+## Witnessin delegoinnit
+
+Avaa witnessin tiedot klikkaamalla sitä kartalta tai nodelistasta.
+Delegointipaneeli erottaa validaattorin oman bondin, omistajan lisädelegoinnin
+ja muiden lompakoiden delegoinnit. Näet tarkat NODUS-määrät, panosten
+suhteellisen jakauman, kymmenen suurinta delegoijaa ja loput yhteensä sekä
+lompakkolistan 25 riviä kerrallaan. Lompakon fingerprint tunnistaa ketjutilin;
+se ei kerro ihmisen nimeä tai henkilöllisyyttä.
+
+Kerääjä lukee paikallisen witness-tietokannan vahvistettua HF-6-tilaa
+`validators`-, `v2_validator_roles`- ja `delegations`-tauluista rajatussa,
+vain lukua käyttävässä tilannekuvassa. Konsensusavaimen hajautusarvo yhdistää
+validaattorin havaittuun nodeidentiteettiin. Delegointirivien summien on
+vastattava vahvistettuja validaattorin kokonaissummia.
+Omistajalle rajattua lompakon delegointi-RPC:tä ei kutsuta.
+
+Paneeli näyttää lähdelohkon ja havaintoajan. Synkronoiva paikallinen node voi
+olla Scania jäljessä, joten määrät kuvaavat uusinta tuettua **paikallista
+ketjutilaa** käyrien aikavalinnasta riippumatta. Tämä versio ei muodosta
+menneitä delegointisaldoja jälkikäteen. Tukematon tietokantarakenne,
+epäonnistunut tarkistus tai lukurajan ylittyminen näyttää tiedon puuttuvana,
+ei nollasaldona. Tehty undelegointi ei kuulu nykyisiin delegointiriveihin;
+erillinen lukittu palautuserä ei ole aktiivinen delegointi.
+
 ## Asennuksen asetukset
 
 Ylläpitäjän hallitsemat avaimet ovat valinnaisia. Vanhat asetustiedostot saavat
@@ -172,7 +206,7 @@ Lohkohistorialla ja tallennetuilla verkkohavainnoilla on eri kattavuus, joka
 ilmoitetaan erikseen.
 
 Pääkäyttäjänä toimiva kerääjä avaa paikallisen witness-tietokannan vain lukua
-varten julkisten storage-tietojen hakemiseksi. Se ei muuta Nodus-asetuksia,
+varten julkisten storage- ja delegointitietojen hakemiseksi. Se ei muuta Nodus-asetuksia,
 allekirjoita tapahtumia tai käynnistä nodepalveluita uudelleen. Tavallisena
 käyttäjänä toimiva HTTP-palvelu lukee vain seurannan tallentamia tilastoja.
 
@@ -197,6 +231,7 @@ tämän kehityshaaran hakeminen ei yksin päivitä käynnissä olevaa palvelinta
 | --- | --- |
 | `collector.py`, `store.py`, `api.py` | Rajattu keruu, havaintojen tallennus ja raporttien lukurajapinta. |
 | `indexer.py` | Vähitellen täydentyvä lohkoindeksi ja aktiivisuuskoosteet. |
+| `delegations.py` | Vahvistettujen validaattori- ja delegoijasaldojen rajattu luku. |
 | `geolocation.py`, `geoip_common.py` | Paikallinen MMDB-/CSV-haku, välimuisti ja tiedostomuotojen tarkistus. |
 | `geoip_update.py`, `enable_geoip.sh`, `nodus-monitor-geoip-update.*` | Tarkistetut kuukausilataukset ja systemd-asennusvalinta. |
 | `frontend/` | Varsinainen käyttöliittymälähde, tyylit, mukana tuleva kartta ja erikseen tunnistettu synteettinen esikatselu. |
@@ -230,6 +265,8 @@ demotietoja mittaustiedoksi. Esikatseludataa ei asenneta varsinaiseen seurantaan
 - [Scanin JSON-rajapinta ja indeksin säännöt](https://github.com/nocdem/dna/blob/main/explorer/README.md)
 - [Nodus-asiakkaan kyselyt](https://github.com/nocdem/dna/blob/main/nodus/include/nodus/nodus.h)
 - [Julkiset palvelin- ja vertaishavainnot](https://github.com/nocdem/dna/blob/main/nodus/src/server/nodus_server.c)
+- [HF-6-validaattori- ja delegointirakenne (kiinnitetty lähde)](https://github.com/nocdem/dna/blob/f11561f7debe77d7c5e69bd5e638b8439e638c47/nodus/src/witness/nodus_witness.c)
+- [Validaattorin tunnisteen ja roolien yhdistäminen (kiinnitetty lähde)](https://github.com/nocdem/dna/blob/f11561f7debe77d7c5e69bd5e638b8439e638c47/nodus/src/witness/nodus_witness_validator.h)
 - [Storage-rekisterin ja jäsenjoukkojen rakenne](https://github.com/nocdem/dna/blob/main/nodus/src/witness/nodus_witness.h)
 
 Noduksen lähdekoodi ja käytössä olevat rajapinnat voivat erota toisistaan.

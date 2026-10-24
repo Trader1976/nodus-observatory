@@ -101,6 +101,7 @@ activity. Choose 24 hours, 7/30 days, one year or all available history.
 The bounded collector records its own history and indexes recent Scan blocks
 first, then extends the range backwards. Source coverage, gaps and stale data
 remain visible. Map locations use an optional local DB-IP City Lite database with automatic monthly updates (`sudo bash backend/install.sh --enable-geoip`), with CSV overrides.
+Statistics omits node IP addresses from its interface and JSON reports. Click a witness for its current local-chain delegation breakdown, wallet fingerprints and amount charts.
 
 The feature's canonical source, tests and bilingual documentation are in
 [`network_statistics/`](network_statistics/README.md). `dist/statistics/`

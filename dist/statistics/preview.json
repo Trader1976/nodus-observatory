@@ -825,7 +825,6 @@
       "roles": [
         "witness"
       ],
-      "address": "192.0.2.10:4001",
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": "1000000000000000",
@@ -839,6 +838,39 @@
         "latitude": 60.17,
         "longitude": 24.94,
         "source": "synthetic-preview"
+      },
+      "delegation": {
+        "available": true,
+        "at_height": 301750,
+        "observed_at": "2026-10-23T08:10:00+00:00",
+        "source": "local_committed_delegations",
+        "validator_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "owner_fp": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "self_stake_raw": "200000000000000",
+        "delegated_raw": "1000000000000000",
+        "owner_delegated_raw": "300000000000000",
+        "external_delegated_raw": "700000000000000",
+        "total_stake_raw": "1200000000000000",
+        "delegator_count": 3,
+        "commission_bps": 500,
+        "status": "active",
+        "delegations": [
+          {
+            "owner_fp": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "amount_raw": "300000000000000",
+            "is_owner": true
+          },
+          {
+            "owner_fp": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "amount_raw": "600000000000000",
+            "is_owner": false
+          },
+          {
+            "owner_fp": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "amount_raw": "100000000000000",
+            "is_owner": false
+          }
+        ]
       }
     },
     {
@@ -846,7 +878,6 @@
       "roles": [
         "witness"
       ],
-      "address": "192.0.2.11:4001",
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": "1000000000000000",
@@ -867,7 +898,6 @@
       "roles": [
         "storage"
       ],
-      "address": "192.0.2.12:4001",
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": null,
@@ -892,7 +922,6 @@
       "roles": [
         "witness"
       ],
-      "address": "192.0.2.13:4001",
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": "1000000000000000",
@@ -913,7 +942,6 @@
       "roles": [
         "storage"
       ],
-      "address": "192.0.2.14:4001",
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": null,
@@ -938,7 +966,6 @@
       "roles": [
         "storage"
       ],
-      "address": "192.0.2.15:4001",
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": null,
@@ -963,7 +990,6 @@
       "roles": [
         "witness"
       ],
-      "address": "192.0.2.16:4001",
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": "1000000000000000",
@@ -984,7 +1010,6 @@
       "roles": [
         "storage"
       ],
-      "address": null,
       "status": "active",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "stake_raw": null,
@@ -1070,18 +1095,18 @@
   "observed_at": "2026-10-23T08:10:00+00:00",
   "peer_endpoints": [
     {
-      "address": "198.51.100.20:4001",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "identity": null,
       "location": null,
-      "source": "synthetic-preview"
+      "source": "synthetic-preview",
+      "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
     },
     {
-      "address": "203.0.113.20:4001",
       "last_seen": "2026-10-23T08:10:00+00:00",
       "identity": null,
       "location": null,
-      "source": "synthetic-preview"
+      "source": "synthetic-preview",
+      "id": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     }
   ],
   "peer_observation": {

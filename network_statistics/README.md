@@ -74,11 +74,20 @@ Several nodes may share one IP address.
 
 Located peer endpoints are also plotted, as diamonds labelled **identity
 unconfirmed**. Their map count is separate from identified nodes. Role filters
-hide endpoints whose roles are unknown; address/country search applies to them.
+hide endpoints whose roles are unknown; identifier/location search applies to them.
 The local node is labelled **This node** when the status fingerprint/P2P ID
 matches an observed registry identity. Its reported public `external_ip` can
 fill a missing registry address; an existing committee endpoint takes priority.
 Peer-list ordering or a shared IP never establishes an identity binding.
+
+Statistics hides node and endpoint IP addresses in lists, details, map labels,
+search and `/api/statistics` JSON. This report-time filter also covers observations
+stored before the upgrade. The collector still uses IPs privately for local
+GeoIP lookup; country, city and approximate map coordinates remain visible.
+Anonymous endpoints use an installation-specific keyed identifier rather than
+a reversible plain IP hash. CSV exports contain activity metrics only.
+These rules cover the Statistics area and its report/export routes. The separate
+administrator monitor, including `/api/dashboard`, keeps its existing scope.
 
 Enable automatic local geolocation when installing or upgrading the monitor:
 
@@ -146,6 +155,29 @@ networks are rejected. Coordinates must be finite numbers within latitude
 has two letters. The reader accepts at most 100,000 rows and 16 MB. Private
 and reserved addresses are never plotted, including the example addresses.
 
+## Witness delegations
+
+Click a witness in the map or node list to open its details. The delegation
+panel separates the validator's own bond, its owner's additional delegation
+and delegations from other wallets. It shows exact NODUS amounts, a proportional
+stake graphic, the ten largest delegators plus the remainder, and a wallet list
+with 25 entries per page. Wallet fingerprints identify chain accounts; they do
+not identify people or supply their names.
+
+The collector reads committed HF-6 `validators`, `v2_validator_roles` and
+`delegations` state from the local witness database in a bounded, read-only
+snapshot. Consensus-key hashes join validator records to observed node identities.
+The sums of delegation rows must agree with the committed validator totals.
+No owner-gated wallet delegation RPC is called.
+
+Each panel reports its source block and observation time. A syncing local node
+can trail Scan, so these are the latest supported **local chain** balances,
+independent of the chart range. This version does not reconstruct historical
+delegation balances. Unsupported schema, failed validation or a read limit
+produces an unavailable state, not a zero balance. A completed undelegation is
+absent from the current delegation table; a separate locked release is not an
+active delegation.
+
 ## Installation settings
 
 These administrator-owned keys are optional; existing configurations receive
@@ -169,7 +201,7 @@ time budget. Historic block indexing and recorded network observations have
 different coverage and are labelled separately.
 
 The root collector opens the local witness database read-only for public
-storage state. It does not change Nodus configuration, sign transactions or
+storage and delegation state. It does not change Nodus configuration, sign transactions or
 restart node services. The unprivileged HTTP service reads only the monitor's
 stored statistics.
 
@@ -194,6 +226,7 @@ this feature branch alone does not update a running server.
 | --- | --- |
 | `collector.py`, `store.py`, `api.py` | Bounded collection, persistent observations and read-only reports. |
 | `indexer.py` | Incremental block index and activity aggregation. |
+| `delegations.py` | Bounded read of committed validator/delegator balances. |
 | `geolocation.py`, `geoip_common.py` | Local MMDB / CSV lookup, cache and file contracts. |
 | `geoip_update.py`, `enable_geoip.sh`, `nodus-monitor-geoip-update.*` | Validated monthly downloads and opt-in systemd setup. |
 | `frontend/` | Canonical interface, styles, bundled map and explicit synthetic preview. |
@@ -227,6 +260,8 @@ Preview data is excluded from live installations.
 - [Scan JSON API and indexing rules](https://github.com/nocdem/dna/blob/main/explorer/README.md)
 - [Nodus client queries](https://github.com/nocdem/dna/blob/main/nodus/include/nodus/nodus.h)
 - [Public server and peer observations](https://github.com/nocdem/dna/blob/main/nodus/src/server/nodus_server.c)
+- [HF-6 validator and delegation schema (pinned source)](https://github.com/nocdem/dna/blob/f11561f7debe77d7c5e69bd5e638b8439e638c47/nodus/src/witness/nodus_witness.c)
+- [Validator identity/role mapping (pinned source)](https://github.com/nocdem/dna/blob/f11561f7debe77d7c5e69bd5e638b8439e638c47/nodus/src/witness/nodus_witness_validator.h)
 - [Storage registry and frozen-set schema](https://github.com/nocdem/dna/blob/main/nodus/src/witness/nodus_witness.h)
 
 Upstream software and deployed endpoints may differ. The tests use synthetic

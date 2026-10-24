@@ -30,7 +30,7 @@ for filename in collector.py configure.py server.py settings.py document_registr
   [ -f "$source_dir/$filename" ] || { echo "Missing backend file: $filename" >&2; exit 1; }
 done
 
-for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py geoip_common.py geoip_update.py enable_geoip.sh nodus-monitor-geoip-update.service nodus-monitor-geoip-update.timer; do
+for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py geoip_common.py geoip_update.py delegations.py enable_geoip.sh nodus-monitor-geoip-update.service nodus-monitor-geoip-update.timer; do
   [ -f "$project_dir/network_statistics/$filename" ] || { echo "Missing Statistics file: $filename" >&2; exit 1; }
 done
 python3 "$project_dir/network_statistics/sync_frontend.py" --check
@@ -103,7 +103,7 @@ for filename in network.py rewards.py enable-reward-history.py; do
 done
 # Frontend assets were checked before any service changes.
 install -d -m 0755 -o root -g root /opt/nodus-monitor/network_statistics
-for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py geoip_common.py geoip_update.py enable_geoip.sh; do
+for filename in __init__.py collector.py store.py api.py indexer.py geolocation.py geoip_common.py geoip_update.py delegations.py enable_geoip.sh; do
   install -m 0644 -o root -g root "$project_dir/network_statistics/$filename" "/opt/nodus-monitor/network_statistics/$filename"
 done
 if [ "$enable_geoip" = true ] || systemctl is-enabled --quiet nodus-monitor-geoip-update.timer 2>/dev/null; then

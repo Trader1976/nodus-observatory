@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import hmac
 from datetime import datetime, timezone
 import io
 import json
 from pathlib import Path
+import re
 import sqlite3
 
 from . import RANGES, SCAN_CHAIN_ID, SCHEMA_VERSION
@@ -18,6 +21,67 @@ SUMMARY_FIELDS = (
     "native_senders", "native_receivers", "first_seen_native_addresses", "first_seen_evm_addresses", "blocks", "empty_blocks",
     "avg_block_ms", "transfer_raw", "known_transfer_raw", "transfers_with_unknown_sender", "gas_used"
 )
+
+
+def _public_node(node):
+    # Only public statistics fields cross this boundary. IPs remain private
+    # collector inputs, including addresses in observations made before upgrade.
+    fields = ("id", "fingerprint", "roles", "status", "stake_raw", "power", "commission_bps",
+              "source", "last_seen", "location", "storage", "local", "delegation")
+    result = {key: node[key] for key in fields if key in node}
+    if isinstance(result.get("storage"), dict):
+        public_storage = ("status", "bond_raw", "registered_height", "exit_height", "fail_streak",
+                          "grace_until", "epoch_start", "member", "in_grace", "owner")
+        result["storage"] = {key: result["storage"][key] for key in public_storage if key in result["storage"]}
+    if "location" in result:
+        result["location"] = _public_location(result["location"])
+    return result
+
+
+def _public_location(location):
+    fields = ("country", "country_code", "city", "latitude", "longitude", "source",
+              "approximate", "database_date", "resolved_at")
+    return {key: location[key] for key in fields if key in location} if isinstance(location, dict) else None
+
+
+def _public_endpoint(item, secret):
+    fields = ("last_seen", "source", "location", "identity")
+    result = {key: item[key] for key in fields if key in item}
+    result["identity"] = None
+    result["location"] = _public_location(result.get("location"))
+    # A plain hash of an IPv4 address can be reversed by enumeration. A
+    # collector-owned random installation key keeps the display ID opaque.
+    address = item.get("address")
+    if isinstance(secret, str) and len(secret) == 64 and isinstance(address, str):
+        try:
+            key = bytes.fromhex(secret)
+            result["id"] = hmac.new(key, address.encode(), hashlib.sha256).hexdigest()
+        except ValueError:
+            pass
+    return result
+
+
+def _public_diagnostic(item):
+    # Exception text may contain connection addresses or machine-local paths.
+    # Public reports keep the source and safe exception class, not raw text.
+    source = item.get("source") if isinstance(item, dict) else None
+    message = item.get("message") if isinstance(item, dict) else None
+    return {"source": source if isinstance(source, str) and re.fullmatch(r"[a-z_/-]{1,64}", source) else "statistics",
+            "message": message if isinstance(message, str) and re.fullmatch(r"[A-Za-z_]{1,64}", message) else "Source diagnostic"}
+
+
+def _delegation_for(node, snapshot):
+    metadata = {key: snapshot[key] for key in ("at_height", "observed_at", "source", "anchor_verified", "anchor_height", "stale", "lag_blocks") if key in snapshot}
+    record = snapshot.get("validators", {}).get(node.get("id")) if snapshot.get("available") else None
+    fingerprint = record.get("consensus_fingerprint") if isinstance(record, dict) else None
+    if (not isinstance(fingerprint, str) or re.fullmatch(r"[0-9a-f]{128}", fingerprint) is None
+            or fingerprint[:64] != node.get("id") or node.get("fingerprint") not in (None, fingerprint)):
+        return {**metadata, "available": False}
+    fields = ("validator_id", "owner_fp", "self_stake_raw", "delegated_raw", "owner_delegated_raw",
+              "external_delegated_raw", "total_stake_raw", "delegator_count", "commission_bps", "status")
+    return {**metadata, "available": True, **{key: record[key] for key in fields if key in record},
+            "delegations": [{key: row[key] for key in ("owner_fp", "amount_raw", "is_owner") if key in row}
+                            for row in record.get("delegations", [])]}
 
 
 def unavailable(reason="No statistics have been collected yet", range_key="24h"):
@@ -147,7 +211,16 @@ def report(path, range_key="24h"):
                     for item in geo.get("locations", []) if isinstance(item, dict)}
         local = {item.get("id"): item for item in geo.get("locations", [])
                  if isinstance(item, dict) and item.get("local") is True}
+        delegations = get_meta(db, "delegations", {})
+        try:
+            delegation_age = (datetime.now(timezone.utc) - datetime.fromisoformat(timestamp(delegations.get("observed_at")))).total_seconds()
+        except (ValueError, TypeError):
+            delegation_age = float("inf")
+        delegations["stale"] = delegation_age > 900 or delegation_age < -60 or collection.get("status") in ("disabled", "error")
+        source_height = _count(delegations.get("at_height"))
+        delegations["lag_blocks"] = max(0, max(known_tips) - source_height) if known_tips and source_height is not None else None
         for node in nodes:
+            node["delegation"] = _delegation_for(node, delegations)
             own = local.get(node.get("id"))
             if (own and own.get("fingerprint") is not None
                     and own["fingerprint"] == node.get("fingerprint")
@@ -160,6 +233,7 @@ def report(path, range_key="24h"):
                     node["local"] = True
         located = sum(1 for node in nodes if node.get("location") is not None)
         stats = latest.get("stats") or {}
+        endpoint_privacy_key = get_meta(db, "endpoint_privacy_key")
         treasury = stats.get("treasury")
         treasury = [{"pool": i + 1, "amount_raw": _raw(value)} for i, value in enumerate(treasury[:9])] if isinstance(treasury, list) else []
         errors = list(latest.get("errors") or [])
@@ -167,16 +241,24 @@ def report(path, range_key="24h"):
             errors.extend(collection.get("errors") or [{"source": "collection", "message": collection["status"]}])
         if collection.get("index", {}).get("status") == "error" and collection.get("index", {}).get("error"):
             errors.append({"source": "block_index", "message": collection["index"]["error"]})
+        public_geo_fields = ("configured", "available", "status", "provider", "database_date", "database_stale",
+                             "auto_update", "cache_hits", "lookups", "update_status", "last_checked_at",
+                             "database_type", "build_epoch", "database_age_days", "attribution_url", "license_url",
+                             "downloaded_at", "release", "resolved_at", "csv_override")
         return {"schema_version": SCHEMA_VERSION, "generated_at": utcnow(), "observed_at": latest_stamp,
                 "age_seconds": round(age), "available": True,
                 "stale": age > 900 or collection.get("status") == "disabled",
                 "network": "testnet", "chain_id": chain, "range": range_key,
                 "source": "Nodus Scan + local committed observations", "coverage": coverage, "summary": summary,
                 "series": {"activity": indexed.get("activity", []), "network": points, "tps": tps_series},
-                "nodes": nodes, "peer_endpoints": peers.get("items", []), "breakdown": {"operations": indexed.get("operations", []),
+                "nodes": [_public_node(node) for node in nodes],
+                "peer_endpoints": [_public_endpoint(item, endpoint_privacy_key)
+                                   for item in peers.get("items", [])],
+                "privacy": {"ip_addresses": "omitted", "geolocation": "approximate"},
+                "breakdown": {"operations": indexed.get("operations", []),
                                               "proposers": indexed.get("proposers", []), "treasury": treasury},
-                "contracts": indexed.get("contracts", []), "errors": errors,
-                "geolocation": {**{key: value for key, value in geo.items() if key != "locations"},
+                "contracts": indexed.get("contracts", []), "errors": [_public_diagnostic(item) for item in errors],
+                "geolocation": {**{key: geo[key] for key in public_geo_fields if key in geo},
                                 "configured": geo.get("configured", latest.get("geo_configured", False)),
                                 "located_nodes": located, "unlocated_nodes": len(nodes) - located},
                 "collection": {"status": collection.get("status"), "collected_at": collection.get("collected_at")},
@@ -186,6 +268,7 @@ def report(path, range_key="24h"):
                 "definitions": {"nodes": "Known committee and storage identities, not a complete network census or an online count",
                                 "addresses": "Observed native and EVM addresses are separate; they are not unique people or all created wallets",
                                 "first_seen": "First occurrence within the indexed block range",
+                                "delegations": "Current committed local-chain delegator wallet fingerprints, not people's names; source height may trail Scan",
                                 "map": "Approximate local DB-IP City Lite or operator CSV IP locations; missing locations stay unknown",
                                 "transfer_raw": "Native spend outputs to known non-sender addresses, excluding change; unresolved senders stay unknown",
                                 "tps": "Applied envelopes; claims and refused items excluded; UTC hour buckets include a partial current hour"}}

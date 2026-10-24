@@ -283,7 +283,7 @@ class RealDatabaseTests(unittest.TestCase):
         result = report(self.root / "statistics.sqlite3")
         own = next(n for n in result["nodes"] if n["id"] == "b" * 64)
         self.assertTrue(own["local"])
-        self.assertEqual(own["address"], "198.51.100.99")
+        self.assertNotIn("address", own)
         self.assertEqual(own["location"]["city"], "Example City")
         self.assertEqual(result["coverage"]["network_samples"], 1)
 

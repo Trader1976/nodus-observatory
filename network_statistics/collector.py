@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import sqlite3
 import time
 from urllib.error import URLError
@@ -351,6 +352,8 @@ def collect_statistics(state_dir, config, snapshot):
         if stats is None and committee.get("height") is None:
             raise ValueError("No fresh chain statistics or committee observation")
         storage = None
+        delegations = {"available": False, "observed_at": utcnow(), "source": "local_committed_delegations",
+                       "reason": "source_unavailable", "validators": {}}
         locations = GeoLocator(state_dir, config)
         source_db = Path(config.get("rewards_source_db", ""))
         if source_db.is_file():
@@ -368,6 +371,16 @@ def collect_statistics(state_dir, config, snapshot):
                 storage = read_local_storage(config, snapshot, anchor)
             except (OSError, ValueError, TypeError, sqlite3.Error, URLError, TimeoutError, HTTPException) as exc:
                 status["errors"].append({"source": "storage_registry", "message": type(exc).__name__})
+            try:
+                from .delegations import read_delegations
+                if stats is not None and anchor is None:
+                    raise ValueError("Delegation common-height anchor is unavailable")
+                if deadline - time.monotonic() < 1.6:
+                    raise TimeoutError("Delegation read budget is unavailable")
+                delegations = read_delegations(config, snapshot, anchor)
+            except (OSError, ValueError, TypeError, sqlite3.Error, TimeoutError) as exc:
+                delegations["reason"] = type(exc).__name__
+                status["errors"].append({"source": "delegations", "message": type(exc).__name__})
         nodes = _nodes(committee, storage, source_stamp, locations, snapshot.get("node"))
         peers = {"available": False, "observed_at": None, "items": []}
         try:
@@ -375,7 +388,10 @@ def collect_statistics(state_dir, config, snapshot):
         except (OSError, ValueError, TypeError) as exc:
             status["errors"].append({"source": "peer_endpoints", "message": type(exc).__name__})
         with db:
+            if get_meta(db, "endpoint_privacy_key") is None:
+                set_meta(db, "endpoint_privacy_key", secrets.token_hex(32))
             set_meta(db, "peer_observation", peers)
+            set_meta(db, "delegations", delegations)
             set_meta(db, "geolocation", {**locations.info, "resolved_at": utcnow(),
                      "locations": [{"id": node["id"], "address": node.get("address"),
                                     "fingerprint": node.get("fingerprint"), "local": node.get("local", False),
