@@ -34,6 +34,7 @@ for filename in __init__.py collector.py store.py api.py indexer.py geolocation.
   [ -f "$project_dir/network_statistics/$filename" ] || { echo "Missing Statistics file: $filename" >&2; exit 1; }
 done
 python3 "$project_dir/network_statistics/sync_frontend.py" --check
+python3 "$project_dir/test_defi/sync_frontend.py" --check
 
 # Prepare and validate machine-local settings before changing users or services.
 # Updates always preserve installed settings; --config is for the first install.

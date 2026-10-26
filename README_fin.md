@@ -419,3 +419,14 @@ myös selaimessa, kun kehität käyttöliittymää.
 ## Trade / Swap -testityöpöytä
 
 Uusi `#trade`-alue valmistelee NODUS–tBNB-osto- ja myyntitarjouksia, säilyttää julkiset tarjoukset paikallisesti ja simuloi kahden ketjun lukitukset, lunastukset ja palautukset. Sisältää käännetyt Nodus- ja BSC-testiverkkosopimukset. Lompakkoyhteydet ja verkkotapahtumien lähetys tulevat erikseen. [Ohje](docs/trade-swap_fin.md).
+
+## Test DeFi -perusta
+
+Avaa ylävalikosta **Test DeFi** (`#defi`). Selaimessa voi luoda tUSDT/NODUS-
+lainatarjouksia, tarkastella kiinteän laina-ajan korkoa ja harjoitella lainanottoa,
+takaisinmaksua sekä määräajan ylittymistä. Määrät ovat keksittyjä ja säilyvät vain
+istunnossa. Osio ei lähetä lompakkopyyntöjä tai ketjutapahtumia.
+Credit score ja kuukausierät tulevat myöhemmin. Lompakon nykyinen tUSDT on natiivi
+UTXO-token, eikä sitä voi käyttää suoraan ERC20-sopimuksessa. Erikseen testattu
+Solidity-referenssi käyttää mock-tokenia. [Oman hakemiston ohje](test_defi/README_fin.md)
+kuvaa sopimustuen puutteen, kokeelliset tilityssäännöt ja tarkistuskomennot.

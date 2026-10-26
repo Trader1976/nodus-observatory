@@ -50,7 +50,7 @@
 .topbar{height:auto;display:block;padding-top:14px;padding-bottom:12px}
 .topbar-main,.topbar-context{display:flex;align-items:center;justify-content:space-between;gap:20px;min-width:0}
 .topbar-context{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
-.area-navigation{display:flex;flex-direction:row;align-items:center;margin-top:0;gap:5px;min-width:0}
+.area-navigation{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;margin-top:0;gap:5px;min-width:0}
 .area-navigation a{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:37px;padding:7px 12px;border:1px solid transparent;border-radius:7px;color:var(--muted);font-size:11px;white-space:nowrap}
 .area-navigation a:hover{background:var(--surface2);color:var(--text)}
 .area-navigation a.active{border-color:#315354;background:#173034;color:var(--cyan)}

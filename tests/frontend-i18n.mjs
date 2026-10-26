@@ -16,7 +16,7 @@ assert.equal(scripts.at(-1),'app.js','all feature modules load before app routin
 for(const script of ['app-translations.js','contract-studio-core.js','contract-studio-i18n.js','contract-studio.js',
   'contract-studio-workflow-core.js','contract-studio-builder-i18n.js','contract-studio-builder.js',
   'document-notary-core.js','document-notary-i18n.js','document-notary.js'])assert(scripts.includes(script),`shipped shell loads ${script}`);
-assert(scripts.every(script=>/^(?:statistics\/)?[a-z0-9-]+\.js$/.test(script)),'no external script dependency');
+assert(scripts.every(script=>/^(?:(?:statistics|test-defi)\/)?[a-z0-9-]+\.js$/.test(script)),'no external script dependency');
 assert(scripts.indexOf('contract-studio-core.js')<scripts.indexOf('contract-studio.js'));
 assert(scripts.indexOf('contract-studio-core.js')<scripts.indexOf('contract-studio-workflow-core.js'));
 assert(scripts.indexOf('contract-studio-workflow-core.js')<scripts.indexOf('contract-studio-builder.js'));
@@ -136,7 +136,7 @@ assert.equal(run('number(null)'), '—', 'unknown measurements remain absent');
 // Catch a newly added UI string that has been wrapped for translation but was
 // accidentally omitted from the English message catalog. The small allow-list
 // contains meaningful technical labels that are identical in both languages.
-const invariantLabels = new Set(['NODUS TESTNET', 'STORAGE TESTNET', 'TESTNET', 'Storage node', 'Epoch & grace', '24 h', 'TPS', 'PASSED', 'NTP']);
+const invariantLabels = new Set(['Test DeFi','NODUS TESTNET', 'STORAGE TESTNET', 'TESTNET', 'Storage node', 'Epoch & grace', '24 h', 'TPS', 'PASSED', 'NTP']);
 const sources = new Set();
 const sourceCode = fs.readFileSync(path.join(dist, 'app.js'), 'utf8');
 for (const match of sourceCode.matchAll(/\b(?:t|toast)\(\s*((?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'))/g)) {
