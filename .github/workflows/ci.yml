@@ -64,6 +64,13 @@ jobs:
           node tests/contract-studio-builder-integration.mjs
           node tests/document-notary-core.mjs
           node tests/document-notary-integration.mjs
+      - name: Test DeFi foundation
+        run: |
+          python3 test_defi/sync_frontend.py --check
+          node --check dist/test-defi/core.js
+          node --check dist/test-defi/defi.js
+          node test_defi/tests/core.mjs
+          node test_defi/tests/frontend.mjs
       - name: Installer syntax
         run: |
           bash -n backend/install.sh
@@ -104,3 +111,7 @@ jobs:
           echo "NODUS_EVM_ROOT=$RUNNER_TEMP/nodus-engine" >> "$GITHUB_ENV"
       - name: Execute Nodus bytecode with full 32-byte addresses
         run: node tools/trade/test-nodus.mjs
+      - name: Build and execute offline DeFi reference with a mock token
+        run: |
+          node test_defi/tools/build-contracts.mjs --check
+          node test_defi/tools/test-contracts.mjs

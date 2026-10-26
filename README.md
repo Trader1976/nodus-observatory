@@ -407,6 +407,7 @@ and synthetic identities in all committed examples.
 | `dist/` | Frontend and explicitly synthetic demo JSON fixtures |
 | `docs/` | Deployment documentation in English and Finnish |
 | `rewards/` | Reward ledger, valuations, CSV export and source coverage |
+| `test_defi/` | Isolated lending simulator, offline contract reference, tests and bilingual guide |
 | `tests/` | Network, public-example and frontend regression checks |
 | `.github/workflows/` | Automated checks |
 
@@ -418,3 +419,14 @@ repository. `.gitignore` covers common local data and credential paths.
 ## Trade / Swap testnet workbench
 
 The `#trade` area prepares NODUS–tBNB buy/sell offers, keeps public terms locally, and rehearses two-chain locks, claims and refunds. Includes compiled Nodus and BSC-testnet contracts. Wallet connections and network submission are separate future work. [Guide](docs/trade-swap.md).
+
+## Test DeFi foundation
+
+Open **Test DeFi** (`#defi`) for browser-local tUSDT/NODUS loan offers, fixed-term
+interest quotes, borrowing, repayment and deadline rehearsals. Amounts are
+synthetic and session-only; no wallet requests or chain transactions are sent.
+Credit scoring and monthly payment schedules are future work. The current wallet
+tUSDT is a native UTXO token, not an ERC20 contract. The separately tested Solidity
+reference uses a mock ERC20 and cannot take custody of that native tUSDT.
+See the [feature guide](test_defi/README.md) for the documented integration gap,
+experimental settlement rules, source layout and validation commands.

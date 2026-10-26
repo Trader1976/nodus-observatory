@@ -1,0 +1,26 @@
+{
+  "schema": "nodus-test-defi/research-config-v1",
+  "mode": "local-simulation",
+  "executionEnabled": false,
+  "reviewedUpstreamRevision": "d065cf3db719f990fe3777237af0f7166d5a5330",
+  "chainId": "a48d1a785500a1cdecd739ecd53ef0e95b1dc4a7a300f49176a7fa25ae176114",
+  "loanAsset": {
+    "kind": "native-utxo-token",
+    "name": "Test USDT",
+    "symbol": "tUSDT",
+    "decimals": 6,
+    "tokenId": "7142460f5dd73ce7123905c423e1eb17fbff36f14b031e24837a4b6d7bedd5677baaa3a3e6015e6d6fc706b0b0d8799a88d7fd63f6d1e7807dbb88577b7c3b50",
+    "erc20Address": null,
+    "nativeEvmAdapter": null
+  },
+  "collateralAsset": {
+    "symbol": "NODUS",
+    "nativeDecimals": 8,
+    "evmDecimals": 18,
+    "weiPerNativeRaw": "10000000000"
+  },
+  "deployment": {
+    "lendingAddress": null,
+    "runtimeCodeHash": null
+  }
+}
