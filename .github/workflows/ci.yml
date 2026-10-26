@@ -77,7 +77,12 @@ jobs:
           bash -n network_statistics/enable_geoip.sh
 
   trade-contracts:
-    runs-on: ubuntu-latest
+    # Match the locally tested GCC 13 toolchain. The pinned engine's bundled
+    # GMP configure probes predate the C23 default of newer compiler images.
+    runs-on: ubuntu-24.04
+    env:
+      CC: gcc-13
+      CXX: g++-13
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -107,7 +112,7 @@ jobs:
           git -C "$RUNNER_TEMP/nodus-engine" fetch --depth 1 origin 2e881cc6e6d7a5050cc10400afc2b883f8fb712a
           git -C "$RUNNER_TEMP/nodus-engine" checkout FETCH_HEAD
           sudo apt-get update -qq
-          sudo apt-get install -y build-essential libssl-dev m4 xxd
+          sudo apt-get install -y build-essential gcc-13 g++-13 libssl-dev m4 xxd
           echo "NODUS_EVM_ROOT=$RUNNER_TEMP/nodus-engine" >> "$GITHUB_ENV"
       - name: Execute Nodus bytecode with full 32-byte addresses
         run: node tools/trade/test-nodus.mjs
@@ -115,3 +120,8 @@ jobs:
         run: |
           node test_defi/tools/build-contracts.mjs --check
           node test_defi/tools/test-contracts.mjs
+      - name: Verify deployable sandbox wallet kit
+        run: |
+          node test_defi/tools/build-wallet-kit.mjs --check
+          node test_defi/tests/wallet-kit.mjs
+          node test_defi/tools/test-wallet-kit.mjs
