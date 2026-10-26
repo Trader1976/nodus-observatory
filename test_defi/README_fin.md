@@ -9,6 +9,12 @@ rahoitus, summat ja takaisinmaksut ovat selaimen harjoitustietoa. Ne eivät ole
 lompakon saldoja tai ketjutapahtumia. Sivu ei pyydä palautussanoja, yhdistä
 lompakkoa tai lähetä transaktioita.
 
+[Natiivien tokenien selvitys](NATIVE_ASSETS_fin.md) kuvaa protokollan nykyiset
+rajat. [Lompakon käyttöönotto-ohje](DEPLOYMENT_fin.md) neuvoo erillisen **OSD6-
+EVM-testitokenin** kokeilun. Sen `SandboxDollar6` käyttää kiinteää tarjontaa
+hyökkäystestien muokattavan apu-tokenin sijaan. Paketti ei yhdistä simulaatiota
+ketjuun eikä lisää natiivin tUSDT:n sopimustukea.
+
 ## Lompakon tUSDT ja sopimuksen testitoken ovat eri asioita
 
 Nodus Walletissa näkyvä tUSDT on **NODUSin natiivi UTXO-token**, jolla on
@@ -79,6 +85,8 @@ luottopisterajoja.
 | `contracts/LendingReference.sol` | Erillinen ERC20-viitesopimus: rahoitettu tarjous, natiivi vakuus, lainan selvitys ja nostettavat hyvitykset. |
 | `contracts/MockUSDT6.sol` | Vapaasti luotava testitoken ja virhetilanteiden apusopimukset. |
 | `artifacts/reference.json` | Toistettava ABI/tavukoodi, lähdetiivisteet, kääntäjän tunniste ja yhteensopivuusrajaus. |
+| `contracts/SandboxDollar6.sol`, `artifacts/wallet-kit.json` | Kiinteän tarjonnan OSD6 ja käsin julkaistava paketti; ei minttausta tai ylläpitäjää. |
+| `tools/export-wallet-kit.mjs` | ABI:n, tavukoodin, lähdekoodin ja manifestin vienti uuteen hakemistoon ilman verkkokutsuja. |
 | `tools/`, `tests/` | Lukittu kääntäjä, suoritusympäristön testit sekä talous- ja tilasiirtymien tarkistukset. |
 | `config.example.json` | Tutkittu tunnistetieto. Suoritus on pois käytöstä ja asennetut sopimusosoitteet puuttuvat. Sivu ei lataa tätä aktiiviseksi verkkoasetukseksi. |
 

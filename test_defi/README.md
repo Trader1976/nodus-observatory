@@ -8,6 +8,11 @@ The current page is a **local simulation**: amounts, funding and repayments are
 examples in this browser, not wallet balances or chain transactions. It does not
 request a recovery phrase, connect a wallet, or submit transactions.
 
+See [Native assets](NATIVE_ASSETS.md) for the expanded feasibility review and
+the [manual wallet guide](DEPLOYMENT.md) for an optional **separate OSD6 EVM-token**
+experiment. Its fixed-supply `SandboxDollar6` replaces the configurable attack-test
+mock. The kit does not connect the simulator to live contracts or support native tUSDT.
+
 ## Important asset distinction
 
 The tUSDT shown in Nodus Wallet is a **native Nodus UTXO token**, identified by
@@ -75,6 +80,8 @@ features. The examples' 8% and 10% offers have no score restrictions.
 | `contracts/LendingReference.sol` | Offline ERC20 reference with funded offers, native collateral, settlement credits and withdrawals. |
 | `contracts/MockUSDT6.sol` | Disposable mock token and failure helpers; anyone can mint or change mock behavior. |
 | `artifacts/reference.json` | Reproducible ABI/bytecode, source hashes, compiler identity and explicit compatibility flag. |
+| `contracts/SandboxDollar6.sol`, `artifacts/wallet-kit.json` | Fixed-supply OSD6 and a manual-deployment kit, with no mint/admin controls. |
+| `tools/export-wallet-kit.mjs` | Offline ABI, bytecode, source and manifest export into a new directory. |
 | `tools/`, `tests/` | Pinned compiler build, execution harness and economic/state regression checks. |
 | `config.example.json` | Research identity record; execution is disabled and deployments are unset. The UI does not load this as live configuration. |
 
