@@ -4,13 +4,18 @@ import assert from 'node:assert/strict';
 import {boot} from '../../tests/frontend-harness.mjs';
 
 const app=await boot('dist',{route:'#defi'});
-const root=()=>app.document.querySelector('#page-content');
-const state=()=>JSON.parse(JSON.stringify(app.context.NodusDefi.getState()));
+const root=()=>app.document.querySelector('#defi-practice')??app.document.querySelector('#page-content');
+const state=()=>JSON.parse(JSON.stringify(app.context.NodusDefiPractice.getState()));
 const action=async name=>{const el=root().querySelector(`[data-defi-action="${name}"]`);assert.ok(el,name);await el.click();};
 const select=async id=>{const el=root().querySelector(`[data-defi-select="${id}"]`);assert.ok(el,id);await el.click();};
 const tab=async name=>{await root().querySelector(`[data-defi-tab="${name}"]`).click();};
 const importText=async text=>{await root().querySelector('#defi-import').fire('change',{target:{files:[{size:Buffer.byteLength(text),text:async()=>text}]}});};
 const initialRequests=app.requests.length;
+assert.match(root().innerHTML,/Yhdistä TronLink/);
+assert.match(root().innerHTML,/DeFi-testilaboratorio/);
+assert.equal(app.context.NodusDefi.getState().wallet.connected,false);
+assert.equal(root().querySelector('#defi-live-transfer').querySelector('button').disabled,true);
+await root().querySelector('[data-defi-live-view="practice"]').click();
 
 assert.match(root().innerHTML,/Paikallinen simulaatio · ei ketjutapahtumia/);
 assert.match(root().innerHTML,/Lompakkoasi ja sen tUSDT-saldoa ei ole yhdistetty/);
@@ -96,6 +101,7 @@ assert.equal(app.requests.length,initialRequests,'DeFi actions do not perform ne
 assert.deepEqual([...app.preferences.keys()],['nodus-observatory-language'],'no simulated funding or wallet data persisted');
 
 const fresh=await boot('dist',{route:'#defi',storageThrows:true,offline:true});
-assert.equal(fresh.context.NodusDefi.getState().states.length,0);
-assert.match(fresh.document.querySelector('#page-content').innerHTML,/ei ketjutapahtumia/,'offline and blocked storage never imply a live connection');
+await fresh.document.querySelector('[data-defi-live-view="practice"]').click();
+assert.equal(fresh.context.NodusDefiPractice.getState().states.length,0);
+assert.match(fresh.document.querySelector('#defi-practice').innerHTML,/ei ketjutapahtumia/,'offline and blocked storage never imply a live connection');
 console.log('Test DeFi frontend: route, exact amounts, lifecycle, imports, isolation and FI/EN passed.');

@@ -15,7 +15,8 @@ def sync(check=False):
     feature = Path(__file__).resolve().parent
     source = feature / "frontend"
     destination = feature.parent / "dist" / "test-defi"
-    expected = {name: source / name for name in ("core.js", "defi.js", "defi.css")}
+    expected = {name: source / name for name in
+                ("core.js", "networks.js", "tron.js", "practice.js", "defi.js", "defi.css")}
     if any(not path.is_file() or path.is_symlink() for path in expected.values()):
         raise ValueError("Test DeFi frontend sources are missing or symbolic links")
     if destination.is_symlink():

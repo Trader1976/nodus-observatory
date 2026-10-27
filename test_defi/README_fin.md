@@ -1,13 +1,14 @@
-# Observatoryn Test DeFi -perusta
+# Observatoryn Test DeFi
 
 [English](README.md)
 
 Tämä hakemisto sisältää Test DeFi -osion lähdekoodin. Avaa Observatoryn
-**Test DeFi** (`/#defi`), luo lainatarjous ja harjoittele lainaamista
-NODUS-vakuutta vastaan. Sivu toimii nyt **paikallisena simulaationa**:
-rahoitus, summat ja takaisinmaksut ovat selaimen harjoitustietoa. Ne eivät ole
-lompakon saldoja tai ketjutapahtumia. Sivu ei pyydä palautussanoja, yhdistä
-lompakkoa tai lähetä transaktioita.
+**Test DeFi** (`/#defi`): yhdistä TronLink, katso testiverkon saldot ja siirrä
+test-USDT:tä selaimesta. Nodus-välilehti lukee jo testatun OSD6-lainasopimuksen
+tilan omalta nodelta. Aiempi paikallinen simulaatio on erillisessä
+harjoittelunäkymässä. [Selainliitännän ohje](BROWSER_UI_fin.md) kuvaa käytön ja
+nykyiset rajat. Nodus-allekirjoitukset ja ketjujen välinen lainaselvitys
+odottavat vielä lompakkoliitäntää ja sovittua sopimusmallia.
 
 [Natiivien tokenien selvitys](NATIVE_ASSETS_fin.md) kuvaa protokollan nykyiset
 rajat. [Lompakon käyttöönotto-ohje](DEPLOYMENT_fin.md) neuvoo erillisen **OSD6-
@@ -81,6 +82,9 @@ luottopisterajoja.
 | --- | --- |
 | `frontend/core.js` | Tarkat summat, korkolaskenta, tarjousten validointi ja tapahtumahistoriasta tarkistettavat simulaatiotilat. Ei verkkoyhteyksiä tai tallennusta. |
 | `frontend/defi.js`, `frontend/defi.css` | Suomen- ja englanninkielinen sivu sekä rajatut responsiiviset tyylit. |
+| `frontend/practice.js` | Erillinen paikallinen lainaharjoittelu. |
+| `frontend/networks.js`, `frontend/tron.js` | Testiverkkojen profiilit ja TronLink-liitäntä. |
+| `read_api.py` | Ennalta määritellyt OSD6-lainasopimuksen lukukyselyt omalta nodelta. |
 | `sync_frontend.py` | Kopioi alkuperäiset lähteet julkaistavaan `dist/test-defi`-hakemistoon. `--check` hylkää erot. |
 | `contracts/LendingReference.sol` | Erillinen ERC20-viitesopimus: rahoitettu tarjous, natiivi vakuus, lainan selvitys ja nostettavat hyvitykset. |
 | `contracts/MockUSDT6.sol` | Vapaasti luotava testitoken ja virhetilanteiden apusopimukset. |
@@ -113,13 +117,18 @@ Aja repon juuressa:
 python3 test_defi/sync_frontend.py
 python3 test_defi/sync_frontend.py --check
 node test_defi/tests/core.mjs
+node test_defi/tests/tron.mjs
 node test_defi/tests/frontend.mjs
+node test_defi/tests/browser-ui.mjs
+python3 -m unittest discover -s test_defi/tests -p 'test_*.py' -v
 python3 -m http.server 8891 --directory dist
 ```
 
-Avaa `http://127.0.0.1:8891/#defi`. Observatoryn tavallinen asentaja asentaa
-generoidun käyttöliittymän. Asentaminen ei julkaise älysopimuksia eikä kytke
-lompakkotapahtumia käyttöön.
+Avaa `http://127.0.0.1:8891/#defi`. Staattinen esikatselu tukee TronLinkin
+testiverkkoliitäntää; Nodus-lainojen lukunäkymä tarvitsee asennetun palvelimen.
+Tavallinen asentaja sisältää molemmat. Asentaminen ei julkaise sopimuksia eikä
+pyydä lompakon käyttöoikeutta. Jokainen lompakkotoiminto alkaa käyttäjän
+painalluksesta.
 
 Viitesopimuksen käännöksen tarkistamiseen aseta `NODUS_SOLC` osoittamaan
 lukittuun NODUS addr256 -kääntäjään ja aja:

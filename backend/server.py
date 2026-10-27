@@ -118,7 +118,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        # TronLink's injected TronWeb performs testnet RPC from the page. Keep
+        # this list exact; no mainnet, arbitrary RPC, CDN scripts or wallet keys.
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://nile.trongrid.io https://api.nileex.io https://api.shasta.trongrid.io; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
         if attachment:
             self.send_header("Content-Disposition", f'attachment; filename="{attachment}"')
         self.end_headers()
@@ -148,7 +150,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(414, "request target too long")
         try:
             query = parse_qs(parsed.query, max_num_fields=10,
-                             keep_blank_values=parsed.path in ("/api/documents/record", "/api/statistics", "/api/statistics/export.csv"))
+                             keep_blank_values=parsed.path in ("/api/documents/record", "/api/statistics", "/api/statistics/export.csv", "/api/test-defi"))
             if parsed.path.startswith("/api/"):
                 return self.api(parsed.path, query)
             return self.static(parsed.path)
@@ -158,6 +160,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(503, "monitoring data is temporarily unavailable")
 
     def api(self, route, query):
+        if route == "/api/test-defi":
+            from test_defi.read_api import lookup
+            payload, status = lookup(self.config, query)
+            return self.send_content(payload, status=status)
         if route in ("/api/statistics", "/api/statistics/export.csv"):
             if set(query) - {"range"} or len(query.get("range", [])) > 1:
                 return self.fail(400, "statistics accepts one range parameter")
