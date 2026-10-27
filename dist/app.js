@@ -392,12 +392,12 @@ function render(){
   document.querySelector('.topbar-context')?.classList.toggle('is-observatory',!studio&&!settings&&!trade&&!statistics&&!defi);
   const viewSwitch=document.querySelector('#view-switch');if(viewSwitch)viewSwitch.hidden=studio||settings||trade||statistics||defi;
   const access=document.querySelector('#access-mode');if(access)access.hidden=settings||studio||trade||defi;
-  // Test DeFi is an isolated local workbench. Monitor refreshes and unavailable
-  // node data must never turn synthetic offers into apparent chain balances.
+  // The wallet dashboard owns its explicit connections and read-only loan
+  // queries. Monitor refreshes cannot turn rehearsal data into chain balances.
   if(defi){
     const banner=document.querySelector('#source-banner');banner.classList.remove('live');banner.style.color='';
-    document.querySelector('#source-label').textContent=t('Test DeFi · lainamarkkinan harjoittelu');
-    document.querySelector('#source-detail').textContent=t('PAIKALLINEN SIMULAATIO · EI KETJUTAPAHTUMIA');
+    document.querySelector('#source-label').textContent=t('Test DeFi · lompakot ja lainat');
+    document.querySelector('#source-detail').textContent=t('TESTIVERKOT · HYVÄKSY TAPAHTUMAT LOMPAKOSSA');
     const target=document.querySelector('#page-content');
     if(globalThis.NodusDefi)globalThis.NodusDefi.mount(target);
     else target.innerHTML=`<section class="panel panel-pad"><h1>Test DeFi</h1><p>${t('Test DeFi -tiedostot puuttuvat. Päivitä asennus.')}</p></section>`;

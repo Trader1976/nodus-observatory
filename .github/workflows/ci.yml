@@ -67,10 +67,16 @@ jobs:
       - name: Test DeFi foundation
         run: |
           python3 test_defi/sync_frontend.py --check
+          python3 -m unittest discover -s test_defi/tests -p 'test_*.py' -v
           node --check dist/test-defi/core.js
+          node --check dist/test-defi/networks.js
+          node --check dist/test-defi/tron.js
+          node --check dist/test-defi/practice.js
           node --check dist/test-defi/defi.js
           node test_defi/tests/core.mjs
+          node test_defi/tests/tron.mjs
           node test_defi/tests/frontend.mjs
+          node test_defi/tests/browser-ui.mjs
       - name: Installer syntax
         run: |
           bash -n backend/install.sh

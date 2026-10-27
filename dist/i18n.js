@@ -61,6 +61,8 @@ window.NodusI18n = (() => {
     'LEIMAUS LOMPAKOSSA · TARKISTUS VAIN LUKU': 'RECORD IN WALLET · READ-ONLY LOOKUP',
     'KOKEILU': 'LAB',
     'Test DeFi': 'Test DeFi',
+    'Test DeFi · lompakot ja lainat': 'Test DeFi · wallets and loans',
+    'TESTIVERKOT · HYVÄKSY TAPAHTUMAT LOMPAKOSSA': 'TESTNETS · APPROVE TRANSACTIONS IN YOUR WALLET',
     'Test DeFi · lainamarkkinan harjoittelu': 'Test DeFi · lending market rehearsal',
     'PAIKALLINEN SIMULAATIO · EI KETJUTAPAHTUMIA': 'LOCAL SIMULATION · NO CHAIN TRANSACTIONS',
     'Test DeFi -tiedostot puuttuvat. Päivitä asennus.': 'Test DeFi assets are missing. Update the installation.',

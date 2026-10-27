@@ -1,215 +1,205 @@
-/* Test DeFi workbench. Only the pure model changes: no wallet, RPC or keys.
- * Drafts may be shared as JSON. Simulated funding and repayment never leave
- * memory and are deliberately not exported as evidence of on-chain activity.
- */
+/* The adapter owns signatures and durable transaction records. This view never
+ * owns keys. The local rehearsal has its own mount and never enters live data. */
 (() => {
   'use strict';
-  const messages = {
-    'LOCAL SIMULATION':'PAIKALLINEN SIMULAATIO',
-    'Local simulation · no chain transactions':'Paikallinen simulaatio · ei ketjutapahtumia',
-    'Lend tUSDT. Borrow against NODUS.':'Lainaa tUSDT:tä NODUS-vakuudella.',
-    'Explore fixed-rate offers and rehearse a loan from funding to repayment.':'Kokeile kiinteäkorkoisia tarjouksia ja käy laina läpi rahoituksesta takaisinmaksuun.',
-    'All amounts below are simulated. Your wallet and its tUSDT balance are not connected.':'Kaikki alla olevat summat ovat simuloituja. Lompakkoasi ja sen tUSDT-saldoa ei ole yhdistetty.',
-    'Simulated amounts':'Simulaation määrät','Available to borrow':'Tarjolla lainattavaksi','Active test loans':'Aktiiviset testilainat','NODUS locked':'NODUS-vakuutta lukittu',
-    'Credit score':'Luottopisteet','Planned':'Tulossa','Not used in this version':'Ei käytössä tässä versiossa',
-    'Loan offers':'Lainatarjoukset','My test loans':'Omat testilainat','Create an offer':'Luo tarjous',
-    'Session only':'Vain tässä istunnossa','Drafts and simulations disappear when this page is reloaded. Export drafts to keep their terms.':'Luonnokset ja simulaatiot katoavat, kun sivu ladataan uudelleen. Vie luonnokset, jos haluat säilyttää niiden ehdot.',
-    'Load example offers':'Lataa esimerkkitarjoukset','Export offer drafts':'Vie tarjousluonnokset','Import drafts':'Tuo luonnokset',
-    'No offers yet':'Ei vielä tarjouksia','Load the 8% and 10% examples or create your own simulated offer.':'Lataa 8 %:n ja 10 %:n esimerkit tai luo oma simuloitu tarjous.',
-    'Annual interest':'Vuosikorko','Principal':'Lainapääoma','Collateral':'Vakuus','Term':'Laina-aika','Grace period':'Lisäaika','days':'päivää',
-    'Fixed for the term':'Kiinteä koko laina-ajalle','Interest for the full term':'Koko laina-ajan korko','Total repayment':'Takaisinmaksettava yhteensä',
-    'View offer':'Katso tarjous','View loan':'Katso laina','Selected':'Valittu','Simulated offer':'Simuloitu tarjous',
-    'Open':'Avoin','Active':'Aktiivinen','Repaid':'Maksettu','Cancelled':'Peruttu','Defaulted':'Vakuus lunastettu','Expired':'Vanhentunut',
-    'Offer details':'Tarjouksen tiedot','Loan details':'Lainan tiedot','Choose an offer to inspect its terms.':'Valitse tarjous nähdäksesi sen ehdot.',
-    'This offer is accepted in full by one borrower.':'Yksi lainaaja hyväksyy tarjouksen kokonaisuudessaan.',
-    'The full fixed-term interest is due even if you repay early.':'Koko sovitun laina-ajan korko maksetaan myös ennenaikaisessa takaisinmaksussa.',
-    'Collateral is a fixed NODUS amount. There is no price feed or price-based liquidation in this version.':'Vakuus on kiinteä NODUS-määrä. Hintasyötettä tai hintaan perustuvaa likvidointia ei ole tässä versiossa.',
-    'If the loan remains unpaid at the end of the grace period, the lender can claim the entire collateral. This can exceed the debt value.':'Jos laina on maksamatta lisäajan päättyessä, rahoittaja voi lunastaa koko vakuuden. Sen arvo voi ylittää velan määrän.',
-    'Simulate borrowing':'Simuloi lainanotto','Simulate cancellation':'Simuloi peruutus','Simulate repayment':'Simuloi takaisinmaksu','Simulate collateral claim':'Simuloi vakuuden lunastus',
-    'Advance to due date':'Siirry eräpäivään','Advance to grace deadline':'Siirry lisäajan loppuun','Reset this simulation':'Aloita tämä simulaatio alusta',
-    'Simulated time':'Simuloitu aika','Offer expires':'Tarjous vanhenee','Loan accepted':'Laina otettu','Due date':'Eräpäivä','Grace deadline':'Lisäaika päättyy',
-    'Repayment is possible before the grace deadline. At that deadline it closes and the collateral claim opens.':'Takaisinmaksu onnistuu ennen lisäajan päättymistä. Rajalla takaisinmaksu sulkeutuu ja vakuuden lunastus avautuu.',
-    'Collateral returned to borrower':'Vakuus palautettu lainaajalle','Principal and interest returned to lender':'Pääoma ja korko maksettu rahoittajalle',
-    'Unused funding returned to lender':'Käyttämätön rahoitus palautettu rahoittajalle','Collateral transferred to lender':'Vakuus siirretty rahoittajalle',
-    'No active test loans':'Ei aktiivisia testilainoja','Take a simulated loan from the offers to try repayment and the overdue path.':'Ota simuloitu laina tarjouksista kokeillaksesi takaisinmaksua ja maksamatta jäävää lainaa.',
-    'Name':'Nimi','Example: 30-day loan':'Esimerkiksi: 30 päivän laina','Amount to lend (tUSDT)':'Lainattava määrä (tUSDT)','Required collateral (NODUS)':'Vaadittu vakuus (NODUS)',
-    'Annual interest (%)':'Vuosikorko (%)','Term (days)':'Laina-aika (päivää)','Grace period (days)':'Lisäaika (päivää)',
-    'Use a decimal point. tUSDT has 6 decimals and NODUS has 8.':'Käytä desimaalipistettä. tUSDT:n tarkkuus on 6 ja NODUSin 8 desimaalia.',
-    'Create a simulated funded offer':'Luo simuloitu rahoitettu tarjous',
-    'Offers remain open for 7 simulated days. Principal is reserved when the offer is created.':'Tarjous on avoin 7 simuloitua päivää. Pääoma varataan tarjouksen luomisen yhteydessä.',
-    'No price valuation is implied by the collateral amount. Network fees are outside this simulation.':'Vakuuden määrä ei sisällä hinta-arviota. Verkkokulut eivät sisälly simulaatioon.',
-    'Next building blocks':'Seuraavat peruspalikat','Wallet execution':'Tapahtumat lompakossa','Shared offer book':'Yhteinen tarjouskirja','Verified credit history':'Todennettava maksuhistoria','Connect reminders':'Connect-muistutukset',
-    'Examples loaded. These are simulated offers.':'Esimerkit ladattu. Tarjoukset ovat simuloituja.',
-    'Simulated offer created. No funds were transferred.':'Simuloitu tarjous luotu. Varoja ei siirretty.',
-    'Loan simulated. No funds were transferred.':'Laina simuloitu. Varoja ei siirretty.',
-    'Repayment simulated.':'Takaisinmaksu simuloitu.','Cancellation simulated.':'Peruutus simuloitu.','Collateral claim simulated.':'Vakuuden lunastus simuloitu.',
-    'Simulation time advanced.':'Simulaation aikaa siirretty.','Simulation reset.':'Simulaatio aloitettu alusta.',
-    'Drafts imported. Imported files do not prove funding.':'Luonnokset tuotu. Tuodut tiedostot eivät todista rahoitusta.',
-    'Drafts exported. Funding and loan states are not included.':'Luonnokset viety. Rahoitus ja lainojen tilat eivät sisälly tiedostoon.',
-    'Check the amounts and terms. The action could not be completed.':'Tarkista määrät ja ehdot. Toimintoa ei voitu suorittaa.',
-    'Give the offer a name (1–80 characters).':'Anna tarjoukselle nimi (1–80 merkkiä).',
-    'Annual interest must be 0.01–50%.':'Vuosikoron pitää olla 0.01–50 %.',
-    'The term must be 1–365 whole days.':'Laina-ajan pitää olla 1–365 kokonaista päivää.',
-    'The grace period must be 1–30 whole days.':'Lisäajan pitää olla 1–30 kokonaista päivää.',
-    'The offer list is full (50).':'Tarjouslista on täynnä (50).','The imported draft conflicts with an existing offer.':'Tuotu luonnos on ristiriidassa olemassa olevan tarjouksen kanssa.',
-    'The file is too large or invalid. No drafts were imported.':'Tiedosto on liian suuri tai virheellinen. Luonnoksia ei tuotu.',
-    'A download could not be created.':'Tiedostoa ei voitu ladata.','Simulation history':'Simulaation tapahtumat',
-    'Funding reserved':'Rahoitus varattu','Borrowed':'Laina otettu','Repaid in full':'Laina maksettu','Offer cancelled':'Tarjous peruttu','Collateral claimed':'Vakuus lunastettu','Time advanced':'Aikaa siirretty',
-    'Reset clears the loan state and returns this offer to the start of its local simulation.':'Aloita alusta tyhjentää lainan tilan ja palauttaa tarjouksen paikallisen simulaation alkuun.',
-    'Example 8%':'Esimerkki 8 %','Example 10%':'Esimerkki 10 %',
+  const fi = {
+    'Your DeFi test lab.':'DeFi-testilaboratorio.',
+    'Connect your wallet, explore the tested loan contract and prepare for lending across Nodus and TRON.':'Yhdistä lompakkosi, tutki testattua lainasopimusta ja valmistaudu Nodusin ja TRONin välisiin lainoihin.',
+    'TEST NETWORKS ONLY':'VAIN TESTIVERKOT','Wallet & test assets':'Lompakko ja testivarat','Nodus loans':'Nodus-lainat','Practice':'Harjoittelu',
+    'Your test wallet':'Testilompakkosi','Connect TronLink':'Yhdistä TronLink','Disconnect':'Katkaise yhteys','Refresh balances':'Päivitä saldot',
+    'Not connected':'Ei yhdistetty','Connected':'Yhdistetty','Selected test network':'Valittu testiverkko','Wallet network':'Lompakon verkko',
+    'Connect TronLink to see your balances and send test USDT. Your keys stay in your wallet.':'Yhdistä TronLink nähdäksesi saldosi ja lähettääksesi testi-USDT:tä. Avaimesi pysyvät lompakossasi.',
+    'Wallet address':'Lompakon osoite','Waiting for wallet':'Odottaa lompakkoa','Test tokens have no monetary value.':'Testitokeneilla ei ole rahallista arvoa.',
+    'Network fee balance':'Verkkokulujen saldo','Test token balance':'Testitokenin saldo','Paid in test TRX':'Maksetaan testi-TRX:llä','Balance unknown':'Saldo ei tiedossa',
+    'Send test USDT':'Lähetä testi-USDT:tä','Recipient TRON address':'Vastaanottajan TRON-osoite','Amount (test USDT)':'Määrä (testi-USDT)',
+    'Example: 10.25':'Esimerkiksi: 10.25','Review transfer':'Tarkista siirto','Use up to six decimal places.':'Käytä enintään kuutta desimaalia.',
+    'Transfers are available on Nile. Shasta needs a verified test-token deployment before token actions can be enabled.':'Siirrot ovat käytössä Nilessä. Shasta tarvitsee vahvistetun testitokenin ennen tokenitoimintojen käyttöönottoa.',
+    'Transfer review':'Siirron tarkistus','From':'Lähettäjä','To':'Vastaanottaja','Token contract':'Tokenin sopimus','Amount':'Määrä',
+    'Energy fee limit':'Energiamaksun yläraja','Up to 100 test TRX for Energy. Bandwidth and other network charges may add TRX. Check the final request in TronLink.':'Energiaan enintään 100 testi-TRX:ää. Kaistanleveys ja muut verkkokulut voivat lisätä TRX-maksuja. Tarkista lopullinen pyyntö TronLinkissä.',
+    'Confirm in TronLink':'Vahvista TronLinkissä','Back':'Takaisin','Transfer submitted. Use Refresh transactions to check confirmation.':'Siirto lähetetty. Tarkista vahvistus painikkeesta Päivitä tapahtumat.',
+    'Recent transactions':'Viimeisimmät tapahtumat','Refresh transactions':'Päivitä tapahtumat','No transactions from this page yet.':'Tältä sivulta ei ole vielä lähetetty tapahtumia.',
+    'Pending':'Odottaa vahvistusta','Confirmed':'Vahvistettu','Failed':'Epäonnistui','Unknown':'Tila epävarma','Signed':'Allekirjoitettu',
+    'View transaction':'Katso tapahtuma','Transaction records are stored in this browser so a page reload does not invite a duplicate transfer.':'Tapahtumatiedot säilyvät tässä selaimessa, jotta sivun uudelleenlataus ei johda siirron toistamiseen.',
+    'A loan across two networks':'Laina kahden verkon välillä','Test USDT on TRON':'Testi-USDT TRONissa','NODUS on Nodus':'NODUS Nodusissa',
+    'Wallet connection ready':'Lompakkoyhteys valmis','Wallet connection pending':'Lompakkoyhteys odottaa',
+    'Connect a wallet':'Yhdistä lompakko','Choose an offer':'Valitse tarjous','Lock collateral':'Lukitse vakuus','Repay & withdraw':'Maksa ja nosta',
+    'Cross-chain lending is not enabled yet. The settlement pattern and the Nodus wallet connection must be integrated first.':'Ketjujen välinen lainaaminen ei ole vielä käytössä. Ensin liitetään selvitysmalli ja Nodus-lompakon selainyhteys.',
+    'Lend test USDT':'Anna testi-USDT:tä lainaksi','Borrow with NODUS':'Lainaa NODUS-vakuudella','Try the loan flow':'Kokeile lainan kulkua',
+    'Practice the full loan lifecycle with clearly marked local examples.':'Harjoittele lainan koko elinkaari selvästi merkityillä paikallisilla esimerkeillä.',
+    'On-chain OSD6 loan book':'OSD6-lainat ketjussa','Read the deployed Nodus test contract. These records are separate from TRON test USDT and the practice examples.':'Lue Nodus-testiverkkoon julkaistua sopimusta. Nämä tiedot ovat erillään TRONin testi-USDT:stä ja harjoittelun esimerkeistä.',
+    'Read loan contract':'Lue lainasopimus','Refresh loan book':'Päivitä lainat','Loading loan contract…':'Luetaan lainasopimusta…','Loan data unavailable':'Lainatiedot eivät ole saatavilla',
+    'Read the contract to see its offers and loans.':'Lue sopimus nähdäksesi sen tarjoukset ja lainat.','No offers returned by the contract.':'Sopimus ei palauttanut tarjouksia.',
+    'Offer':'Tarjous','Open':'Avoin','Active':'Aktiivinen','Repaid':'Maksettu','Cancelled':'Peruttu','Defaulted':'Vakuus lunastettu',
+    'Principal':'Lainapääoma','Collateral':'Vakuus','Annual interest':'Vuosikorko','Term':'Laina-aika','days':'päivää','View details':'Katso tiedot',
+    'Loan details':'Lainan tiedot','Interest for the full term':'Koko laina-ajan korko','Total repayment':'Takaisinmaksettava yhteensä',
+    'Lender':'Rahoittaja','Borrower':'Lainaaja','Due date':'Eräpäivä','Grace deadline':'Lisäaika päättyy','Offer expires':'Tarjous vanhenee','Grace period':'Lisäaika',
+    'Direct Nodus signing awaits a supported browser wallet connection. The completed manual OSD6 test does not provide that connection.':'Nodus-tapahtumien allekirjoitus odottaa tuettua selainyhteyttä lompakkoon. Tehty OSD6-testi ei vielä tarjoa tätä liitäntää.',
+    'Accept offer':'Hyväksy tarjous','Repay loan':'Maksa laina','Withdraw funds':'Nosta varat','Read-only contract view':'Sopimuksen lukunäkymä',
+    'Reported by the connected Nodus node; not independently proven against the chain.':'Yhdistetyn Nodus-noden ilmoittama tieto; ei itsenäisesti todennettu ketjusta.',
+    'Observed at':'Havaittu','Token':'Token','Loan contract':'Lainasopimus','The loan book could not be loaded. Try again.':'Lainoja ei voitu ladata. Yritä uudelleen.',
+    'This action is not available.':'Tämä toiminto ei ole käytettävissä.','TronLink integration is unavailable. Reload the page.':'TronLink-liitäntä ei ole saatavilla. Lataa sivu uudelleen.',
+    'The wallet or network changed. Review the transfer again.':'Lompakko tai verkko vaihtui. Tarkista siirto uudelleen.','Working…':'Käsitellään…',
+    'Install TronLink and reload this page.':'Asenna TronLink ja lataa sivu uudelleen.',
+    'Unlock TronLink and connect this site.':'Avaa TronLinkin lukitus ja yhdistä tämä sivu.',
+    'Connect TronLink first.':'Yhdistä ensin TronLink.',
+    'Select a supported test network.':'Valitse tuettu testiverkko.',
+    'Select TRON Nile in TronLink. Mainnet and custom RPCs are disabled.':'Valitse TronLinkistä TRON Nile. Pääverkko ja omat RPC-palvelimet eivät ole käytössä.',
+    'Select TRON Shasta in TronLink. Mainnet and custom RPCs are disabled.':'Valitse TronLinkistä TRON Shasta. Pääverkko ja omat RPC-palvelimet eivät ole käytössä.',
+    'Select TRON Nile in TronLink, then connect again.':'Valitse TronLinkistä TRON Nile ja yhdistä uudelleen.',
+    'Select TRON Shasta in TronLink, then connect again.':'Valitse TronLinkistä TRON Shasta ja yhdistä uudelleen.',
+    'The wallet request was declined.':'Lompakon pyyntö hylättiin.',
+    'The wallet request was rejected.':'Lompakon pyyntö hylättiin.',
+    'Confirmation declined by user':'Hylkäsit vahvistuksen lompakossa.',
+    'User rejected the request.':'Hylkäsit pyynnön lompakossa.',
+    'A wallet request is already in progress.':'Lompakossa on jo pyyntö käsiteltävänä.',
+    'Enter a positive amount with at most 6 decimals.':'Anna positiivinen määrä enintään kuudella desimaalilla.',
+    'Enter a valid TRON recipient address.':'Anna kelvollinen vastaanottajan TRON-osoite.',
+    'The test token balance is too low.':'Testitokenin saldo ei riitä.',
+    'No reviewed test token is configured for this network.':'Tälle verkolle ei ole vielä vahvistettu testitokenia.',
+    'Browser storage is unavailable. Nothing was broadcast.':'Selaimen tallennustila ei ole käytettävissä. Tapahtumaa ei lähetetty.',
+    'Secure browser locking is unavailable. Use HTTPS or localhost before sending.':'Selaimen lukitus ei ole käytettävissä. Käytä HTTPS-yhteyttä tai localhost-osoitetta ennen lähettämistä.',
+    'The saved transaction journal cannot be read. Sending is disabled.':'Tallennettuja tapahtumatietoja ei voida lukea. Lähettäminen on estetty.',
+    'The pending transaction journal is full. Reconcile it before sending.':'Odottavien tapahtumien lista on täynnä. Päivitä tapahtumien tilat ennen lähettämistä.',
+    'The wallet account or network changed. Connect again.':'Lompakon tili tai verkko vaihtui. Yhdistä uudelleen.',
+    'The connected node has the wrong genesis block.':'Yhdistetty node kuuluu väärään verkkoon.',
+    'This review is no longer current. Prepare the transfer again.':'Tarkistus ei ole enää voimassa. Valmistele siirto uudelleen.',
+    'The wallet account changed. Prepare the transfer again.':'Lompakon tili vaihtui. Valmistele siirto uudelleen.',
+    'The signed transaction differs from the reviewed transfer. Nothing was broadcast.':'Allekirjoitettu tapahtuma eroaa tarkistetusta siirrosta. Tapahtumaa ei lähetetty.',
+    'The wallet account or network changed. Nothing was broadcast.':'Lompakon tili tai verkko vaihtui. Tapahtumaa ei lähetetty.',
+    'Submission is uncertain. Refresh transactions before doing anything again.':'Lähetyksen tila on epävarma. Päivitä tapahtumat ennen kuin yrität mitään uudelleen.',
+    'The node rejected the transfer. Check the transaction record.':'Node hylkäsi siirron. Tarkista tapahtumatieto.',
+    'Broadcast status is uncertain. Check this transaction before sending again.':'Lähetyksen tila on epävarma. Tarkista tämä tapahtuma ennen kuin lähetät uudelleen.',
+    'The wallet request could not be completed.':'Lompakon pyyntöä ei voitu suorittaa.',
+    'Offers shown':'Näytetyt tarjoukset','of':'/','This is a partial loan history.':'Tämä on osa lainahistoriasta.',
   };
-  const C = () => globalThis.NodusDefiCore;
-  const T = key => globalThis.NodusI18n?.language?.() === 'en' ? key : (messages[key] ?? key);
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const T = key => globalThis.NodusI18n?.language?.() === 'en' ? key : (fi[key] ?? key);
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const copy = value => JSON.parse(JSON.stringify(value));
-  const LIMIT = 50, IMPORT_BYTES = 65536;
-  let root = null, states = [], selectedId = null, tab = 'offers', message = '', failed = false, importVersion = 0;
-  let form = {name:'',principal:'100',collateral:'10000',apr:'8',termDays:'30',graceDays:'3'};
-  const selected = () => states.find(s => s.offer.id === selectedId) ?? null;
-  const amount = (raw, digits) => esc(C().formatAmount(raw, digits));
-  // A sum can exceed an individual loan's cap. Its component terms have already
-  // been validated, so format this bounded total without reapplying that cap.
-  const aggregateAmount = (raw, digits) => {
-    const padded=raw.padStart(digits+1,'0'),fraction=padded.slice(-digits).replace(/0+$/,'');
-    return esc(padded.slice(0,-digits)+(fraction?'.'+fraction:''));
+  const emptyWallet = () => ({connected:false,address:null,selectedNetwork:'nile',network:null,chainId:null,balances:{trxRaw:null,tokenRaw:null},token:null,busy:false,error:null,pending:[]});
+  let root=null,view='wallet',wallet=null,walletState=emptyWallet(),review=null,form={to:'',amount:''},message='',failed=false,busy=false;
+  let loanData=null,loanLoading=false,loanId=null,loadVersion=0,controller=null;
+  const profiles = () => globalThis.NodusDefiNetworks?.profiles ?? {};
+  const format = (raw,digits=6) => {
+    if(!/^[0-9]+$/.test(String(raw??'')))return '—';
+    const s=BigInt(raw).toString().padStart(digits+1,'0'),f=digits?s.slice(-digits).replace(/0+$/,''):'';
+    return (digits?s.slice(0,-digits):s)+(f?'.'+f:'');
   };
-  const offerName = o => ['example-8','example-10'].includes(o.id) && ['Example 8%','Example 10%'].includes(o.name) ? T(o.name) : o.name;
-  const apr = bps => C().formatAmount(String(bps), 2) + ' %';
-  const stamp = seconds => new Date(seconds * 1000).toISOString().replace('T', ' ').replace('.000Z', ' UTC');
-  const button = (label, action, disabled = false, extra = '') => `<button type="button" class="button ${extra}" data-defi-action="${action}"${disabled ? ' disabled' : ''}>${esc(T(label))}</button>`;
-  const status = s => s.status === 'open' && s.now >= s.offer.expiresAt ? 'Expired' : ({open:'Open',active:'Active',repaid:'Repaid',cancelled:'Cancelled',defaulted:'Defaulted'}[s.status]);
-  const deadline = s => s.dueAt + s.offer.graceDays * 86400;
-  function capture() {
-    if (!root) return;
-    for (const key of Object.keys(form)) {
-      const el = root.querySelector('#defi-' + key);
-      if (el) form[key] = el.value;
-    }
+  const button=(label,action,disabled=false,extra='')=>`<button type="button" class="button ${extra}" data-defi-live-action="${action}"${disabled?' disabled':''}>${esc(T(label))}</button>`;
+  const address=value=>`<code class="defi-address">${esc(value??'—')}</code>`;
+  const time=value=>{const ms=Number(value)*1000;return Number.isSafeInteger(ms)&&ms>0&&ms<=8640000000000000?new Date(ms).toISOString().replace('T',' ').replace('.000Z',' UTC'):'—';};
+  const row=(label,value)=>`<div><dt>${esc(T(label))}</dt><dd>${value}</dd></div>`;
+  const statuses={open:'Open',active:'Active',repaid:'Repaid',cancelled:'Cancelled',defaulted:'Defaulted',pending:'Pending',confirmed:'Confirmed',failed:'Failed',unknown:'Unknown',signed:'Signed'};
+  const statusName=value=>statuses[value]??'Unknown';
+  function capture(){
+    if(view==='practice'){globalThis.NodusDefiPractice?.capture();return;}
+    if(!root)return;
+    for(const key of ['to','amount']){const input=root.querySelector('#defi-live-'+key);if(input)form[key]=input.value;}
   }
-  function summary() {
-    const open = states.filter(s => s.status === 'open' && s.now < s.offer.expiresAt);
-    const active = states.filter(s => s.status === 'active');
-    const sum = (list, key) => list.reduce((total, s) => total + BigInt(s.offer[key]), 0n).toString();
-    return `<section class="defi-stats" aria-label="${esc(T('Simulated amounts'))}">
-      <div class="panel defi-stat"><span>${T('Available to borrow')}</span><strong>${aggregateAmount(sum(open, 'principalRaw'), 6)} <small>tUSDT</small></strong></div>
-      <div class="panel defi-stat"><span>${T('Active test loans')}</span><strong>${active.length}</strong></div>
-      <div class="panel defi-stat"><span>${T('NODUS locked')}</span><strong>${aggregateAmount(sum(active, 'collateralRaw'), 8)} <small>NODUS</small></strong></div>
-      <div class="panel defi-stat defi-planned"><span>${T('Credit score')}</span><strong>${T('Planned')}</strong><small>${T('Not used in this version')}</small></div>
-    </section>`;
+  function focusFeedback(selector='#defi-live-feedback'){
+    const el=root?.querySelector(selector);el?.focus?.({preventScroll:true});el?.scrollIntoView?.({block:'nearest',behavior:'smooth'});
   }
-  function offerCard(s) {
-    const o = s.offer, q = C().quote(o);
-    return `<article class="panel defi-offer${selectedId === o.id ? ' defi-selected' : ''}">
-      <div class="defi-card-head"><span class="defi-status defi-status-${s.status}">${esc(T(status(s)))}</span><span class="defi-muted">${T('Simulated offer')}</span></div>
-      <h3>${esc(offerName(o))}</h3><div class="defi-rate">${esc(apr(o.aprBps))}<span>${T('Annual interest')}</span></div>
-      <dl class="defi-terms"><div><dt>${T('Principal')}</dt><dd>${amount(o.principalRaw,6)} tUSDT</dd></div><div><dt>${T('Collateral')}</dt><dd>${amount(o.collateralRaw,8)} NODUS</dd></div><div><dt>${T('Term')}</dt><dd>${o.termDays} ${T('days')}</dd></div><div><dt>${T('Total repayment')}</dt><dd>${amount(q.repayRaw,6)} tUSDT</dd></div></dl>
-      <button type="button" class="button defi-card-button" data-defi-select="${esc(o.id)}" aria-pressed="${selectedId === o.id}">${T(s.status === 'open' ? 'View offer' : 'View loan')}<span aria-hidden="true"> →</span></button>
-    </article>`;
-  }
-  function book() {
-    const list = tab === 'loans' ? states.filter(s => ['active','repaid','defaulted'].includes(s.status)) : states;
-    const empty = tab === 'loans' ? ['No active test loans','Take a simulated loan from the offers to try repayment and the overdue path.'] : ['No offers yet','Load the 8% and 10% examples or create your own simulated offer.'];
-    return `<section class="defi-market"><div class="defi-section-head"><h2>${T(tab === 'loans' ? 'My test loans' : 'Loan offers')}</h2>${button('Load example offers','examples',states.length > LIMIT - 2 || ['example-8','example-10'].every(id=>states.some(s=>s.offer.id===id)))}</div>
-      ${list.length ? `<div class="defi-offers">${list.map(offerCard).join('')}</div>` : `<div class="panel defi-empty"><span class="defi-empty-icon" aria-hidden="true">↔</span><h3>${T(empty[0])}</h3><p>${T(empty[1])}</p></div>`}</section>`;
-  }
-  function detail() {
-    const s = selected();
-    if (!s) return `<section class="panel defi-details"><h2>${T('Offer details')}</h2><p>${T('Choose an offer to inspect its terms.')}</p></section>`;
-    const o=s.offer,q=C().quote(o),active=s.status==='active',open=s.status==='open';
-    const labels={accept:'Borrowed',repay:'Repaid in full',cancel:'Offer cancelled',default:'Collateral claimed',advance:'Time advanced'};
-    const actions = open ? button('Simulate borrowing','accept',s.now>=o.expiresAt,'defi-primary')+button('Simulate cancellation','cancel') : active ? button('Simulate repayment','repay',s.now>=deadline(s),'defi-primary')+button('Advance to due date','due',s.now>=s.dueAt)+button('Advance to grace deadline','deadline',s.now>=deadline(s))+button('Simulate collateral claim','default',s.now<deadline(s),'defi-danger') : '';
-    return `<section class="panel defi-details" id="defi-details"><div class="defi-section-head"><div><span class="eyebrow">${T(s.acceptedAt!==null?'Loan details':'Offer details')}</span><h2>${esc(offerName(o))}</h2></div><span class="defi-status defi-status-${s.status}">${T(status(s))}</span></div>
-      <div class="defi-settlement"><div><span>${T('Principal')}</span><strong>${amount(o.principalRaw,6)} <small>tUSDT</small></strong></div><span aria-hidden="true">+</span><div><span>${T('Interest for the full term')}</span><strong>${amount(q.interestRaw,6)} <small>tUSDT</small></strong></div><span aria-hidden="true">=</span><div class="defi-total"><span>${T('Total repayment')}</span><strong>${amount(q.repayRaw,6)} <small>tUSDT</small></strong></div></div>
-      <p class="defi-fixed-note">${T('The full fixed-term interest is due even if you repay early.')}</p>
-      <dl class="defi-detail-meta"><div><dt>${T('Annual interest')}</dt><dd>${esc(apr(o.aprBps))} · ${T('Fixed for the term')}</dd></div><div><dt>${T('Collateral')}</dt><dd>${amount(o.collateralRaw,8)} NODUS</dd></div><div><dt>${T('Term')}</dt><dd>${o.termDays} ${T('days')} + ${o.graceDays} ${T('days')} (${T('Grace period')})</dd></div><div><dt>${T('Simulated time')}</dt><dd><time>${stamp(s.now)}</time></dd></div>${s.acceptedAt !== null ? `<div><dt>${T('Loan accepted')}</dt><dd><time>${stamp(s.acceptedAt)}</time></dd></div><div><dt>${T('Due date')}</dt><dd><time>${stamp(s.dueAt)}</time></dd></div><div><dt>${T('Grace deadline')}</dt><dd><time>${stamp(deadline(s))}</time></dd></div>`:`<div><dt>${T('Offer expires')}</dt><dd><time>${stamp(o.expiresAt)}</time></dd></div>`}</dl>
-      <p>${T('This offer is accepted in full by one borrower.')}</p><p>${T('Collateral is a fixed NODUS amount. There is no price feed or price-based liquidation in this version.')}</p>
-      <div class="defi-economic-warning"><strong>${T('If the loan remains unpaid at the end of the grace period, the lender can claim the entire collateral. This can exceed the debt value.')}</strong><p>${T('Repayment is possible before the grace deadline. At that deadline it closes and the collateral claim opens.')}</p></div>
-      ${s.status === 'repaid' ? `<div class="defi-result"><strong>${T('Principal and interest returned to lender')}</strong><span>${T('Collateral returned to borrower')}: ${amount(o.collateralRaw,8)} NODUS</span></div>` : s.status === 'cancelled' ? `<div class="defi-result">${T('Unused funding returned to lender')}: ${amount(o.principalRaw,6)} tUSDT</div>` : s.status === 'defaulted' ? `<div class="defi-result defi-economic-warning">${T('Collateral transferred to lender')}: ${amount(o.collateralRaw,8)} NODUS</div>`:''}
-      <div class="defi-buttons">${actions}</div>${s.status!=='open'?`<div class="defi-reset">${button('Reset this simulation','reset')}<small>${T('Reset clears the loan state and returns this offer to the start of its local simulation.')}</small></div>`:''}
-      <details class="defi-history"><summary>${T('Simulation history')}</summary><ol><li>${T('Funding reserved')} · ${stamp(o.createdAt)}</li>${s.events.map(e=>`<li>${esc(T(labels[e.action]??'Time advanced'))} · ${stamp(e.now)}</li>`).join('')}</ol></details>
-    </section>`;
-  }
-  function field(key,label,type='text',extra='') {
-    return `<label class="defi-field" for="defi-${key}"><span>${T(label)}</span><input id="defi-${key}" name="${key}" type="${type}" value="${esc(form[key])}" autocomplete="off" maxlength="80" ${extra}></label>`;
-  }
-  function createForm() {
-    return `<section class="panel defi-create"><div class="defi-section-head"><h2>${T('Create an offer')}</h2><span class="defi-status">${T('LOCAL SIMULATION')}</span></div><form id="defi-form" novalidate><div class="defi-form-grid">
-      ${field('name','Name','text','required')}${field('principal','Amount to lend (tUSDT)','text','inputmode="decimal" required')}${field('collateral','Required collateral (NODUS)','text','inputmode="decimal" required')}${field('apr','Annual interest (%)','text','inputmode="decimal" required')}${field('termDays','Term (days)','text','inputmode="numeric" required')}${field('graceDays','Grace period (days)','text','inputmode="numeric" required')}
-      </div><p>${T('Use a decimal point. tUSDT has 6 decimals and NODUS has 8.')}</p><p>${T('Offers remain open for 7 simulated days. Principal is reserved when the offer is created.')}</p><p>${T('No price valuation is implied by the collateral amount. Network fees are outside this simulation.')}</p><button type="submit" class="button defi-primary">${T('Create a simulated funded offer')}</button></form></section>`;
-  }
-  function render() {
-    if (!root) return;
-    root.innerHTML=`<div class="defi-workbench"><header class="defi-hero"><div><span class="eyebrow">NODUS / tUSDT</span><h1>${T('Lend tUSDT. Borrow against NODUS.')}</h1><p>${T('Explore fixed-rate offers and rehearse a loan from funding to repayment.')}</p></div><span class="defi-network">NODUS TESTNET</span></header>
-      <div class="defi-simulation-banner"><span class="defi-simulation-dot" aria-hidden="true"></span><div><strong>${T('Local simulation · no chain transactions')}</strong><p>${T('All amounts below are simulated. Your wallet and its tUSDT balance are not connected.')}</p></div></div>
-      ${summary()}<p id="defi-message" class="defi-message${failed?' defi-error':''}" role="status" aria-live="polite">${esc(T(message))}</p>
-      <div class="defi-toolbar"><nav class="defi-tabs" aria-label="Test DeFi">${[['offers','Loan offers'],['loans','My test loans'],['create','Create an offer']].map(([key,label])=>`<button type="button" data-defi-tab="${key}" aria-pressed="${tab===key}">${T(label)}</button>`).join('')}</nav><div class="defi-buttons">${button('Export offer drafts','export',!states.length)}<label class="button defi-import" for="defi-import">${T('Import drafts')}<input id="defi-import" type="file" accept=".json,application/json"></label></div></div>
-      ${tab==='create'?createForm():`<div class="defi-main-grid"><div>${book()}</div>${detail()}</div>`}
-      <footer class="defi-footer"><div><strong>${T('Session only')}</strong><p>${T('Drafts and simulations disappear when this page is reloaded. Export drafts to keep their terms.')}</p></div><div><strong>${T('Next building blocks')}</strong><p>${['Wallet execution','Shared offer book','Verified credit history','Connect reminders'].map(x=>T(x)).join(' · ')}</p></div></footer></div>`;
-    bind();
-  }
-  function addOffers(offers) {
-    // Validate the entire import before mutating anything; duplicate IDs cannot
-    // overwrite a loan in progress or resurrect cancelled funding silently.
-    const next=offers.map(C().validateOffer), ids=new Set();
-    for (const o of next) {
-      if(ids.has(o.id)) throw Error('The imported draft conflicts with an existing offer.');
-      ids.add(o.id);
-      const existing=states.find(s=>s.offer.id===o.id);
-      if(existing && JSON.stringify(existing.offer)!==JSON.stringify(o)) throw Error('The imported draft conflicts with an existing offer.');
-    }
-    const fresh=next.filter(o=>!states.some(s=>s.offer.id===o.id));
-    if(states.length+fresh.length>LIMIT) throw Error('The offer list is full (50).');
-    states.push(...fresh.map(C().start));
-    if(!selectedId && states.length) selectedId=states[0].offer.id;
-  }
-  function download(text) {
-    let url;
-    try {url=URL.createObjectURL(new Blob([text],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='nodus-test-defi-drafts.json';document.body.appendChild(a);a.click();a.remove();}
-    catch {throw Error('A download could not be created.');}
-    finally {if(url) URL.revokeObjectURL(url);}
-  }
-  function act(action) {
-    capture();failed=false;message='';
-    try {
-      const s=selected();
-      if(action==='examples') {addOffers(C().sampleOffers(Math.floor(Date.now()/1000)).filter(o=>!states.some(s=>s.offer.id===o.id)));message='Examples loaded. These are simulated offers.';}
-      else if(action==='create') {
-        if(!/^\d+$/.test(form.termDays)||!/^\d+$/.test(form.graceDays)) throw Error('input');
-        const offer=C().createOffer({name:form.name.trim(),principal:form.principal,collateral:form.collateral,aprBps:Number(C().parseAmount(form.apr,2)),termDays:Number(form.termDays),graceDays:Number(form.graceDays),offerDays:7},Math.floor(Date.now()/1000));
-        addOffers([offer]);selectedId=offer.id;tab='offers';message='Simulated offer created. No funds were transferred.';
-      } else if(action==='export') {download(C().exportOffers(states.map(x=>x.offer)));message='Drafts exported. Funding and loan states are not included.';}
-      else if(action==='reset') {states=states.map(x=>x===s?C().start(x.offer):x);message='Simulation reset.';}
-      else if(s) {
-        // Time is explicit and local. The model enforces the same deadline
-        // boundary as the contract; the UI never uses a browser clock to claim
-        // that real collateral can be seized.
-        const advance=action==='due'||action==='deadline';
-        const next=C().step(s,advance?'advance':action,{actor:action==='accept'||action==='repay'?'borrower':'lender',now:advance?(action==='due'?s.dueAt:deadline(s)):s.now});
-        states=states.map(x=>x===s?next:x);
-        message=advance?'Simulation time advanced.':({accept:'Loan simulated. No funds were transferred.',repay:'Repayment simulated.',cancel:'Cancellation simulated.',default:'Collateral claim simulated.'}[action]??'');
+  function ensureWallet(){
+    if(wallet)return wallet;
+    if(!globalThis.NodusDefiTron?.create)throw Error('TronLink integration is unavailable. Reload the page.');
+    wallet=globalThis.NodusDefiTron.create({onChange:()=>{
+      capture();walletState=wallet?.getState()??emptyWallet();
+      if(review&&(review.from!==walletState.address||review.network!==walletState.network||review.chainId!==walletState.chainId)){
+        review=null;message='The wallet or network changed. Review the transfer again.';failed=true;
       }
-    } catch(error) {
-      failed=true;
-      const validation=error.code==='invalid_name'?'Give the offer a name (1–80 characters).':error.field==='aprBps'?'Annual interest must be 0.01–50%.':error.field==='termDays'?'The term must be 1–365 whole days.':error.field==='graceDays'?'The grace period must be 1–30 whole days.':null;
-      message=validation??(Object.hasOwn(messages,error.message)?error.message:'Check the amounts and terms. The action could not be completed.');
-    }
-    render();
-  }
-  function bind() {
-    root.querySelectorAll('[data-defi-action]').forEach(el=>el.onclick=()=>act(el.dataset.defiAction));
-    root.querySelectorAll('[data-defi-select]').forEach(el=>el.onclick=()=>{capture();selectedId=el.dataset.defiSelect;message='';failed=false;render();root.querySelector('#defi-details')?.scrollIntoView({block:'nearest',behavior:'smooth'});});
-    root.querySelectorAll('[data-defi-tab]').forEach(el=>el.onclick=()=>{capture();tab=el.dataset.defiTab;message='';failed=false;render();});
-    const create=root.querySelector('#defi-form');if(create)create.onsubmit=event=>{event.preventDefault();act('create');};
-    root.querySelector('#defi-import').onchange=async event=>{
-      const file=event.target.files?.[0],version=++importVersion;if(!file)return;capture();
-      try {if(file.size>IMPORT_BYTES)throw Error('size');const text=await file.text();if(version!==importVersion||!root)return;addOffers(C().importOffers(text));failed=false;message='Drafts imported. Imported files do not prove funding.';tab='offers';}
-      catch(error){if(version!==importVersion||!root)return;failed=true;message=Object.hasOwn(messages,error.message)?error.message:'The file is too large or invalid. No drafts were imported.';}
       render();
-    };
+    }});
+    walletState=wallet.getState();return wallet;
   }
-  globalThis.NodusDefi=Object.freeze({
-    mount(target){capture();root=target;render();},capture,
-    unmount(){capture();root=null;++importVersion;},
-    getState:()=>copy({states,selectedId,tab,form,message,failed}),
-  });
+  function feedback(includeWallet=true){
+    const text=(includeWallet?walletState.error:null)||message||'';
+    return `<div id="defi-live-feedback" class="defi-live-feedback${failed||(includeWallet&&walletState.error)?' defi-error':''}" role="status" aria-live="polite" tabindex="-1">${esc(T(text))}</div>`;
+  }
+  function walletCard(){
+    const s=walletState,locked=busy||s.busy;
+    return `<section class="panel defi-wallet-card"><div class="defi-section-head"><div><span class="eyebrow">TRON / TRONLINK</span><h2>${T('Your test wallet')}</h2></div><span class="defi-status ${s.connected?'':'defi-status-cancelled'}">${T(s.connected?'Connected':'Not connected')}</span></div>
+      <div class="defi-wallet-controls"><label class="defi-field" for="defi-live-network"><span>${T('Selected test network')}</span><select id="defi-live-network" class="select"${locked?' disabled':''}><option value="nile"${s.selectedNetwork==='nile'?' selected':''}>TRON Nile</option><option value="shasta"${s.selectedNetwork==='shasta'?' selected':''}>TRON Shasta</option></select></label><div class="defi-buttons">${s.connected?button('Refresh balances','refresh',locked)+button('Disconnect','disconnect',locked):button('Connect TronLink','connect',locked,'defi-primary')}</div></div>
+      ${s.connected?`<dl class="defi-detail-meta">${row('Wallet address',address(s.address))}${row('Wallet network',esc(profiles()[s.network]?.name??T('Unknown')))}</dl>`:`<p>${T('Connect TronLink to see your balances and send test USDT. Your keys stay in your wallet.')}</p>`}
+      <div class="defi-live-balances"><div><span>${T('Network fee balance')}</span><strong>${esc(format(s.balances?.trxRaw))}<small>TRX</small></strong><span>${T('Paid in test TRX')}</span></div><div><span>${T('Test token balance')}</span><strong>${esc(format(s.balances?.tokenRaw))}<small>${esc(s.token?.symbol??'test USDT')}</small></strong><span>${s.token?address(s.token.address):T('Balance unknown')}</span></div></div><p class="defi-test-note">${T('Test tokens have no monetary value.')}</p></section>`;
+  }
+  function transferCard(){
+    const s=walletState,locked=busy||s.busy,enabled=s.connected&&s.network==='nile'&&!!s.token;
+    return `<section class="panel defi-transfer-card"><div class="defi-section-head"><h2>${T('Send test USDT')}</h2><span class="defi-mini-label">TRC20</span></div><form id="defi-live-transfer" novalidate><label class="defi-field" for="defi-live-to"><span>${T('Recipient TRON address')}</span><input id="defi-live-to" value="${esc(form.to)}" placeholder="T…" autocomplete="off" spellcheck="false" maxlength="80"${locked?' disabled':''}></label><label class="defi-field" for="defi-live-amount"><span>${T('Amount (test USDT)')}</span><input id="defi-live-amount" value="${esc(form.amount)}" placeholder="${esc(T('Example: 10.25'))}" inputmode="decimal" autocomplete="off" maxlength="40"${locked?' disabled':''}></label><p>${T('Use up to six decimal places.')}</p>${feedback()}<button type="submit" class="button defi-primary"${!enabled||locked||review?' disabled':''}>${T(locked?'Working…':'Review transfer')}</button></form>${review?reviewPanel():''}${s.selectedNetwork==='shasta'?`<p>${T('Transfers are available on Nile. Shasta needs a verified test-token deployment before token actions can be enabled.')}</p>`:''}</section>`;
+  }
+  function reviewPanel(){
+    return `<section id="defi-live-review" class="defi-transfer-review" tabindex="-1" aria-labelledby="defi-review-title"><div class="defi-section-head"><h3 id="defi-review-title">${T('Transfer review')}</h3><span class="defi-status">${esc(profiles()[review.network]?.name??review.network)}</span></div><dl class="defi-detail-meta">${row('From',address(review.from))}${row('To',address(review.to))}${row('Amount',`<strong>${esc(format(review.amountRaw))} ${esc(review.symbol)}</strong>`)}${row('Token contract',address(review.tokenAddress))}${row('Energy fee limit',`${esc(format(review.feeLimitSun))} test TRX`)}</dl><p>${T('Up to 100 test TRX for Energy. Bandwidth and other network charges may add TRX. Check the final request in TronLink.')}</p><div class="defi-buttons">${button('Confirm in TronLink','confirm-transfer',busy||walletState.busy,'defi-primary')}${button('Back','cancel-review',busy||walletState.busy)}</div></section>`;
+  }
+  function transactions(){
+    const list=(walletState.pending??[]).filter(x=>x.network===walletState.selectedNetwork).slice(-20).reverse();
+    return `<section class="panel defi-transactions"><div class="defi-section-head"><h2>${T('Recent transactions')}</h2>${button('Refresh transactions','reconcile',busy||walletState.busy||!walletState.connected)}</div>${list.length?`<div class="defi-transaction-list">${list.map(item=>{
+      const txID=String(item.txID??''),explorer=profiles()[item.network]?.explorer;
+      const link=/^[a-fA-F0-9]{64}$/.test(txID)&&/^https:\/\/(nile|shasta)\.tronscan\.org$/.test(explorer??'')?`${explorer}/#/transaction/${txID}`:null;
+      return `<article><div><span class="defi-status">${esc(T(statusName(item.status)))}</span><strong>${esc(format(item.amountRaw))} test USDT</strong></div><p>${address(item.to)}${link?`<a href="${link}" target="_blank" rel="noopener noreferrer">${T('View transaction')} ↗</a>`:address(txID)}</p></article>`;
+    }).join('')}</div>`:`<p>${T('No transactions from this page yet.')}</p>`}<p class="defi-small-note">${T('Transaction records are stored in this browser so a page reload does not invite a duplicate transfer.')}</p></section>`;
+  }
+  function crossChainCard(){
+    return `<section class="panel defi-crosschain"><div class="defi-section-head"><h2>${T('A loan across two networks')}</h2><span class="defi-mini-label">NODUS × TRON</span></div><div class="defi-chain-grid"><div><span class="defi-chain-symbol">N</span><strong>${T('NODUS on Nodus')}</strong><span>${T('Wallet connection pending')}</span></div><div><span class="defi-chain-symbol defi-tron-symbol">T</span><strong>${T('Test USDT on TRON')}</strong><span>${T(walletState.connected?'Wallet connection ready':'Waiting for wallet')}</span></div></div><ol class="defi-loan-steps">${['Connect a wallet','Choose an offer','Lock collateral','Repay & withdraw'].map((x,i)=>`<li${i===0&&walletState.connected?' class="defi-step-ready"':''}><span>${i+1}</span>${T(x)}</li>`).join('')}</ol><p>${T('Cross-chain lending is not enabled yet. The settlement pattern and the Nodus wallet connection must be integrated first.')}</p><div class="defi-buttons">${button('Lend test USDT','unavailable',true)}${button('Borrow with NODUS','unavailable',true)}</div><div class="defi-next-action"><p>${T('Practice the full loan lifecycle with clearly marked local examples.')}</p>${button('Try the loan flow','practice')}</div></section>`;
+  }
+  function loanCard(o){
+    const status=['open','active','repaid','cancelled','defaulted'].includes(o.status)?o.status:'cancelled';
+    return `<article class="panel defi-offer${String(loanId)===String(o.id)?' defi-selected':''}"><div class="defi-card-head"><span class="defi-status defi-status-${status}">${esc(T(statusName(o.status)))}</span><span class="defi-muted">NODUS / OSD6</span></div><h3>${T('Offer')} #${esc(o.id)}</h3><div class="defi-rate">${esc(format(o.aprBps,2))}%<span>${T('Annual interest')}</span></div><dl class="defi-terms">${row('Principal',`${esc(format(o.principalRaw))} OSD6`)}${row('Collateral',`${esc(format(o.collateralWei,18))} NODUS`)}${row('Term',`${esc(o.termDays)} ${T('days')}`)}</dl><button type="button" class="button defi-card-button" data-defi-live-loan="${esc(o.id)}" aria-pressed="${String(loanId)===String(o.id)}">${T('View details')} <span aria-hidden="true">→</span></button></article>`;
+  }
+  function loanDetail(){
+    const o=loanData?.offers?.find(x=>String(x.id)===String(loanId));if(!o)return '';
+    const total=/^\d+$/.test(String(o.principalRaw))&&/^\d+$/.test(String(o.interestRaw))?(BigInt(o.principalRaw)+BigInt(o.interestRaw)).toString():null;
+    return `<section id="defi-live-loan-detail" class="panel defi-details" tabindex="-1"><div class="defi-section-head"><div><span class="eyebrow">${T('Loan details')}</span><h2>${T('Offer')} #${esc(o.id)}</h2></div><span class="defi-status">${esc(T(statusName(o.status)))}</span></div><div class="defi-settlement"><div><span>${T('Principal')}</span><strong>${esc(format(o.principalRaw))}<small>OSD6</small></strong></div><span>+</span><div><span>${T('Interest for the full term')}</span><strong>${esc(format(o.interestRaw))}<small>OSD6</small></strong></div><span>=</span><div class="defi-total"><span>${T('Total repayment')}</span><strong>${esc(format(total))}<small>OSD6</small></strong></div></div><dl class="defi-detail-meta">${row('Lender',address(o.lender))}${row('Borrower',address(o.borrower))}${row('Collateral',`${esc(format(o.collateralWei,18))} NODUS`)}${row('Term',`${esc(o.termDays)} ${T('days')}`)}${row('Grace period',`${esc(o.graceDays)} ${T('days')}`)}${row('Offer expires',esc(time(o.expiresAt)))}${Number(o.dueAt)>0?row('Due date',esc(time(o.dueAt)))+row('Grace deadline',esc(time(o.deadline))):''}</dl><p>${T('Direct Nodus signing awaits a supported browser wallet connection. The completed manual OSD6 test does not provide that connection.')}</p><div class="defi-buttons">${button('Accept offer','unavailable',true)}${button('Repay loan','unavailable',true)}${button('Withdraw funds','unavailable',true)}</div></section>`;
+  }
+  function loans(){
+    const data=loanData;
+    return `<section class="defi-live-loans"><div class="defi-section-head"><div><span class="eyebrow">NODUS TESTNET · OSD6</span><h2>${T('On-chain OSD6 loan book')}</h2></div>${button(data?'Refresh loan book':'Read loan contract','load-loans',loanLoading)}</div><p>${T('Read the deployed Nodus test contract. These records are separate from TRON test USDT and the practice examples.')}</p><div class="defi-contract-banner"><span class="defi-status">${T('Read-only contract view')}</span><p>${T('Reported by the connected Nodus node; not independently proven against the chain.')}</p></div>${data?.available?`<p class="defi-loan-coverage">${T('Offers shown')}: ${esc(data.coverage?.returnedOffers??data.offers?.length??0)} ${T('of')} ${esc(data.coverage?.totalOffers??'—')}${data.coverage?.complete===false?` · ${T('This is a partial loan history.')}`:''} · ${T('Observed at')}: ${esc(data.observedAt??'—')}</p>`:''}${loanLoading?`<p role="status">${T('Loading loan contract…')}</p>`:data?.available?`<div class="defi-main-grid"><div><div class="defi-offers">${data.offers?.length?data.offers.map(loanCard).join(''):`<p>${T('No offers returned by the contract.')}</p>`}</div></div>${loanDetail()}</div><details class="defi-history"><summary>${T('Loan contract')}</summary><dl class="defi-detail-meta">${row('Token',address(data.tokenAddress))}${row('Loan contract',address(data.lendingAddress))}${row('Observed at',esc(data.observedAt??'—'))}</dl></details>`:`<div class="panel defi-empty"><h3>${T(data?'Loan data unavailable':'On-chain OSD6 loan book')}</h3><p>${esc(T(data?.reason??'Read the contract to see its offers and loans.'))}</p></div>`}${feedback(false)}</section>`;
+  }
+  function render(){
+    if(!root)return;globalThis.NodusDefiPractice?.unmount();
+    root.innerHTML=`<div class="defi-workbench defi-browser"><header class="defi-hero"><div><span class="eyebrow">NODUS / DEFI LAB</span><h1>${T('Your DeFi test lab.')}</h1><p>${T('Connect your wallet, explore the tested loan contract and prepare for lending across Nodus and TRON.')}</p></div><span class="defi-network">${T('TEST NETWORKS ONLY')}</span></header><nav class="defi-browser-tabs" aria-label="Test DeFi">${[['wallet','Wallet & test assets'],['loans','Nodus loans'],['practice','Practice']].map(([key,label])=>`<button type="button" data-defi-live-view="${key}" aria-pressed="${view===key}">${T(label)}</button>`).join('')}</nav>${view==='wallet'?`<div class="defi-wallet-layout"><div>${walletCard()}${transactions()}</div><div>${transferCard()}${crossChainCard()}</div></div>`:view==='loans'?loans():'<div id="defi-practice"></div>'}</div>`;
+    bind();if(view==='practice')globalThis.NodusDefiPractice?.mount(root.querySelector('#defi-practice'));
+  }
+  async function loadLoans(){
+    const version=++loadVersion;controller?.abort();controller=typeof AbortController==='function'?new AbortController():null;
+    loanLoading=true;message='';failed=false;render();
+    try{
+      const response=await fetch('/api/test-defi',{cache:'no-store',signal:controller?.signal}),data=await response.json();
+      if(version!==loadVersion)return;
+      if(!data||typeof data!=='object'||!Array.isArray(data.offers))throw Error('invalid');
+      loanData=data;if(data.available&&data.offers.length&&!data.offers.some(x=>String(x.id)===String(loanId)))loanId=data.offers[0].id;
+    }catch(error){if(version!==loadVersion)return;loanData={available:false,offers:[],reason:'The loan book could not be loaded. Try again.'};failed=true;}
+    finally{if(version===loadVersion){loanLoading=false;render();}}
+  }
+  async function act(action){
+    capture();message='';failed=false;
+    if(action==='practice'){view='practice';render();return;}
+    if(action==='load-loans'){await loadLoans();return;}
+    if(action==='cancel-review'){review=null;render();return;}
+    if(busy)return;busy=true;render();
+    try{
+      const w=ensureWallet();
+      if(action==='connect')await w.connect(walletState.selectedNetwork);
+      else if(action==='disconnect'){w.disconnect();review=null;}
+      else if(action==='refresh')await w.refresh();
+      else if(action==='reconcile')await w.reconcile();
+      else if(action==='network'){review=null;await w.setNetwork(form.network);}
+      else if(action==='review-transfer')review=await w.prepareTransfer(form.to,form.amount);
+      else if(action==='confirm-transfer'){
+        if(!review)throw Error('The wallet or network changed. Review the transfer again.');
+        const id=review.id;review=null;const result=await w.submitTransfer(id);
+        walletState=w.getState();
+        failed=['unknown','signed','failed'].includes(result?.status)||!!walletState.error;
+        message=failed?(walletState.error||'Submission is uncertain. Refresh transactions before doing anything again.'):'Transfer submitted. Use Refresh transactions to check confirmation.';
+        form={to:'',amount:''};
+      }else throw Error('This action is not available.');
+      walletState=w.getState();
+    }catch(error){failed=true;message=typeof error==='string'?error:error?.message??'This action is not available.';walletState=wallet?.getState()??walletState;}
+    finally{busy=false;render();if(review)focusFeedback('#defi-live-review');else if(failed)focusFeedback();}
+  }
+  function bind(){
+    root.querySelectorAll('[data-defi-live-view]').forEach(el=>el.onclick=()=>{capture();view=el.dataset.defiLiveView;message='';failed=false;render();});
+    root.querySelectorAll('[data-defi-live-action]').forEach(el=>el.onclick=()=>act(el.dataset.defiLiveAction));
+    root.querySelectorAll('[data-defi-live-loan]').forEach(el=>el.onclick=()=>{loanId=el.dataset.defiLiveLoan;render();focusFeedback('#defi-live-loan-detail');});
+    const network=root.querySelector('#defi-live-network');if(network)network.onchange=()=>{capture();form.network=network.value;act('network');};
+    const transfer=root.querySelector('#defi-live-transfer');if(transfer)transfer.onsubmit=event=>{event.preventDefault();act('review-transfer');};
+  }
+  globalThis.NodusDefi=Object.freeze({mount(target){capture();root=target;render();},capture,unmount(){capture();globalThis.NodusDefiPractice?.unmount();root=null;},getState:()=>copy({view,wallet:walletState,review,form,message,failed,busy,loanData,loanLoading,loanId,practice:globalThis.NodusDefiPractice?.getState()})});
 })();

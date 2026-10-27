@@ -1,17 +1,21 @@
-# Observatory Test DeFi foundation
+# Observatory Test DeFi
 
 [Suomeksi](README_fin.md)
 
 This directory owns the Test DeFi feature. Open **Test DeFi** in Observatory
-(`/#defi`) to create loan offers and rehearse borrowing against NODUS collateral.
-The current page is a **local simulation**: amounts, funding and repayments are
-examples in this browser, not wallet balances or chain transactions. It does not
-request a recovery phrase, connect a wallet, or submit transactions.
+(`/#defi`) for the browser wallet dashboard, the read-only Nodus OSD6 loan book,
+and a separate local lending rehearsal. [Browser integration](BROWSER_UI.md)
+describes what works today and the remaining cross-chain settlement boundary.
+
+The wallet dashboard connects TronLink on explicit request, reads testnet
+balances and lets the user review and sign a Nile test-USDT transfer. Keys stay
+in TronLink. Nodus loan signing awaits a documented Nodus wallet connector;
+the cross-chain NODUS/TRON lending protocol is not yet implemented.
 
 See [Native assets](NATIVE_ASSETS.md) for the expanded feasibility review and
 the [manual wallet guide](DEPLOYMENT.md) for an optional **separate OSD6 EVM-token**
 experiment. Its fixed-supply `SandboxDollar6` replaces the configurable attack-test
-mock. The kit does not connect the simulator to live contracts or support native tUSDT.
+mock. The kit does not connect the rehearsal to live contracts or support native tUSDT.
 
 ## Important asset distinction
 
@@ -75,7 +79,10 @@ features. The examples' 8% and 10% offers have no score restrictions.
 | Path | Responsibility |
 | --- | --- |
 | `frontend/core.js` | Exact amount parsing, quotes, validated offers and replay-checked simulation transitions; no network or storage. |
-| `frontend/defi.js`, `frontend/defi.css` | Finnish/English page and scoped responsive styles. |
+| `frontend/defi.js`, `frontend/defi.css` | Finnish/English browser dashboard and scoped responsive styles. |
+| `frontend/practice.js` | Isolated local lending rehearsal; never a source of on-chain balances. |
+| `frontend/networks.js`, `frontend/tron.js` | Testnet profiles and the TronLink wallet adapter. |
+| `read_api.py` | Fixed read-only getters for the pinned OSD6 lending deployment on the local Nodus node. |
 | `sync_frontend.py` | Copies canonical frontend files into generated `dist/test-defi`; `--check` rejects drift. |
 | `contracts/LendingReference.sol` | Offline ERC20 reference with funded offers, native collateral, settlement credits and withdrawals. |
 | `contracts/MockUSDT6.sol` | Disposable mock token and failure helpers; anyone can mint or change mock behavior. |
@@ -107,13 +114,17 @@ From the repository root:
 python3 test_defi/sync_frontend.py
 python3 test_defi/sync_frontend.py --check
 node test_defi/tests/core.mjs
+node test_defi/tests/tron.mjs
 node test_defi/tests/frontend.mjs
+node test_defi/tests/browser-ui.mjs
+python3 -m unittest discover -s test_defi/tests -p 'test_*.py' -v
 python3 -m http.server 8891 --directory dist
 ```
 
-Open `http://127.0.0.1:8891/#defi`. The standard Observatory installer includes
-the generated frontend. Installing it does not deploy contracts or enable
-wallet transactions.
+Open `http://127.0.0.1:8891/#defi`. A static preview can use the TronLink testnet
+adapter; the Nodus loan book needs the installed Observatory backend. The
+standard installer includes both. Installation never deploys contracts or
+requests wallet access; each wallet action starts with an explicit user click.
 
 To rebuild the offline reference, set `NODUS_SOLC` to the pinned Nodus addr256
 Solidity compiler and run:
