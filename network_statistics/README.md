@@ -218,7 +218,7 @@ make an incomplete source complete.
 
 Shorter collected history is still displayed in longer ranges and labelled
 partial; seven days of collection are not required to open the `7d` view.
-Reports use a four-second read deadline and a separate 100-million SQLite VM
+Reports use a six-second read deadline and a separate 500-million SQLite VM
 instruction cap. Grand totals avoid sorting all rows into a constant group.
 This supports multi-day aggregation without the generic reader's early
 20-million-instruction cutoff. Query failures are shown as read errors, not
@@ -276,3 +276,5 @@ Preview data is excluded from live installations.
 Upstream software and deployed endpoints may differ. The tests use synthetic
 fixtures; successful tests do not assert that every public node or Scan endpoint
 is currently reachable.
+
+Reports reuse bucket totals; distinct wallets remain range-wide, and the rolling-day KPI reads block counts only.

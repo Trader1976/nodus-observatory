@@ -24,7 +24,7 @@ class ReportRangeTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory()
         cls.path = Path(cls.temp.name) / "statistics.sqlite3"
         cls.now_ms = int(time.time() * 1000)
-        cls.count = 100_000
+        cls.count = getattr(cls, "block_count", 100_000)
         cls.fee = 9_007_199_254_740_993
         start = cls.now_ms - cls.count * 5000
         db = writer(cls.path)
@@ -70,12 +70,12 @@ class ReportRangeTests(unittest.TestCase):
                     self.assertEqual(data["summary"]["active_native_addresses"], 8,
                                      "wallets repeated across buckets count only once")
                     self.assertEqual(data["summary"]["tx_24h"], 17_281)
-                    count = 17_281 if key == "24h" else self.count
+                    count = min(self.count, RANGES[key] * 720 + 1) if RANGES[key] is not None else self.count
                     self.assertEqual(data["summary"]["transactions"], count)
                     self.assertEqual(data["summary"]["fee_raw"], str(count * self.fee))
                     self.assertEqual(sum(p["transactions"] for p in data["series"]["activity"]), count)
                     self.assertTrue(data["series"]["network"])
-                    self.assertEqual(data["coverage"]["range_complete"], key == "24h")
+                    self.assertEqual(data["coverage"]["range_complete"], RANGES[key] is not None and RANGES[key] * 3600_000 <= self.count * 5000)
                     self.assertFalse(data["coverage"]["complete_from_genesis"])
                     self.assertTrue(data["coverage"]["caught_up"])
                     self.assertTrue(all(p["blocks"] > 0 for p in data["series"]["activity"]),
@@ -104,6 +104,12 @@ class ReportRangeTests(unittest.TestCase):
                 db.execute("DELETE FROM index_blocks")
         finally:
             db.close()
+
+
+class LargerReportRangeTests(ReportRangeTests):
+    # More than seventeen days. A 100M cap is insufficient even though six-day
+    # fixtures passed; this exercises the exact wider-than-7d production case.
+    block_count = 300_000
 
 
 if __name__ == "__main__":

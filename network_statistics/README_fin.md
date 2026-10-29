@@ -221,7 +221,7 @@ Vain lukua palvelevat HTTP-rajapinnat ovat:
 
 Lyhyempikin historia näkyy pidemmillä aikaväleillä osittaisena aineistona:
 7 vuorokauden näkymä ei edellytä seitsemää keruupäivää. Tilastoraportilla on
-neljän sekunnin lukuaikaraja ja erillinen 100 miljoonan SQLite-käskyn
+kuuden sekunnin lukuaikaraja ja erillinen 500 miljoonan SQLite-käskyn
 työmääräraja. Kokonaissummat lasketaan ilman kaikkien rivien lajittelua yhteen
 vakioryhmään. Lukurajan tai muun lukuvirheen aiheuttamaa epäonnistumista ei
 enää esitetä puuttuvana keruuhistoriana. Korjaus ei muuta tallennettua
@@ -280,3 +280,5 @@ demotietoja mittaustiedoksi. Esikatseludataa ei asenneta varsinaiseen seurantaan
 Noduksen lähdekoodi ja käytössä olevat rajapinnat voivat erota toisistaan.
 Testit käyttävät synteettisiä aineistoja. Hyväksytty testitulos ei väitä kaikkien
 julkisten nodejen tai Scan-rajapintojen olevan juuri nyt tavoitettavissa.
+
+Raportti hyödyntää aikajaksojen summia. Uniikit osoitteet lasketaan silti koko aikaväliltä, ja 24 tunnin tapahtumaluku luetaan erikseen vain lohkoista.

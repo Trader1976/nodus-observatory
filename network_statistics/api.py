@@ -156,8 +156,8 @@ def report(path, range_key="24h"):
         # Multi-day reports group blocks, items and address touches, then also
         # calculate the separate rolling-day KPI. The generic reader's 20M VM
         # instructions can be exhausted in <1 second on six days of history.
-        # Keep the four-second deadline and a finite report-specific work cap.
-        db = reader(path, seconds=4, max_operations=100_000_000)
+        # Keep a deadline below the browser timeout and a finite work cap.
+        db = reader(path, seconds=6, max_operations=500_000_000)
         chain = get_meta(db, "chain_id")
         if chain != SCAN_CHAIN_ID:
             return unavailable("Statistics chain binding is unavailable or unsupported", range_key)
@@ -191,7 +191,7 @@ def report(path, range_key="24h"):
             coverage.update(caught_up=False, range_complete=False)
         # A true rolling-day count is available only when the indexed range
         # covers the complete day. Scan's 24 UTC hour buckets are not 24h.
-        day = indexed if range_key == "24h" else activity_report(db, "24h")
+        day = indexed if range_key == "24h" else activity_report(db, "24h", transactions_only=True)
         if day.get("coverage", {}).get("range_complete") and not known_lag and not index_failed and age <= 900 and collection.get("status") != "disabled":
             summary["tx_24h"] = day.get("summary", {}).get("transactions")
         tps_history = (latest.get("tps") or {}).get("history", [])
