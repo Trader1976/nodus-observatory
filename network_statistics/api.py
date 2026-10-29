@@ -153,7 +153,11 @@ def report(path, range_key="24h"):
     try:
         if not Path(path).is_file():
             return unavailable(range_key=range_key)
-        db = reader(path, seconds=4)
+        # Multi-day reports group blocks, items and address touches, then also
+        # calculate the separate rolling-day KPI. The generic reader's 20M VM
+        # instructions can be exhausted in <1 second on six days of history.
+        # Keep the four-second deadline and a finite report-specific work cap.
+        db = reader(path, seconds=4, max_operations=100_000_000)
         chain = get_meta(db, "chain_id")
         if chain != SCAN_CHAIN_ID:
             return unavailable("Statistics chain binding is unavailable or unsupported", range_key)

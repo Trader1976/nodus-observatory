@@ -98,6 +98,32 @@ const ranges=app.document.querySelectorAll('[data-stat-range]');await ranges.fin
 assert(app.requests.some(r=>r.request==='/api/statistics?range=7d'),'range changes request bounded API data');
 assert.equal(app.context.NodusStatistics.getState().range,'7d');
 
+// A partial six-day history is still useful at every longer selected range.
+await control('#statistics-tab-overview').click();
+for(const key of ['30d','1y','all','24h','7d']){
+  payload=live();payload.range=key;payload.coverage.range_complete=false;
+  await app.document.querySelectorAll('[data-stat-range]').find(el=>el.dataset.statRange===key).click();await flush();
+  assert.match(html(),/Transaction history is still partial/);
+  assert(app.document.querySelector('[data-chart-readout]'),'available partial data still has chart points');
+  assert(!html().includes('Statistics data is not available yet'));
+}
+// A failed SQL/read budget is not an empty store or an old observation.
+payload={schema_version:1,available:false,stale:true,reason:'Statistics data is temporarily unavailable',
+  summary:{},coverage:{},series:{activity:[],network:[],tps:[]}};
+await control('#statistics-refresh').click();await flush();
+assert.match(html(),/Stored statistics could not be read/);
+assert(!html().includes('first successful collection'));
+assert(!html().includes('latest collection is stale'));
+assert(control('#statistics-retry'));
+app.context.NodusI18n.setLanguage('fi');
+assert.match(html(),/Tallennettuja tilastoja ei voitu lukea/);
+assert.match(html(),/ei tarkoita, että historiaa olisi liian vähän/);
+payload.reason='No statistics have been collected yet';
+await control('#statistics-refresh').click();await flush();
+assert.match(html(),/Kerääjän ensimmäinen onnistunut havainto/);
+assert(!html().includes('Tallennettuja tilastoja ei voitu lukea'));
+app.context.NodusI18n.setLanguage('en');
+
 payload=live();payload.nodes[0].id='<img src=x onerror=alert(1)>';payload.nodes[0].address='<script>evil()</script>';
 payload.peer_endpoints[0].id='[2001:db8::8]:4001';
 payload.peer_endpoints[0].address='[2001:db8::8]:4001';

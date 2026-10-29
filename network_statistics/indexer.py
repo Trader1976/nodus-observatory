@@ -488,9 +488,13 @@ def _empty_metrics():
 def _metrics(connection, start, end, bucket_ms=None):
     """Use grouped queries and decimal-string sums, avoiding float money."""
     group = "(time_ms / %d) * %d" % (bucket_ms, bucket_ms) if bucket_ms else "0"
+    # A grand total is a single aggregate, not a sort/group of every row under
+    # the constant 0. Only chart buckets need GROUP BY. HAVING preserves the
+    # old no-rows behavior instead of inventing an empty aggregate bucket.
+    grouping = "GROUP BY 1" if bucket_ms else "HAVING COUNT(*)>0"
     groups = {}
     sql = """SELECT %s,COUNT(*),SUM(applied_count),SUM(n_items=0),MIN(time_ms),MAX(time_ms)
-             FROM index_blocks WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+             FROM index_blocks WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for key, count, applied, empty, low, high in connection.execute(sql, (start, end)):
         values = groups.setdefault(key, _empty_metrics())
         values.update(blocks=count, transactions=applied, empty_blocks=empty,
@@ -502,7 +506,7 @@ def _metrics(connection, start, end, bucket_ms=None):
           raw_sum(CASE WHEN code=0 AND op='spend' THEN transfer_raw END),
           SUM(code=0 AND op='spend' AND transfer_raw IS NULL),SUM(unknown_inputs),
           SUM(code=0 AND op LIKE 'evm_%%' AND evm_status IS NULL),raw_sum(gas_used)
-          FROM index_items WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+          FROM index_items WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for row in connection.execute(sql, (start, end)):
         key, spends, claims, refused, calls, creates, failed, fees, missing_fees, volume, missing_volume, unknown, missing_evm, gas = row
         values = groups.setdefault(key, _empty_metrics())
@@ -518,13 +522,13 @@ def _metrics(connection, start, end, bucket_ms=None):
           COUNT(DISTINCT CASE WHEN space='evm' THEN address END),
           COUNT(DISTINCT CASE WHEN space='native' AND role='sender' THEN address END),
           COUNT(DISTINCT CASE WHEN space='native' AND role='receiver' THEN address END)
-          FROM index_touches WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+          FROM index_touches WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for key, native, evm, senders, receivers in connection.execute(sql, (start, end)):
         values = groups.setdefault(key, _empty_metrics())
         values.update(active_native_addresses=native, active_evm_addresses=evm,
                       native_senders=senders, native_receivers=receivers)
     sql = """SELECT %s,SUM(space='native'),SUM(space='evm') FROM index_first_seen
-          WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+          WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for key, native, evm in connection.execute(sql, (start, end)):
         values = groups.setdefault(key, _empty_metrics())
         values.update(first_seen_native_addresses=native or 0, first_seen_evm_addresses=evm or 0)
