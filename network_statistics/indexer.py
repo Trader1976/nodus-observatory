@@ -488,9 +488,13 @@ def _empty_metrics():
 def _metrics(connection, start, end, bucket_ms=None):
     """Use grouped queries and decimal-string sums, avoiding float money."""
     group = "(time_ms / %d) * %d" % (bucket_ms, bucket_ms) if bucket_ms else "0"
+    # A grand total is a single aggregate, not a sort/group of every row under
+    # the constant 0. Only chart buckets need GROUP BY. HAVING preserves the
+    # old no-rows behavior instead of inventing an empty aggregate bucket.
+    grouping = "GROUP BY 1" if bucket_ms else "HAVING COUNT(*)>0"
     groups = {}
     sql = """SELECT %s,COUNT(*),SUM(applied_count),SUM(n_items=0),MIN(time_ms),MAX(time_ms)
-             FROM index_blocks WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+             FROM index_blocks WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for key, count, applied, empty, low, high in connection.execute(sql, (start, end)):
         values = groups.setdefault(key, _empty_metrics())
         values.update(blocks=count, transactions=applied, empty_blocks=empty,
@@ -502,7 +506,7 @@ def _metrics(connection, start, end, bucket_ms=None):
           raw_sum(CASE WHEN code=0 AND op='spend' THEN transfer_raw END),
           SUM(code=0 AND op='spend' AND transfer_raw IS NULL),SUM(unknown_inputs),
           SUM(code=0 AND op LIKE 'evm_%%' AND evm_status IS NULL),raw_sum(gas_used)
-          FROM index_items WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+          FROM index_items WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for row in connection.execute(sql, (start, end)):
         key, spends, claims, refused, calls, creates, failed, fees, missing_fees, volume, missing_volume, unknown, missing_evm, gas = row
         values = groups.setdefault(key, _empty_metrics())
@@ -518,20 +522,49 @@ def _metrics(connection, start, end, bucket_ms=None):
           COUNT(DISTINCT CASE WHEN space='evm' THEN address END),
           COUNT(DISTINCT CASE WHEN space='native' AND role='sender' THEN address END),
           COUNT(DISTINCT CASE WHEN space='native' AND role='receiver' THEN address END)
-          FROM index_touches WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+          FROM index_touches WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for key, native, evm, senders, receivers in connection.execute(sql, (start, end)):
         values = groups.setdefault(key, _empty_metrics())
         values.update(active_native_addresses=native, active_evm_addresses=evm,
                       native_senders=senders, native_receivers=receivers)
     sql = """SELECT %s,SUM(space='native'),SUM(space='evm') FROM index_first_seen
-          WHERE time_ms>=? AND time_ms<=? GROUP BY 1""" % group
+          WHERE time_ms>=? AND time_ms<=? %s""" % (group, grouping)
     for key, native, evm in connection.execute(sql, (start, end)):
         values = groups.setdefault(key, _empty_metrics())
         values.update(first_seen_native_addresses=native or 0, first_seen_evm_addresses=evm or 0)
     return groups
 
 
-def activity_report(connection, range_key, now_ms=None):
+def _summary_from_buckets(connection, start, end, metrics):
+    """Reuse additive chart metrics; unique wallets still need a range query."""
+    total = _empty_metrics()
+    counts = ("transactions", "spends", "claims", "refused", "evm_calls", "evm_creates", "evm_failed",
+              "first_seen_native_addresses", "first_seen_evm_addresses", "blocks", "empty_blocks",
+              "transfers_with_unknown_sender", "unknown_native_inputs", "evm_receipts_missing")
+    for values in metrics.values():
+        for key in counts:
+            total[key] += values[key]
+        for key in ("known_fee_raw", "known_transfer_raw", "known_gas_used"):
+            total[key] = str(int(total[key]) + int(values[key]))
+    total["fees_complete"] = all(v["fees_complete"] for v in metrics.values())
+    total["fee_raw"] = total["known_fee_raw"] if total["fees_complete"] else None
+    total["transfer_raw"] = None if total["transfers_with_unknown_sender"] else total["known_transfer_raw"]
+    total["gas_used"] = None if total["evm_receipts_missing"] else total["known_gas_used"]
+    # Per-bucket distinct counts cannot be added: a wallet can occur in many.
+    row = connection.execute("""SELECT
+        COUNT(DISTINCT CASE WHEN space='native' THEN address END),
+        COUNT(DISTINCT CASE WHEN space='evm' THEN address END),
+        COUNT(DISTINCT CASE WHEN space='native' AND role='sender' THEN address END),
+        COUNT(DISTINCT CASE WHEN space='native' AND role='receiver' THEN address END)
+        FROM index_touches WHERE time_ms>=? AND time_ms<=?""", (start, end)).fetchone()
+    total.update(zip(("active_native_addresses", "active_evm_addresses", "native_senders", "native_receivers"), row))
+    if total["blocks"] > 1:
+        low, high = connection.execute("SELECT MIN(time_ms),MAX(time_ms) FROM index_blocks WHERE time_ms>=? AND time_ms<=?", (start, end)).fetchone()
+        total["avg_block_ms"] = (high - low) // (total["blocks"] - 1)
+    return total
+
+
+def activity_report(connection, range_key, now_ms=None, *, transactions_only=False):
     """Report covered observations; missing history never becomes zero activity.
 
     First seen means first seen inside this index, not wallet creation. Native
@@ -559,16 +592,22 @@ def activity_report(connection, range_key, now_ms=None):
     report = {"coverage": coverage, "summary": empty, "activity": [], "operations": [], "proposers": [], "contracts": []}
     if first_ms is None or last_ms < cutoff or first_ms > now_ms:
         return report
-    summary = _metrics(connection, cutoff, now_ms).get(0)
-    if not summary:
+    if transactions_only:
+        # The separate rolling-day KPI needs only applied envelopes, not all
+        # charts, wallet counts, fee sums or breakdowns for another full report.
+        count = connection.execute("SELECT SUM(applied_count) FROM index_blocks WHERE time_ms>=? AND time_ms<=?", (cutoff, now_ms)).fetchone()[0]
+        report["summary"]["transactions"] = count
         return report
-    report["summary"] = summary
-    coverage["addresses_complete"] = summary["unknown_native_inputs"] == 0 and summary["evm_receipts_missing"] == 0
     bucket_ms = {"24h": 3600_000, "7d": 6 * 3600_000,
                  "30d": 24 * 3600_000, "1y": 7 * 24 * 3600_000}.get(range_key)
     if bucket_ms is None:
         bucket_ms = max(24 * 3600_000, ((last_ms - first_ms) // (400 * 24 * 3600_000) + 1) * 24 * 3600_000)
     metrics = _metrics(connection, cutoff, now_ms, bucket_ms)
+    if not metrics:
+        return report
+    summary = _summary_from_buckets(connection, cutoff, now_ms, metrics)
+    report["summary"] = summary
+    coverage["addresses_complete"] = summary["unknown_native_inputs"] == 0 and summary["evm_receipts_missing"] == 0
     # Only actual covered buckets appear. No leading/trailing fake zero bins.
     report["activity"] = [{"timestamp": _stamp(key), **values} for key, values in sorted(metrics.items())]
     report["operations"] = [{"name": name or "unknown", "count": count}

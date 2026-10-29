@@ -218,6 +218,14 @@ Vain lukua palvelevat HTTP-rajapinnat ovat:
 | `/api/statistics/export.csv?range=24h` | Valitun aikavälin CSV-vienti. |
 
 `range` hyväksyy arvot `24h`, `7d`, `30d`, `1y` ja `all`; oletus on `24h`.
+
+Lyhyempikin historia näkyy pidemmillä aikaväleillä osittaisena aineistona:
+7 vuorokauden näkymä ei edellytä seitsemää keruupäivää. Tilastoraportilla on
+kuuden sekunnin lukuaikaraja ja erillinen 500 miljoonan SQLite-käskyn
+työmääräraja. Kokonaissummat lasketaan ilman kaikkien rivien lajittelua yhteen
+vakioryhmään. Lukurajan tai muun lukuvirheen aiheuttamaa epäonnistumista ei
+enää esitetä puuttuvana keruuhistoriana. Korjaus ei muuta tallennettua
+aineistoa eikä edellytä tietokannan nollaamista tai uudelleenindeksointia.
 Kattavuustiedot ovat mukana viennissä. Aikavälin valitseminen ei tee
 puutteellisesta lähteestä täydellistä.
 
@@ -272,3 +280,5 @@ demotietoja mittaustiedoksi. Esikatseludataa ei asenneta varsinaiseen seurantaan
 Noduksen lähdekoodi ja käytössä olevat rajapinnat voivat erota toisistaan.
 Testit käyttävät synteettisiä aineistoja. Hyväksytty testitulos ei väitä kaikkien
 julkisten nodejen tai Scan-rajapintojen olevan juuri nyt tavoitettavissa.
+
+Raportti hyödyntää aikajaksojen summia. Uniikit osoitteet lasketaan silti koko aikaväliltä, ja 24 tunnin tapahtumaluku luetaan erikseen vain lohkoista.

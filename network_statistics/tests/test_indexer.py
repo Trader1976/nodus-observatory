@@ -328,6 +328,23 @@ class IndexTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.report("invalid")
 
+    def test_bucket_totals_match_direct_totals_with_unknowns_across_days(self):
+        from network_statistics.indexer import _metrics
+        self.scan.add(item(1, fee=None), inputs=[])
+        self.scan.add(item(2, fee="9007199254740993"))
+        self.scan.add(item(3, op="evm_call"))
+        self.sync()
+        # Repeated wallets span several buckets. Missing sender/fee/receipt
+        # information must survive the merge instead of becoming known zero.
+        for table in ("index_blocks", "index_items", "index_touches", "index_first_seen"):
+            self.db.execute(f"UPDATE {table} SET time_ms=time_ms + (time_ms-?)/60000*86400000", (BASE,))
+        result = activity_report(self.db, "all", BASE + 10 * 86400_000)
+        expected = _metrics(self.db, 0, BASE + 10 * 86400_000)[0]
+        self.assertEqual(result["summary"], expected)
+        self.assertGreater(len(result["activity"]), 1)
+        self.assertIsNone(result["summary"]["fee_raw"])
+        self.assertIsNone(result["summary"]["gas_used"])
+
     def test_source_tip_regression_preserves_prior_coverage(self):
         self.sync()
         def backwards(endpoint):

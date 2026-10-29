@@ -39,7 +39,7 @@ def writer(path):
     return db
 
 
-def reader(path, seconds=2):
+def reader(path, seconds=2, *, max_operations=20_000_000):
     path = Path(path).resolve(strict=True)
     db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=0.2)
     db.row_factory = sqlite3.Row
@@ -48,7 +48,7 @@ def reader(path, seconds=2):
     deadline, operations = time.monotonic() + seconds, [0]
     def progress():
         operations[0] += 1000
-        return int(operations[0] > 20_000_000 or time.monotonic() > deadline)
+        return int(operations[0] > max_operations or time.monotonic() > deadline)
     db.set_progress_handler(progress, 1000)
     db.execute("BEGIN")
     return db
