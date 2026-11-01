@@ -3,6 +3,10 @@
 // Source-key messages for rendered pages, charts and known backend summaries.
 // Raw diagnostics, wallet identifiers and machine-readable exports are never rewritten.
 NodusI18n.addMessages({
+  "Simulaattori": "Simulator",
+  "Tokenomics-simulaattori": "Tokenomics simulator",
+  "OLETUSMALLI · EI LIVE-DATAA": "ASSUMPTION MODEL · NOT LIVE DATA",
+  "Simulaattorin tiedostot puuttuvat. Päivitä asennus.": "Simulator assets are missing. Update the installation.",
   "Päivittäin": "Daily",
   "Kuukausittain": "Monthly",
   "Kuukausi": "Month",

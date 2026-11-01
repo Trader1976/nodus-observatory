@@ -1,0 +1,36 @@
+/** Exercises the shipped route/module with the monitor's DOM harness. */
+import assert from 'node:assert/strict';
+import {boot,flush} from './frontend-harness.mjs';
+const parameters={months:12,block_seconds:5,validator_reserve_nod:200e6,storage_reserve_nod:100e6,other_locked_nod:200e6,validator_bond_nod:2e6,storage_bond_nod:1e6,initial_validators:8,initial_storage:4,lending_pool_nod:100e6,borrowed_share:.4,validator_cost_usdt_year:360,storage_cost_usdt_year:1800,validator_entry_per_month:4,storage_entry_per_month:.1,fees_nod_year:1e6,initial_price_usdt:.1,demand_growth_pct:0,hoarding_strength:1,required_return_pct:6};
+const makeResult=params=>({schema_version:1,parameters:{...params},metadata:{},summary:{},series:Array.from({length:13},(_,month)=>({month,year:month/12,validators:8+month,storage_nodes:4+month*.1,price_index:100+month,price_usdt:.1+month*.001,validator_reward_pct:12,storage_reward_pct:10,borrow_apr_pct:5,utilization_pct:20,validator_reserve_nod:200e6-month*1e6,storage_reserve_nod:100e6,other_locked_nod:200e6,validator_locked_nod:16e6,storage_locked_nod:4e6,lending_cash_nod:92e6,wallet_nod:388e6+month*1e6,borrowed_nod:8e6,arrears_nod:0,fees_paid_nod:month*1000,interest_paid_nod:month*3000}))});
+let fail=false,calls=[];
+const ui=await boot(new URL('../dist/',import.meta.url).pathname,{route:'#tokenomics',fetchHandler:async request=>{
+  if(!request.startsWith('/api/tokenomics'))return;
+  calls.push(request);const p=request.includes('?p=')?JSON.parse(decodeURIComponent(request.split('?p=')[1])):parameters;
+  return {ok:!fail,json:async()=>fail?{error:'Simulation test failure'}:makeResult(p)};
+}});
+const state=()=>ui.context.NodusTokenomics.getState();
+assert.equal(state().result.series.length,13);
+assert.equal(ui.document.querySelector('#tk-initial_price_usdt').getAttribute('step'),'any','default price must not cause a native stepMismatch');
+assert.equal(ui.document.querySelector('[data-area="tokenomics"]').getAttribute('aria-current'),'page');
+assert.equal(ui.document.querySelector('#view-switch').hidden,true);
+assert(ui.document.querySelector('#page-content').innerHTML.includes('OLETUSMALLI'));
+const cost=ui.document.querySelector('#tk-storage_cost_usdt_year');cost.value='3400';await cost.fire('input');
+assert.equal(state().dirty,true);
+ui.run('render()');
+assert.equal(ui.document.querySelector('#tk-storage_cost_usdt_year'),cost,'monitor refresh does not replace the active form');
+ui.context.NodusI18n.setLanguage('en');await flush();
+assert.equal(ui.document.querySelector('#tk-storage_cost_usdt_year').value,'3400','language switch retains working parameters');
+assert(ui.document.querySelector('#page-content').innerHTML.includes('ASSUMPTION MODEL'));
+await ui.document.querySelector('#tk-form').fire('submit');await flush();
+assert.equal(JSON.parse(decodeURIComponent(calls.at(-1).split('?p=')[1])).storage_cost_usdt_year,3400);
+assert.equal(state().result.parameters.storage_cost_usdt_year,3400);
+const oldResult=state().result;fail=true;
+await ui.document.querySelector('#tk-form').fire('submit');await flush();
+assert.equal(state().error,'Simulation test failure');
+assert.equal(state().result,oldResult,'a failed request retains the previous calculated scenario');
+assert(!/NaN|Infinity|undefined/.test(ui.document.querySelector('#page-content').innerHTML));
+ui.context.location.hash='#overview';ui.run('render()');
+ui.context.location.hash='#tokenomics';ui.run('render()');
+assert.equal(ui.document.querySelector('#tk-storage_cost_usdt_year').value,'3400','navigation retains parameters');
+console.log('Tokenomics UI: route, Python API, form preservation, FIN/ENG, result/error states PASS.');

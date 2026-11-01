@@ -22,6 +22,11 @@ jobs:
           node-version: '22'
       - name: Backend tests
         run: python3 -m unittest discover -s backend/tests -v
+      - name: Tokenomics simulation model
+        run: |
+          python3 -m unittest discover -s tokenomics_simulator/tests -v
+          node --check dist/tokenomics/simulator.js
+          node tests/tokenomics-ui.mjs
       - name: Reward accounting tests
         run: python3 -m unittest discover -s rewards -p 'test_*.py' -v
       - name: Network adapter tests
@@ -81,6 +86,32 @@ jobs:
         run: |
           bash -n backend/install.sh
           bash -n network_statistics/enable_geoip.sh
+
+  tokenomics-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser test runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/tokenomics-browser" --no-package-lock --no-save playwright@1.56.1
+          "$RUNNER_TEMP/tokenomics-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Exercise the Python API and simulator in Chromium
+        run: |
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/tokenomics-browser/node_modules/playwright" TOKENOMICS_SCREENSHOTS="$RUNNER_TEMP/tokenomics-screenshots" node tests/tokenomics-browser.mjs
+      - name: Simulator screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokenomics-browser-screenshots
+          path: ${{ runner.temp }}/tokenomics-screenshots
+          if-no-files-found: ignore
 
   trade-contracts:
     # Match the locally tested GCC 13 toolchain. The pinned engine's bundled

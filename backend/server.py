@@ -150,7 +150,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(414, "request target too long")
         try:
             query = parse_qs(parsed.query, max_num_fields=10,
-                             keep_blank_values=parsed.path in ("/api/documents/record", "/api/statistics", "/api/statistics/export.csv", "/api/test-defi"))
+                             keep_blank_values=parsed.path in ("/api/documents/record", "/api/statistics", "/api/statistics/export.csv", "/api/test-defi", "/api/tokenomics"))
             if parsed.path.startswith("/api/"):
                 return self.api(parsed.path, query)
             return self.static(parsed.path)
@@ -160,6 +160,28 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(503, "monitoring data is temporarily unavailable")
 
     def api(self, route, query):
+        if route == "/api/tokenomics":
+            # Pure bounded calculation shared with the CLI; no live-node I/O.
+            if set(query) - {"p"} or len(query.get("p", [])) > 1:
+                return self.fail(400, "tokenomics accepts one p JSON parameter")
+            from tokenomics_simulator import simulate
+
+            def unique_object(pairs):
+                result = {}
+                for key, value in pairs:
+                    if key in result:
+                        raise ValueError("duplicate simulation parameter")
+                    result[key] = value
+                return result
+
+            try:
+                parameters = json.loads(query["p"][0], object_pairs_hook=unique_object) if "p" in query else {}
+                if not isinstance(parameters, dict):
+                    raise ValueError("simulation parameters must be a JSON object")
+                return self.send_content(simulate(parameters))
+            except (ValueError, TypeError, RecursionError) as error:
+                message = "invalid simulation parameters" if isinstance(error, RecursionError) else str(error)
+                return self.fail(400, message)
         if route == "/api/test-defi":
             from test_defi.read_api import lookup
             payload, status = lookup(self.config, query)

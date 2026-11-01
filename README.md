@@ -11,7 +11,13 @@ exports.
 
 ## Features and compatibility
 
-- Three main areas: **Observatory, Contract Studio and Settings**.
+- Header areas include **Observatory, Statistics, Contract Studio, Trade, Test DeFi,
+  Simulator and Settings**.
+- **Simulator** (`#tokenomics`) explores separate validator/storage rewards,
+  lending, scarce liquid supply and illustrative price feedback using a shared
+  Python engine. Storage has higher assumed annual hardware/operating costs and
+  a lower editable entry rate. Scenarios are separate from live node data.
+  See [simulation and Python CLI](docs/tokenomics-simulator.md).
 - Observatory has **Overview, Storage and Witness** views, with only configured
   roles shown. Network, Rewards and Events remain available for shared monitoring.
 - Settings selects the roles to monitor and saves this installation's monitor

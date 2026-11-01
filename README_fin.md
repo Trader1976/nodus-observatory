@@ -12,7 +12,14 @@ vuosikoosteineen ja CSV-vienteineen.
 ## Nykytila
 
 - Versio **1.0.0**, tuettu Nodus 0.26.7 testnet -asennus Debian/Ubuntu-palvelimella.
-- Pääalueet ovat **Observatory, Sopimusstudio ja Asetukset**.
+- Ylävalikon alueet ovat **Observatory, Tilastot, Sopimusstudio, Kaupankäynti,
+  Test DeFi, Simulaattori ja Asetukset**.
+- **Simulaattori** (`#tokenomics`) näyttää erilliset validaattori- ja
+  storage-palkkiot, lainapoolin sekä oletetun markkinakäyttäytymisen. Sama
+  Python-malli toimii käyttöliittymässä ja komentorivillä. Storagen vuosikulut
+  oletetaan suuremmiksi ja uusien nodejen synty hitaammaksi; molempia voi muuttaa.
+  Luvut ovat skenaarioita, eivät nodesta luettuja havaintoja.
+  Katso [simulaattorin ja Python-version ohje](docs/tokenomics-simulator.md).
 - Observatoryn **Yleiskuva-, Tallennustila- ja Witness-näkymistä** näytetään vain
   seurantaan valitut roolit. Verkko, Palkkiot ja Tapahtumat säilyvät yhteisinä.
 - Asetuksissa valitaan seurattavat roolit ja tallennetaan tämän asennuksen
