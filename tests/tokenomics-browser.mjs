@@ -1,5 +1,6 @@
 /** Real browser + real Python API smoke test. No Nodus or remote RPC required. */
 import assert from 'node:assert/strict';
+import {get} from 'node:http';
 import {spawn} from 'node:child_process';
 import {mkdtemp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
@@ -23,6 +24,15 @@ let browser,server,serverError;
 let serverLog='';
 const pageErrors=[],externalRequests=[];
 const pause=ms=>new Promise(resolvePause=>setTimeout(resolvePause,ms));
+const probe=()=>new Promise(resolveProbe=>{
+  const request=get(base+'/api/tokenomics',response=>{
+    response.resume();
+    response.once('end',()=>resolveProbe(response.statusCode===200));
+    response.once('error',()=>resolveProbe(false));
+  });
+  request.setTimeout(1000,()=>{request.destroy();resolveProbe(false);});
+  request.once('error',()=>resolveProbe(false));
+});
 try {
   server=spawn(process.env.PYTHON||'python3',['backend/server.py','--config',config],{cwd:repo,env:{...process.env,PYTHONPATH:repo},stdio:['ignore','pipe','pipe']});
   server.on('error',error=>{serverError=error;});
@@ -31,7 +41,7 @@ try {
   for(let i=0;i<100;i++){
     if(serverError)throw serverError;
     if(server.exitCode!==null)throw Error('Python server exited: '+serverLog);
-    try {const response=await fetch(base+'/api/tokenomics');if(response.ok){listening=true;break;}} catch {}
+    if(await probe()){listening=true;break;}
     await pause(100);
   }
   assert.ok(listening,'Python server did not start: '+serverLog);
