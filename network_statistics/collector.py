@@ -243,7 +243,7 @@ def _nodes(committee, storage, stamp, locations, local_node=None):
     return list(nodes.values())
 
 
-def read_peer_endpoints(config, deadline, locations):
+def read_peer_endpoints(config, deadline, locations, fingerprint=None):
     """Ask only the configured LOCAL node for its own current peer list.
 
     This CLI response has endpoints, not full identities. It therefore stays
@@ -256,7 +256,8 @@ def read_peer_endpoints(config, deadline, locations):
     if remaining <= 0.1:
         return {"available": False, "observed_at": None, "items": []}
     from collector import run_command
-    result = run_command([cli, "-s", "127.0.0.1", "servers"], timeout=min(6, remaining), max_bytes=65_536)
+    from network import local_cli_args
+    result = run_command(local_cli_args(config, fingerprint, "servers"), timeout=min(6, remaining), max_bytes=65_536)
     if result.get("error") or result.get("returncode"):
         raise ValueError("Local peer endpoint query failed")
     output = result.get("output", "")
@@ -384,7 +385,7 @@ def collect_statistics(state_dir, config, snapshot):
         nodes = _nodes(committee, storage, source_stamp, locations, snapshot.get("node"))
         peers = {"available": False, "observed_at": None, "items": []}
         try:
-            peers = read_peer_endpoints(config, deadline, locations)
+            peers = read_peer_endpoints(config, deadline, locations, (snapshot.get("node") or {}).get("fingerprint"))
         except (OSError, ValueError, TypeError) as exc:
             status["errors"].append({"source": "peer_endpoints", "message": type(exc).__name__})
         with db:

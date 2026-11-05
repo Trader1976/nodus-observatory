@@ -237,11 +237,11 @@ class PeerTests(unittest.TestCase):
         from unittest.mock import Mock
         runner = Mock(return_value={"output": "Cluster servers (2):\n  198.51.100.8:4001\n  203.0.113.9:4001\n", "returncode": 0, "error": None})
         with patch.dict(sys.modules, {"collector": types.SimpleNamespace(run_command=runner)}):
-            data = read_peer_endpoints({"cli_path": "/usr/local/bin/nodus-cli"}, time.monotonic() + 10, [])
+            data = read_peer_endpoints({"cli_path": "/usr/local/bin/nodus-cli"}, time.monotonic() + 10, [], "a" * 128)
         self.assertTrue(data["available"])
         self.assertEqual(len(data["items"]), 2)
         self.assertIsNone(data["items"][0]["identity"])
-        self.assertEqual(runner.call_args.args[0], ["/usr/local/bin/nodus-cli", "-s", "127.0.0.1", "servers"])
+        self.assertEqual(runner.call_args.args[0], ["/usr/local/bin/nodus-cli", "-s", "127.0.0.1", "--pin", "a" * 128, "servers"])
         self.assertLessEqual(runner.call_args.kwargs["timeout"], 6)
         self.assertEqual(runner.call_args.kwargs["max_bytes"], 65536)
 
@@ -252,14 +252,14 @@ class PeerTests(unittest.TestCase):
             runner = Mock(return_value={"output": output, "returncode": 0, "error": None})
             with self.subTest(output=output), patch.dict(sys.modules, {"collector": types.SimpleNamespace(run_command=runner)}):
                 with self.assertRaises(ValueError):
-                    read_peer_endpoints({"cli_path": "/nodus-cli"}, time.monotonic() + 10, [])
+                    read_peer_endpoints({"cli_path": "/nodus-cli"}, time.monotonic() + 10, [], "a" * 128)
 
     def test_cli_bare_ipv6_is_normalized_without_dns(self):
         import types
         from unittest.mock import Mock
         runner = Mock(return_value={"output": "Cluster servers (1):\n  2001:db8::8:4001\n", "returncode": 0, "error": None})
         with patch.dict(sys.modules, {"collector": types.SimpleNamespace(run_command=runner)}):
-            data = read_peer_endpoints({"cli_path": "/nodus-cli"}, time.monotonic() + 10, [])
+            data = read_peer_endpoints({"cli_path": "/nodus-cli"}, time.monotonic() + 10, [], "a" * 128)
         self.assertEqual(data["items"][0]["address"], "[2001:db8::8]:4001")
         self.assertFalse(data["truncated"])
 

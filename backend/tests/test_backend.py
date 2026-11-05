@@ -147,8 +147,12 @@ class ParserTests(unittest.TestCase):
                 storage_calls = [args for args in calls if "--fp" in args]
                 if override is None:
                     self.assertEqual(storage_calls[0][-1], "ab" * 64)
+                    self.assertEqual(storage_calls[0][3:5], ["--pin", "ab" * 64])
+                    witness_calls = [args for args in calls if args[-1:] == ["witness"]]
+                    self.assertEqual(witness_calls[0][3:5], ["--pin", "ab" * 64])
                 else:
                     self.assertEqual(storage_calls, [])
+                    self.assertFalse(any(args[-1:] == ["witness"] for args in calls))
                     self.assertTrue(any("differs" in error["message"] for error in result["quality"]["errors"]))
 
 

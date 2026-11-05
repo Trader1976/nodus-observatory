@@ -530,7 +530,8 @@ def collect(config):
     if roles["storage"] and not identity_matches:
         errors.append({"source": "storage-status", "message": "configured fingerprint differs from the local node"})
     elif roles["storage"] and isinstance(local_fp, str) and re.fullmatch(r"[a-fA-F0-9]{128}", local_fp):
-        extra = probe("storage-status", [config["cli_path"], "-s", "127.0.0.1", "storage", "status", "--fp", local_fp], 15)
+        from network import local_cli_args
+        extra = probe("storage-status", local_cli_args(config, local_fp, "storage", "status", "--fp", local_fp), 15)
     elif roles["storage"]:
         errors.append({"source": "storage-status", "message": "local node fingerprint unavailable"})
     if extra:
@@ -556,7 +557,14 @@ def collect(config):
         if service_status != "active":
             errors.append({"source": role + "-service", "message": "configured role service is " + service_status})
     if roles["witness"]:
-        committee = probe("witness-committee", [config["cli_path"], "-s", "127.0.0.1", "witness"], 12, 1_000_000)
+        from network import local_cli_args
+        try:
+            committee_args = local_cli_args(config, local_fp, "witness")
+        except ValueError as exc:
+            errors.append({"source": "witness-committee", "message": str(exc)})
+            committee = None
+        else:
+            committee = probe("witness-committee", committee_args, 12, 1_000_000)
         if committee is not None:
             snapshot["witness"]["committee"] = witness_committee(committee, snapshot["node"])
             if snapshot["witness"]["committee"]["height"] is None:
@@ -623,7 +631,7 @@ def collect(config):
     if config.get("network_enabled", True):
         try:
             network = importlib.import_module("network")
-            snapshot["network"] = network.collect_network(state, config)
+            snapshot["network"] = network.collect_network(state, config, local_fp)
         except (ImportError, OSError, ValueError) as exc:
             snapshot["network"] = {"available": False, "errors": [type(exc).__name__]}
     else:

@@ -10,9 +10,19 @@ from datetime import datetime, timezone
 API = "https://scan.nodusnetwork.io/api/"
 
 
-def committee_text(cli):
+def local_cli_args(config, fingerprint, *command):
+    """Pin local queries to the identity reported by local node status."""
+    configured = config.get("fingerprint")
+    if not isinstance(fingerprint, str) or not re.fullmatch(r"[a-fA-F0-9]{128}", fingerprint):
+        raise ValueError("local node fingerprint unavailable")
+    if configured and configured.lower() != fingerprint.lower():
+        raise ValueError("configured fingerprint differs from the local node")
+    return [config["cli_path"], "-s", "127.0.0.1", "--pin", fingerprint, *command]
+
+
+def committee_text(config, fingerprint):
     from collector import run_command
-    result = run_command([cli, "-s", "127.0.0.1", "witness"], timeout=12, max_bytes=1_000_000)
+    result = run_command(local_cli_args(config, fingerprint, "witness"), timeout=12, max_bytes=1_000_000)
     if result["error"] or result["returncode"]:
         raise ValueError(result["error"] or "Committee query failed")
     return result["output"]
@@ -61,7 +71,7 @@ def parse_committee(text):
     return result
 
 
-def collect_network(state_dir, config):
+def collect_network(state_dir, config, fingerprint=None):
     state_dir = Path(state_dir)
     cache = state_dir / "network.json"
     previous = None
@@ -81,8 +91,7 @@ def collect_network(state_dir, config):
         except Exception as exc:
             result["errors"].append({"source": "scan/" + endpoint, "message": str(exc)[:250]})
     try:
-        cli = config.get("cli_path", "/usr/local/bin/nodus-cli")
-        result["committee"] = parse_committee(committee_text(cli))
+        result["committee"] = parse_committee(committee_text(config, fingerprint))
     except Exception as exc:
         result["errors"].append({"source": "committee", "message": str(exc)[:250]})
     result["available"] = result["stats"] is not None or result["committee"]["height"] is not None
