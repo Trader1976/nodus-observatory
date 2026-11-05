@@ -1,104 +1,209 @@
-# Trade / Swap — NODUS and BNB testnet workbench
+# Trade / Swap — NODUS and USDT on BNB Smart Chain
 
-The `#trade` area prepares buy/sell agreements between **Nodus testnet** and
-**BNB Smart Chain testnet (chain 97)**. It has a local offer book, public offer
-import/export, separate private recovery files, a two-leg simulator, transaction
-plans, and the complete compiled contracts and ABIs. It works without monitoring
-or network access. FIN/ENG and mobile layouts use the Observatory shell.
+The `#trade` area prepares NODUS buy/sell agreements priced in USDT on BNB Smart
+Chain (BSC). The executable development profile is **Nodus testnet + BSC testnet
+97 + TEST-USDT**. TEST-USDT is our freely minted 18-decimal mock token; it has no
+monetary value. BSC transaction fees are paid separately in tBNB.
 
-This first version is preparation software. It does not connect wallets, publish
-a shared order book, verify live chain state, deploy contracts or send payments.
-A public offer is an unsigned proposal, not evidence of a funded swap. The actual
-contracts can be deployed separately with the named testnet wallets. Do not infer
-network settlement from a successful simulation.
+The intended mainnet quote asset is **Binance-Peg USDT (BSC-USD)** on BSC 56,
+contract `0x55d398326f99059ff775485246999027b3197955`, with 18 decimals. This is a
+Binance-pegged representation, not Tether-issued USD₮ on Ethereum or Tron. The
+mainnet entry is information only: this release does not enable chain 56 or trade
+real USDT. Token identity always includes network and contract address; the name
+USDT alone does not identify an asset. See the [BNB Chain token reference](https://github.com/bnb-chain/mpp-sdk#tokens)
+and [Tether's issuer protocol list](https://tether.to/en/supported-protocols/).
+
+## What is available
+
+The local workbench includes public offer import/export, separate private recovery
+files, saved offers, exact token units, an approval/lock/claim/refund simulator,
+transaction plans, and compiled Solidity contracts and ABIs. The FIN/ENG interface
+uses the Observatory shell and works on mobile.
+
+The P2P preparation flow adds advertisements shared by users of this Observatory
+installation, short reservations, trade sessions, wallet request preparation and
+read-only chain observations. A public
+advertisement or reservation is **unsigned, unverified metadata**. It is not proof
+of wallet ownership, available funds, an on-chain lock or a completed swap. The
+board never holds funds. An offer-file exchange can still be used without it.
+
+A browser BSC wallet connection can prepare deployment of the mock token and its
+swap, mint free test tokens and request explicit approval for supported chain-97
+actions. The wallet must already be on BSC testnet 97; the app refuses other
+networks. Connection alone sends no transaction. The Nodus wallet handoff is an unsigned developer request; the
+official Nodus wallet does not currently import it as a supported third-party
+transaction format. The current Nodus CLI can read a lock and the contract clock,
+but cannot return the deployed runtime code. Its chain identity also comes from
+the local collector snapshot rather than an independently verified query.
+Without verified Nodus code and confirmed lock observations, the application
+blocks funding and secret revelation. A successful simulator run does not remove this blocker.
+
+No mainnet payment or live two-chain settlement is claimed by these features.
+The [wallet integration contract](trade-wallet-request.md) separates implemented
+preparation from the remaining Nodus verification and signing requirements.
 
 ## Parties and trade directions
 
-An offer fixes both parties' Nodus EVM addresses (32 bytes), BNB addresses
-(20 bytes), native coin amounts, hashlock, trade ID, chain identities and deadlines.
-The maker creates the secret and always funds the longer leg first:
+An offer fixes both parties' Nodus EVM addresses (32 bytes) and BSC addresses
+(20 bytes), exact amounts, BSC token identity, hashlock, trade ID and deadlines.
+The maker creates the secret and funds the longer leg first:
 
 | Offer | Maker's longer leg | Taker's shorter leg | Maker's first claim |
 |---|---|---|---|
-| Sell NODUS | NODUS → taker | tBNB → maker | tBNB |
-| Buy NODUS | tBNB → taker | NODUS → maker | NODUS |
+| Sell NODUS | NODUS → taker | TEST-USDT → maker | TEST-USDT |
+| Buy NODUS | TEST-USDT → taker | NODUS → maker | NODUS |
 
-The maker claims the shorter leg with the preimage. The taker learns it from the
-claim and claims the longer leg. Neither chain queries the other. No wrapped
-asset or foreign-signature verification is needed.
+The maker claims the shorter leg using the preimage. The taker learns the preimage
+from that claim and claims the longer leg. Each coin or token stays on its own
+network. The two contracts do not call or verify one another.
 
-## Secret and offer handling
+Before a BSC token lock, the funder approves the verified swap contract for the
+**exact token amount**, then calls `open` with zero native value. An existing
+nonzero allowance may require a separate `approve(spender, 0)` before setting the
+new allowance; the exported plan includes this zero-reset step. Do not approve an
+unverified spender or use an unlimited allowance. A refund returns tokens; the
+network does not return transaction fees.
 
-`nodus-trade/offer-v1` contains public terms only. The 32-byte preimage is generated
-with the browser CSPRNG and hashed as **SHA-256 of its 32 raw bytes**, never its hex
-text. Each newly created offer has a fresh preimage and trade ID. Browser storage
-keeps public offers only (50 entries, bounded catalog); a failed or malformed
-catalog is retained. In that case keep the newly prepared offer by exporting it.
+## Try the local workbench
 
-The private `nodus-trade/recovery-v1` file contains the offer AND preimage. Download
-it before closing the page, store it privately, and never send it as the public
-offer. Reloading does not restore the preimage from browser storage; explicitly
-import the recovery file. A public offer cannot restore the secret. Import rejects
-unknown fields, wrong networks, invalid addresses, amounts and unsafe deadlines.
-Offer names are inert user text. The example button uses labelled fictional
-addresses and local simulation only; enter actual testnet addresses in New offer
-for a separately deployed test.
+1. Select **Create example**. Its wallet and token addresses are fictional.
+2. Open **Rehearse swap → Start simulation**.
+3. Approve the exact test-token amount before the BSC leg, then lock the maker's
+   funds first and the taker's funds second.
+4. Test a wrong secret, claim the shorter leg as maker and then the longer leg as
+   taker, or reset and advance to the refund deadlines.
 
-Deadlines are fixed at offer creation, not at deposit: maker +24 h, taker +12 h.
-The client validates at least a 2 h difference. The contracts allow each lock to
-be opened from 1 h to 7 days before its refund deadline. An old offer therefore
-cannot necessarily be funded later. These defaults are a test policy, not a
-measurement proving a suitable margin for a production network.
+For a separately deployed test, create a new offer with four actual test-wallet
+addresses and the deployed `MockUsdt` address. The token profile is fixed to BSC
+97 and 18 decimals. A Nodus 128-hex-character fingerprint is not its 32-byte EVM
+address. Simulated approvals and deposits are never sent to a wallet or network.
 
-## Contracts
+## Offers, sessions and recovery
 
-`contracts/trade/ObservatoryNodusSwap.sol` is compiled with exactly
-`0.8.30+nodus.addr256.commit.73712a01.Linux.g++`, Prague, optimizer 200.
-`ObservatoryBnbSwap.sol` is compiled with standard Solidity 0.8.30, Paris,
-optimizer 200. Both use metadata bytecodeHash=none. Each is standalone,
-constructor-free, immutable code with no administrator or upgrade path.
+`nodus-trade/offer-v2` carries public terms only. Its `asset` object is exactly:
 
-Each deployed contract can hold many independent swaps; no deployment per pair
-or per user is required. The namespace is `(funder, tradeId)`, so another funder
-cannot front-run and reserve your ID. An ID cannot be reused by that funder even
-after settlement. Native coins only; no ERC-20 or BEP-20 in this version.
+```json
+{
+  "kind": "bep20",
+  "chainId": 97,
+  "token": "0x<40 hexadecimal characters of the deployed test token>",
+  "decimals": 18,
+  "symbol": "TEST-USDT"
+}
+```
+
+The offer uses `usdtAmount` and party addresses `{nodus, bsc}`. Amounts are decimal
+strings, never floating-point calculations. TEST-USDT has 18 decimals; do not reuse
+the six-decimal assumption from Ethereum USDT. One NODUS is 10^8 native raw units
+or 10^18 EVM wei. Token units are not BNB `msg.value`.
+
+The browser stores at most 50 public offers in `nodus-trade/book-v2`. The old v1
+BNB catalog remains untouched and can be downloaded with **Export old BNB offers**.
+Old BNB offers and recovery files are rejected for the new flow. There is no
+automatic BNB-to-USDT reinterpretation or conversion.
+
+The 32-byte secret is generated with the browser CSPRNG and hashed as SHA-256 of
+32 raw bytes, not its hex text. The private `nodus-trade/recovery-v2` file contains
+the offer and secret. Export it before closing, keep it private and never publish
+it with an advertisement. Public offers, board entries and public session files
+must not contain the private preimage. Importing a public file does not restore it.
+A failed or malformed browser catalog is retained; export prepared files if local
+storage is unavailable.
+
+Deadlines start at offer creation, not funding: maker +24 h and taker +12 h. The
+client requires at least a 2 h difference. A lock may open only 1 h to 7 days
+before its refund deadline. Stale offers need new terms; a reservation does not
+restart an on-chain deadline. The default intervals are a test policy, not a
+measurement establishing production-safe timing.
+
+Public advertisements have a whole-offer reservation lasting up to 10 minutes
+(or the remaining advertisement lifetime, if shorter). Expired reservations free
+the advertisement for another reservation. The private management capability
+allows its holder to remove an advertisement when no active reservation exists.
+Neither expiry nor removal cancels a contract lock. The capability is not a
+wallet signature or evidence that its holder owns the advertised wallet.
+
+## Contracts and deployments
+
+| Artifact key | Contract | Constructor |
+|---|---|---|
+| `nodus` | `ObservatoryNodusSwap` | none |
+| `bsc` | `ObservatoryBscUsdtSwap` | deployed token address |
+| `mockUsdt` | `MockUsdt` | none |
+
+The Nodus contract is compiled with exactly
+`0.8.30+nodus.addr256.commit.73712a01.Linux.g++`, Prague, optimizer 200. The BSC
+contracts use standard Solidity 0.8.30, Paris, optimizer 200. All use
+`metadata.bytecodeHash=none`. New Nodus deployments include `currentBlockTime()`;
+an old deployment from the native-BNB prototype does not have this getter and
+cannot be substituted for the current artifact.
+
+Deploy `MockUsdt` on chain 97 first, then pass its address to the BSC swap
+constructor. `faucet()` mints 1,000,000 TEST-USDT to its caller per call and can be
+repeated. It is deliberately unbacked test money. The BSC swap fixes one
+18-decimal token at deployment and has no token setter, owner or upgrade path.
+Its runtime is the same across token deployments, so a runtime match alone is
+insufficient: verify `token()` and the token's code and decimals separately.
+
+Each swap deployment can hold many independent trades. The namespace is
+`(funder, tradeId)` and cannot be reused after settlement.
 
 | Function | Rules |
 |---|---|
-| `open(bytes32,address,bytes32,uint64)` | Payable; exact paid amount stored; nonzero ID/hash/recipient; recipient differs from funder and this contract; deadline in allowed range; unused funder/ID. |
-| `claim(address,bytes32,bytes32)` | Only the recorded recipient; correct preimage; locked status; strictly before deadline. Emits the secret and pays the fixed amount. |
-| `refund(bytes32)` | Only the original funder; locked status; at or after deadline. Pays original funder. |
-| `getSwap(address,bytes32)` | Recipient, amount, hashlock, refundAt, status: Empty=0, Locked=1, Claimed=2, Refunded=3. |
-| `lockedTotal()` | Sum of unresolved credited deposits. Unsolicited forced surplus does not alter per-swap amounts. |
+| Nodus `open(bytes32,address,bytes32,uint64)` | Payable; exact native amount, in multiples of 10^10 EVM wei. |
+| BSC `open(bytes32,address,bytes32,uint256,uint64)` | Nonpayable; approved exact token amount transferred from the funder. |
+| `claim(address,bytes32,bytes32)` | Recorded recipient only; correct preimage; strictly before refund deadline. Emits the preimage and pays the fixed amount. |
+| `refund(bytes32)` | Original funder only; at or after refund deadline. |
+| `getSwap(address,bytes32)` | Recipient, amount, hashlock, refundAt and status: Empty=0, Locked=1, Claimed=2, Refunded=3. |
+| Nodus `currentBlockTime()` | Execution block clock used for contract deadlines; not the browser clock. |
+| `lockedTotal()` | Sum of unresolved credited deposits in that deployment's units. |
 
-Both contracts check their configured chain ID when opening. BNB mainnet (56)
-is refused. Nodus testnet is pinned to chain ID
-`a48d1a785500a1cdecd739ecd53ef0e95b1dc4a7a300f49176a7fa25ae176114`, from
-nocdem/dna@2e881cc6e6d7a5050cc10400afc2b883f8fb712a,
-`web-wallet/src/nodus/send-module.js`. Nodus amounts are multiples of 10^10 EVM
-wei (one native raw unit); BNB uses 18 decimals. No floating point money.
+The BSC contract accepts standard true-return and legacy no-return token transfers.
+False, malformed or reverted results fail. Balance deltas must match the exact
+amount for sender, escrow and recipient; transfer-tax, rebasing and dishonest
+tokens are unsupported. Failed transfers roll back status and accounting. All
+mutations are guarded against reentrancy. There is no administrator sweep,
+pre-deadline cancellation or automatic refund transaction.
 
-State changes precede value calls, and all mutations have a reentrancy guard.
-Failed payouts revert the whole call, preserving the deposit and its status.
-There is no owner sweep, pre-deadline cancellation or automatic refund timer.
-Refunds and claims require actual transactions and fees.
+### Manual Nodus test deployment
 
-## Verify before revealing
+Use private **test-wallet** keys on the machine where they are already held. Do
+not upload keys or a seed to Observatory or the board. Inspect the installed CLI's
+`nodus-cli evm` usage and perform a dry run first:
 
-A future network adapter must independently read both locks and check chain ID,
-deployed runtime against the compiled artifact, funder, recipient, trade ID,
-amount, SHA-256 hash, status and refund deadline. Verify confirmed/finalized chain
-state, not a transaction screenshot or a pending submission. Both must remain
-claimable with sufficient time for the second claim. `NodusTradeCore.verifyLock`
-implements the term comparison, but this release has **no live adapter**; its
-`confirmed` and `runtimeVerified` inputs must eventually come from that adapter.
-It is not a chain-proof verifier. The maker must never publish the preimage
-before those checks. Monitor to settlement; a timeout requires a refund call.
-Chain stalls, reorganizations, an unavailable wallet and transaction censorship
-are assumptions the timeout policy must handle. HTLCs do not promise simultaneous
-confirmation or compensate price changes or network fees.
+```sh
+nodus-cli evm deploy   --solc contracts/trade/ObservatoryNodusSwap.sol:ObservatoryNodusSwap   --solc-bin /path/to/solc-nodus   --keys /private/test-wallet-keys   --dry-run
+```
 
-## Reproduce the contract checks
+For an operator-reviewed test deployment, replace `--dry-run` with
+`--submit NODE_IP:4001`. Record the successful receipt, deployed address, source,
+compiler settings and artifact hashes. Receipt acceptance and a predicted address
+do not replace runtime-code verification. The CLI can prepare a native-to-EVM
+balance deposit with `evm deposit <raw>` and later withdraw with
+`evm withdraw <raw>`; both are separate transactions with fees and the same
+`--keys` / dry-run or submit discipline. Funding an EVM balance is distinct from
+locking that balance in the swap.
+
+## Verify before funding or revealing
+
+A live adapter must independently read both chains and bind every observation to
+the current offer and configured contract addresses. Check chain identity,
+deployed runtime, funder, recipient, trade ID, amount, hashlock, status, deadline
+and the BSC token address/decimals. Use confirmed/finalized chain state and the
+chain's execution clock. Keep enough time for the second claim and recovery.
+
+`NodusTradeCore.verifyLock` compares supplied observations with terms; it is not a
+chain-proof verifier. Browser simulation, imported booleans, transaction hashes,
+screenshots, advertisements and wallet-request files do not prove code or funding.
+In particular, the current CLI has no deployed-code read, so a successful Nodus
+`getSwap`/clock read remains unverified and must not unlock funding or disclosure.
+
+A claim can expose the secret to a wallet, an RPC simulation or pending calldata
+before it is mined. Do not send claim calldata for estimation until both locks
+and the remaining time margin have passed the same checks. Keep monitoring to
+settlement. Expiry makes a refund callable; it does not send the refund for you.
+
+## Reproduce the checks
 
 ```sh
 npm ci --prefix tools/trade
@@ -108,35 +213,42 @@ node tests/trade/integration.mjs
 node tests/trade/contracts.mjs
 ```
 
-The pinned Nodus compiler archive is
+The pinned compiler archive is
 https://nodusnetwork.io/downloads/nodus-solc-0.8.30-nodus.addr256-linux-x86_64.tar.gz
-SHA-256: `a09d6486c944a795009f08dbc8210ce2eee2785248f9f5f7edc2aaa9c6934649`.
-`build.mjs` rebuilds both outputs and byte-compares the committed JS artifact;
-normal frontend use requires no Node packages.
+with SHA-256 `a09d6486c944a795009f08dbc8210ce2eee2785248f9f5f7edc2aaa9c6934649`.
+The build regenerates all three artifacts and byte-compares them with the
+committed bundle. Normal frontend use does not need Node packages.
 
-The independent native-engine execution test requires the exact upstream checkout
-and build dependencies (C/C++, OpenSSL development headers, make, m4, xxd):
+For the native Nodus engine check, use upstream
+`nocdem/dna@2e881cc6e6d7a5050cc10400afc2b883f8fb712a` and build dependencies
+C/C++, OpenSSL headers, make, m4 and xxd:
 
 ```sh
-# In a disposable nocdem/dna checkout at the pinned revision:
+# In that disposable upstream checkout:
 git sparse-checkout set shared/evm shared/crypto/sign shared/crypto/hash shared/crypto/utils
 # In this repository:
 NODUS_EVM_ROOT=/path/to/dna node tools/trade/test-nodus.mjs
 ```
 
-BNB tests execute actual bytecode in local Ganache: funder namespaces, authorization,
-payout and secret event, replay, exact claim/refund boundary, failed-payment rollback,
-reentrancy and mainnet refusal. The Nodus C test uses the upstream engine and its
-memory backend with high-byte addresses and low-20-byte twins, SHA-256 verification,
-Nodus dust limits, amount accounting, payout, event preimage and boundary tests.
-The test harness borrows helpers from the pinned upstream `test_contract_lib.c`;
-it does not modify that file. Neither is a live two-network execution or external
-audit. Engine execution does not cover real envelopes, network fees, RPC trust,
-wallet signing, cross-chain monitoring or the withdrawal bridge.
+The standard-EVM tests execute the BSC bytecode with token allowance, exact
+payout/refund, authorization, deadline, failed-transfer and reentrancy cases. The
+Nodus test executes its actual bytecode with high-byte 32-byte addresses,
+SHA-256, native dust limits, accounting and deadline boundaries. Local tests are
+not a live two-network wallet test or an external audit.
 
 ## Installation
 
-The ordinary Observatory installer copies the new static files with `dist/`.
-Node packages are development-only. No new service, database, secret or listening
-port is added. The frontend's only existing network traffic remains monitoring;
-Trade/Swap itself does not send a request. Nodus and PQ-NAS need no changes.
+The ordinary Observatory installer copies frontend files from `dist/` and the
+bounded read-only/board backend. The board uses SQLite at
+`<state_dir>/trade/board.sqlite3`; it does not store wallet keys or trade secrets.
+It holds at most 100 active advertisements. A create response returns a private
+management token once; the server stores its SHA-256 hash, not the raw token.
+Download the management file before closing the page.
+
+Board writes use the monitor's same-origin/CSRF checks; this does not authenticate
+a wallet owner. Keep the existing authenticated access proxy for remote users.
+The board is not a globally distributed order book or an authenticated exchange.
+Node packages are development-only. The feature does not change Nodus node
+identity or PQ-NAS data and does not create a signing-key service. The observation
+route accepts only bounded reads with fixed testnet providers, not arbitrary RPC
+methods or destinations.

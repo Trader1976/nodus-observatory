@@ -14,6 +14,7 @@ import unittest
 from unittest.mock import patch, PropertyMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
 from network_statistics import SCAN_CHAIN_ID
 from network_statistics.api import report, export_csv
 from network_statistics.collector import collect_statistics, read_local_storage, read_peer_endpoints, api_reader, _nodes, NoRedirect

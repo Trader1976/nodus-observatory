@@ -91,6 +91,11 @@ contract ObservatoryNodusSwap {
         if (!ok) revert PaymentFailed();
     }
 
+    /// @notice The execution block clock used by this contract for deadlines.
+    function currentBlockTime() external view returns (uint64) {
+        return uint64(block.timestamp);
+    }
+
     function getSwap(address funder, bytes32 tradeId) external view returns (Swap memory) {
         return swaps[funder][tradeId];
     }
